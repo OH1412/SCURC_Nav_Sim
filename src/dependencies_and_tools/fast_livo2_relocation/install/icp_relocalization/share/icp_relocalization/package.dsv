@@ -1,0 +1,8 @@
+source;share/icp_relocalization/hook/cmake_prefix_path.ps1
+source;share/icp_relocalization/hook/cmake_prefix_path.dsv
+source;share/icp_relocalization/hook/cmake_prefix_path.sh
+source;share/icp_relocalization/local_setup.bash
+source;share/icp_relocalization/local_setup.dsv
+source;share/icp_relocalization/local_setup.ps1
+source;share/icp_relocalization/local_setup.sh
+source;share/icp_relocalization/local_setup.zsh

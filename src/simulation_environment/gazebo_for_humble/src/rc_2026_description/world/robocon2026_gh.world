@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<sdf version="1.4">
+  <world name="default">
+    <include>
+      <uri>model://sun</uri>
+    </include>
+    <include>
+      <uri>model://ground_plane</uri>
+    </include>
+    <model name="gongjian">
+      <pose>0 0 0  0 0 0</pose>
+      <static>true</static>  <!-- 设置为false，使模型参与物理仿真 -->
+      <link name="up">
+        <visual name="visual">
+          <geometry>
+            <mesh><uri>file:///home/xzx/gazebo/robocon2026.dae</uri></mesh>
+          </geometry>
+        </visual>
+
+        <!-- 添加碰撞体 -->
+        <collision name="collision">
+          <geometry>
+            <mesh><uri>file:///home/xzx/gazebo/robocon2026.dae</uri></mesh>
+          </geometry>
+        </collision>
+
+        <!-- 物理属性 -->
+        <inertial>
+          <mass>1.0</mass>  <!-- 质量 -->
+          <inertia>
+            <ixx>0.1</ixx> <ixy>0.0</ixy> <ixz>0.0</ixz>
+            <iyy>0.1</iyy> <iyz>0.0</iyz>
+            <izz>0.1</izz> <!-- 惯性矩阵 -->
+          </inertia>
+        </inertial>
+      </link>
+    </model>
+  </world>
+</sdf>

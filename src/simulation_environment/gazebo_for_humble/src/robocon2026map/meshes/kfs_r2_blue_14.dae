@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <asset>
+    <contributor>
+      <author>Blender User</author>
+      <authoring_tool>Blender 4.5.2 LTS commit date:2025-08-19, commit time:15:00, hash:ab25eae04993</authoring_tool>
+    </contributor>
+    <created>2025-10-03T22:04:49</created>
+    <modified>2025-10-03T22:04:49</modified>
+    <unit name="meter" meter="1"/>
+    <up_axis>Z_UP</up_axis>
+  </asset>
+  <library_effects>
+    <effect id="方块蓝R1_014-effect">
+      <profile_COMMON>
+        <newparam sid="_4_png-surface">
+          <surface type="2D">
+            <init_from>_4_png</init_from>
+          </surface>
+        </newparam>
+        <newparam sid="_4_png-sampler">
+          <sampler2D>
+            <source>_4_png-surface</source>
+          </sampler2D>
+        </newparam>
+        <technique sid="common">
+          <lambert>
+            <emission>
+              <color sid="emission">0 0 0 1</color>
+            </emission>
+            <diffuse>
+              <texture texture="_4_png-sampler" texcoord="UV贴图"/>
+            </diffuse>
+            <index_of_refraction>
+              <float sid="ior">1.5</float>
+            </index_of_refraction>
+          </lambert>
+        </technique>
+      </profile_COMMON>
+    </effect>
+  </library_effects>
+  <library_images>
+    <image id="_4_png" name="_4_png">
+      <init_from>14.png</init_from>
+    </image>
+  </library_images>
+  <library_materials>
+    <material id="方块蓝R1_014-material" name="方块蓝R1.014">
+      <instance_effect url="#方块蓝R1_014-effect"/>
+    </material>
+  </library_materials>
+  <library_geometries>
+    <geometry id="立方体_017-mesh" name="立方体.017">
+      <mesh>
+        <source id="立方体_017-mesh-positions">
+          <float_array id="立方体_017-mesh-positions-array" count="24">-0.1749999 -0.175 -0.175 -0.175 -0.175 0.175 -0.175 0.1749999 -0.175 -0.175 0.1749999 0.175 0.175 -0.1749999 -0.175 0.175 -0.1749999 0.175 0.175 0.175 -0.175 0.1749999 0.175 0.175</float_array>
+          <technique_common>
+            <accessor source="#立方体_017-mesh-positions-array" count="8" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="立方体_017-mesh-normals">
+          <float_array id="立方体_017-mesh-normals-array" count="24">-0.577372 -0.5773395 0.5773394 -0.5773613 0.5773283 -0.5773613 -0.5773392 -0.5773722 -0.5773395 -0.5773287 0.5773611 0.5773611 0.5773393 0.5773722 -0.5773393 0.5773718 0.5773396 0.5773395 0.5773615 -0.5773283 -0.5773612 0.5773285 -0.5773611 0.5773613</float_array>
+          <technique_common>
+            <accessor source="#立方体_017-mesh-normals-array" count="8" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="立方体_017-mesh-map-0">
+          <float_array id="立方体_017-mesh-map-0-array" count="72">0.9999963 0.9999962 3.8743e-6 3.8743e-6 0.9999963 3.8743e-6 0.9999963 0.9999962 3.8743e-6 3.8743e-6 0.9999963 3.8743e-6 0.9999963 0.9999962 3.8743e-6 3.8743e-6 0.9999963 3.8743e-6 0.9999963 0.9999962 3.8743e-6 3.8743e-6 0.9999963 3.8743e-6 0.4723123 1.307443 0.4723123 1.307443 0.4723123 1.307443 1 1.000443 0 -4.43399e-4 1 -4.43399e-4 0.9999963 0.9999962 3.8743e-6 0.9999962 3.8743e-6 3.8743e-6 0.9999963 0.9999962 3.8743e-6 0.9999962 3.8743e-6 3.8743e-6 0.9999963 0.9999962 3.8743e-6 0.9999962 3.8743e-6 3.8743e-6 0.9999963 0.9999962 3.8743e-6 0.9999962 3.8743e-6 3.8743e-6 0.4723123 1.307443 0.4723123 1.307443 0.4723123 1.307443 1 1.000443 0 1.000443 0 -4.43399e-4</float_array>
+          <technique_common>
+            <accessor source="#立方体_017-mesh-map-0-array" count="36" stride="2">
+              <param name="S" type="float"/>
+              <param name="T" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <vertices id="立方体_017-mesh-vertices">
+          <input semantic="POSITION" source="#立方体_017-mesh-positions"/>
+        </vertices>
+        <triangles material="方块蓝R1_014-material" count="12">
+          <input semantic="VERTEX" source="#立方体_017-mesh-vertices" offset="0"/>
+          <input semantic="NORMAL" source="#立方体_017-mesh-normals" offset="1"/>
+          <input semantic="TEXCOORD" source="#立方体_017-mesh-map-0" offset="2" set="0"/>
+          <p>1 0 0 2 1 1 0 2 2 3 3 3 6 4 4 2 1 5 7 5 6 4 6 7 6 4 8 5 7 9 0 2 10 4 6 11 2 1 12 4 6 13 0 2 14 3 3 15 5 7 16 7 5 17 1 0 18 3 3 19 2 1 20 3 3 21 7 5 22 6 4 23 7 5 24 5 7 25 4 6 26 5 7 27 1 0 28 0 2 29 2 1 30 6 4 31 4 6 32 3 3 33 1 0 34 5 7 35</p>
+        </triangles>
+      </mesh>
+    </geometry>
+  </library_geometries>
+  <library_visual_scenes>
+    <visual_scene id="Scene" name="Scene">
+      <node id="BULER2_014" name="BULER2.014" type="NODE">
+        <matrix sid="transform">1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1</matrix>
+        <instance_geometry url="#立方体_017-mesh" name="BULER2.014">
+          <bind_material>
+            <technique_common>
+              <instance_material symbol="方块蓝R1_014-material" target="#方块蓝R1_014-material">
+                <bind_vertex_input semantic="UV贴图" input_semantic="TEXCOORD" input_set="0"/>
+              </instance_material>
+            </technique_common>
+          </bind_material>
+        </instance_geometry>
+      </node>
+    </visual_scene>
+  </library_visual_scenes>
+  <scene>
+    <instance_visual_scene url="#Scene"/>
+  </scene>
+</COLLADA>

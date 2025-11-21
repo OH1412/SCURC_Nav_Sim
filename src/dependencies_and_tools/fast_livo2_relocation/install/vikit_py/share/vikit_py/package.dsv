@@ -1,0 +1,3 @@
+source;share/vikit_py/hook/pythonpath.ps1
+source;share/vikit_py/hook/pythonpath.dsv
+source;share/vikit_py/hook/pythonpath.sh
