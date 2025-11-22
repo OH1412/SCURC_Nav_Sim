@@ -13,31 +13,31 @@ from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 from launch.conditions import LaunchConfigurationEquals
 from launch.conditions import IfCondition
-# from launch.actions.append_environment_variable import AppendEnvironmentVariable
 from launch.actions import ExecuteProcess, AppendEnvironmentVariable
 from launch_ros.substitutions import FindPackageShare
 
-
+from launch import LaunchDescription
+from launch.substitutions import LaunchConfiguration, Command
+from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument, GroupAction, TimerAction
 
 # Enum for world types
 class WorldType:
-    RMUC = 'RMUC'
-    RMUL = 'RMUL'
+    RoboconWithoutWall = 'RoboconWithoutWall'
+    RoboconWithWall = 'RoboconWithWall'
 
 def get_world_config(world_type):
     world_configs = {
-        WorldType.RMUC: {
-            'x': '0.0',
-            'y': '0.0',
+        WorldType.RoboconWithoutWall: {
+            'x': '4.7',
+            'y': '-2.5',
             'z': '0.0',
             'roll':'0.0',
             'yaw': '0.0',
             'pitch': '0.0',
             'world_path': 'xzx_gazebo/robocon2026_map_foreset.world'
         },
-        WorldType.RMUL: {
+        WorldType.RoboconWithWall: {
             'x': '4.7',
-            # 'x': '4.0',
             'y': '-2.5',
             'z': '0.0',
             'roll':'0.0',
@@ -55,15 +55,6 @@ def generate_launch_description():
 
     # Specify xacro path
     urdf_dir = get_package_share_path('pangolin_simulation') / 'urdf' / 'simulation_waking_robot.xacro'
-    # urdf_dir = Path('/home/sentry_ws/src/rm_simulation/pangolin_simulation/RC_vision_2026/gazebo_for_humble/src/fishbot_description/urdf/point_cloud.urdf')
-    # # 先检查文件是否存在，再读取（顺序修正）
-    # if not urdf_dir.exists():
-    #     raise FileNotFoundError(f"URDF 文件不存在！请检查路径：{urdf_dir}")
-    
-    # # 读取 URDF 文件内容（此时路径已存在，不会报错）
-    # with open(urdf_dir, 'r') as f:
-    #     robot_description_content = f.read()
-
 
     # Create the launch configuration variables
     use_sim_time = LaunchConfiguration('use_sim_time')
@@ -99,8 +90,8 @@ def generate_launch_description():
 
     declare_world_cmd = DeclareLaunchArgument(
         'world',
-        default_value=WorldType.RMUL,
-        description='Choose <RMUC> or <RMUL>'
+        default_value=WorldType.RoboconWithWall,
+        description='Choose <RoboconWithWall> or <RoboconWithoutWall> world'
     )
 
     declare_rviz_config_file_cmd = DeclareLaunchArgument(
@@ -135,14 +126,6 @@ def generate_launch_description():
         }],
         output='screen'
     )
-    # start_joint_state_publisher_cmd = Node(
-    #     package='joint_state_publisher',
-    #     executable='joint_state_publisher',
-    #     name='joint_state_publisher',
-    #     # 只有当 use_joint_state_publisher 为 true 时才会启动，避免和插件发布的 /joint_states 冲突
-    #     condition=IfCondition(LaunchConfiguration('use_joint_state_publisher')),
-    #     output='screen'
-    # )
 
     start_robot_state_publisher_cmd = Node(
         package='robot_state_publisher',
@@ -153,8 +136,6 @@ def generate_launch_description():
             'robot_description': ParameterValue(
                 Command(['xacro ', str(urdf_dir)]), value_type=str
             ),
-            # 'robot_description': ParameterValue(robot_description_content, value_type=str)
-            # 'robot_description': robot_description_content  # 直接传入 URDF 内容
         }],
         output='screen'
     )
@@ -172,30 +153,41 @@ def generate_launch_description():
         if world_config is None:
             return None
 
+        # 定义 spawn_entity 节点
+        spawn_entity_node = Node(
+            package='gazebo_ros',
+            executable='spawn_entity.py',
+            arguments=[
+                '-entity', 'robot',
+                '-topic', 'robot_description',
+                '-x', world_config['x'],
+                '-y', world_config['y'],
+                '-z', world_config['z'],
+                '-Y', world_config['yaw'],
+                '-timeout', '120'
+            ],
+            output='screen'
+        )
+
         return GroupAction(
             condition=LaunchConfigurationEquals('world', world_type),
             actions=[
-                Node(
-                    package='gazebo_ros',
-                    executable='spawn_entity.py',
-                    arguments=[
-                        '-entity', 'robot',
-                        '-topic', 'robot_description',
-                        '-x', world_config['x'],
-                        '-y', world_config['y'],
-                        '-z', world_config['z'],
-                        '-Y', world_config['yaw']
-                    ],
-                ),
+                # 先启动 gzserver（加载世界和插件）
                 IncludeLaunchDescription(
                     PythonLaunchDescriptionSource(os.path.join(pkg_gazebo_ros, 'launch', 'gzserver.launch.py')),
                     launch_arguments={'world': os.path.join(bringup_dir, 'world', world_config['world_path'])}.items(),
+                ),
+                # 延迟1秒启动 spawn_entity（给URDF解析和服务初始化留时间）
+                TimerAction(
+                    period=1.0,
+                    actions=[spawn_entity_node]
                 )
             ]
         )
 
-    bringup_RMUC_cmd_group = create_gazebo_launch_group(WorldType.RMUC)
-    bringup_RMUL_cmd_group = create_gazebo_launch_group(WorldType.RMUL)
+
+    bringup_RoboconWithoutWall_cmd_group = create_gazebo_launch_group(WorldType.RoboconWithoutWall)
+    bringup_RoboconWithWall_cmd_group = create_gazebo_launch_group(WorldType.RoboconWithWall)
 
     # Create the launch description and populate
     ld = LaunchDescription()
@@ -210,11 +202,11 @@ def generate_launch_description():
     ld.add_action(declare_use_joint_state_publisher)
 
 
-    ld.add_action(gazebo_client_launch)
-    ld.add_action(start_joint_state_publisher_cmd)
     ld.add_action(start_robot_state_publisher_cmd)
-    ld.add_action(bringup_RMUL_cmd_group) # type: ignore
-    ld.add_action(bringup_RMUC_cmd_group) # type: ignore
+    ld.add_action(start_joint_state_publisher_cmd)
+    ld.add_action(gazebo_client_launch)
+    ld.add_action(bringup_RoboconWithWall_cmd_group)  # 有墙赛道（默认激活）
+    ld.add_action(bringup_RoboconWithoutWall_cmd_group)  # 无墙赛道
 
     # Uncomment this line if you want to start RViz
     ld.add_action(start_rviz_cmd)
