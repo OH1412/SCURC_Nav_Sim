@@ -14,12 +14,12 @@ def generate_launch_description():
 
   
   # fast-lio localization   
-  fast_lio_param = '../params/fast_lio_mapping_param.yaml'
-  fast_lio_node = Node(
-        package='fast_lio',
+  fast_livo_param = '../params/fast_livo_mapping_param.yaml'
+  fast_livo_node = Node(
+        package='fast_livo',
         executable='fastlio_mapping',
         parameters=[
-          fast_lio_param
+          fast_livo_param
         ],
         output='screen',
         remappings=[('/Odometry','/state_estimation')]
@@ -40,9 +40,9 @@ def generate_launch_description():
   )
 
   delayed_start_mapping = TimerAction(
-    period=8.0,
+    period=5.0,
     actions=[
-      fast_lio_node,
+      fast_livo_node,
       start_octomap_server
     ]
   )

@@ -111,7 +111,7 @@ def generate_launch_description():
         description='Whether to respawn if a node crashes. Applied when composition is disabled.')
 
     declare_log_level_cmd = DeclareLaunchArgument(
-        'log_level', default_value='error',
+        'log_level', default_value='warn',
         description='log level')
 
     load_nodes = GroupAction(
@@ -343,21 +343,25 @@ def generate_launch_description():
     ld.add_action(load_composable_nodes)
     ld.add_action(start_rviz)
 
-    # ======================
-    # Waypoint Loader Node
-    # ======================
-    waypoint_file = '../../../navigation_plungins/r2_waypoint_loader_cpp/config/waypoints.yaml'
+    # # ======================
+    # # Waypoint Loader Node
+    # # ======================
+    # waypoint_file = os.path.join(
+    #     get_package_share_directory('r2_waypoint_loader_cpp'),
+    #     'config',
+    #     'waypoints.yaml'
+    # )
 
-    waypoint_loader_node = Node(
-        package='r2_waypoint_loader_cpp',
-        executable='waypoint_loader',
-        name='waypoint_loader_cpp',
-        output='screen',
-        parameters=[{
-            'waypoints_file': waypoint_file,
-            # 'startup_delay': 5.0
-        }]
-    )
+    # waypoint_loader_node = Node(
+    #     package='r2_waypoint_loader_cpp',
+    #     executable='waypoint_loader',
+    #     name='waypoint_loader_cpp',
+    #     output='screen',
+    #     parameters=[{
+    #         'waypoints_file': waypoint_file,
+    #         # 'startup_delay': 5.0
+    #     }]
+    # )
 
     # waypoint_follower_node = Node(
     # package='nav2_waypoint_follower',
@@ -372,7 +376,7 @@ def generate_launch_description():
 
 
     # 把它加到 launch description 里
-    ld.add_action(waypoint_loader_node)
+    # ld.add_action(waypoint_loader_node)
     # ld.add_action(waypoint_follower_node)
 
     return ld
