@@ -11,6 +11,11 @@ def generate_launch_description():
 
   config_path = os.path.join(
       get_package_share_directory('r2_bringup'), 'params') 
+  map_path = os.path.join(
+      get_package_share_directory('r2_bringup'),
+      'maps',
+      'test.pcd'
+  )
 
   # icp relocalization
   map_odom_trans = Node(
@@ -37,19 +42,19 @@ def generate_launch_description():
           {'cloud_voxel_leaf_size':0.1},
           {'map_frame_id':'map'},
           {'solver_max_iter':75},
-          {'map_path':'../maps/test.pcd'},
+          {'map_path': map_path},
           {'fitness_score_thre':0.2}, # 是最近点距离的平均值，越小越严格
       ],
   )
   
-  # fast-lio localization   
-  fast_lio_param = os.path.join(
-      config_path, 'fast_lio_relocalization_param.yaml')
-  fast_lio_node = Node(
-      package='fast_lio',
-      executable='fastlio_mapping',
+  # fast-livo2 localization   
+  fast_livo_param = os.path.join(
+      config_path, 'fast_livo_relocalization_param.yaml')
+  fast_livo_node = Node(
+      package='fast_livo',
+      executable='fastlivo_mapping',
       parameters=[
-          fast_lio_param
+          fast_livo_param
       ],
       output='screen',
       remappings=[('/Odometry','/state_estimation')]
@@ -64,10 +69,10 @@ def generate_launch_description():
     output='screen'
   )
 
-  delayed_start_lio = TimerAction(
+  delayed_start_livo = TimerAction(
     period=1.0,
     actions=[
-      fast_lio_node
+      fast_livo_node
     ]
   )
 
@@ -76,6 +81,6 @@ def generate_launch_description():
   ld.add_action(map_odom_trans)
   ld.add_action(icp_node)
   ld.add_action(start_rviz)
-  ld.add_action(delayed_start_lio)
+  ld.add_action(delayed_start_livo)
 
   return ld
