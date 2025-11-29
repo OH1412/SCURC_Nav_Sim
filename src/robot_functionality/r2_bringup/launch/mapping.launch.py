@@ -13,16 +13,16 @@ def generate_launch_description():
       get_package_share_directory('r2_bringup'), 'params') 
 
   
-  # fast-lio localization   
+  # fast-livo localization   
   fast_livo_param = '../params/fast_livo_mapping_param.yaml'
   fast_livo_node = Node(
         package='fast_livo',
-        executable='fastlio_mapping',
+        executable='fastlivo_mapping',
         parameters=[
           fast_livo_param
         ],
         output='screen',
-        remappings=[('/Odometry','/state_estimation')]
+        remappings=[('/aft_mapped_to_init','/state_estimation')]
     )
 
   start_octomap_server = IncludeLaunchDescription(

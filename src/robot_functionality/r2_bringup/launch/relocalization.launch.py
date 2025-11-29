@@ -9,8 +9,6 @@ from launch.substitutions import LaunchConfiguration
 
 def generate_launch_description():
 
-  config_path = os.path.join(
-      get_package_share_directory('r2_bringup'), 'params') 
   map_path = os.path.join(
       get_package_share_directory('r2_bringup'),
       'maps',
@@ -47,17 +45,27 @@ def generate_launch_description():
       ],
   )
   
+  # Find path
+  config_path = os.path.join(get_package_share_directory('r2_bringup'), 'params') 
+  config_file_dir = os.path.join(get_package_share_directory("fast_livo"), "config")
+
+  #Load parameters
+  avia_config_cmd = os.path.join(config_file_dir, "MARS_LVIG.yaml")
+  camera_config_cmd = os.path.join(config_file_dir, "camera_MARS_LVIG.yaml")
+
   # fast-livo2 localization   
   fast_livo_param = os.path.join(
-      config_path, 'fast_livo_relocalization_param.yaml')
+      config_path, 'avia_relocation.yaml')
   fast_livo_node = Node(
       package='fast_livo',
       executable='fastlivo_mapping',
       parameters=[
-          fast_livo_param
+          fast_livo_param,
+          camera_config_cmd
       ],
       output='screen',
-      remappings=[('/Odometry','/state_estimation')]
+      arguments=['--ros-args', '--log-level', 'warn'], 
+      remappings=[('/aft_mapped_to_init','/state_estimation')]
   )
         
   rviz_config_file = os.path.join(

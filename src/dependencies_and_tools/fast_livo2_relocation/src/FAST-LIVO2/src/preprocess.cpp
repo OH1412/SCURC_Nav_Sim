@@ -22,7 +22,7 @@ Preprocess::Preprocess() : feature_enabled(0), lidar_type(AVIA), blind(0.01), po
   SCAN_RATE = 10;
   group_size = 8;
   disA = 0.01;
-  disA = 0.1; // B?
+  disB = 0.1; // B?
   p2l_ratio = 225;
   limit_maxmid = 6.25;
   limit_midmin = 6.25;
@@ -96,7 +96,7 @@ void Preprocess::avia_handler(const livox_ros_driver2::msg::CustomMsg::SharedPtr
   pl_full.clear();
   double t1 = omp_get_wtime();
   int plsize = msg->point_num;
-  printf("[ Preprocess ] Input point number: %d \n", plsize);
+  // printf("[ Preprocess ] Input point number: %d \n", plsize);
   // printf("point_filter_num: %d\n", point_filter_num);
 
   pl_corn.reserve(plsize);

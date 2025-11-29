@@ -64,8 +64,9 @@ void loadVoxelConfig(rclcpp::Node::SharedPtr &node, VoxelMapConfig &voxel_config
   try_declare.template operator()<bool>("local_map.map_sliding_en", false);
   try_declare.template operator()<int>("local_map.half_map_size", 100);
   try_declare.template operator()<double>("local_map.sliding_thresh", 8.0);
-
+  try_declare.template operator()<std::string>("publish.initial_frame_id", "camera_init");
   // get parameter
+  node->get_parameter("publish.initial_frame_id", initial_frame);
   node->get_parameter("publish.pub_plane_en", voxel_config.is_pub_plane_map_);
   node->get_parameter("lio.max_layer", voxel_config.max_layer_);
   node->get_parameter("lio.voxel_size", voxel_config.max_voxel_size_);
@@ -430,8 +431,8 @@ void VoxelMapManager::StateEstimation(StatesGroup &state_propagat)
       total_residual += fabs(ptpl_list_[i].dis_to_plane_);
     }
     effct_feat_num_ = ptpl_list_.size();
-    cout << "[ LIO ] Raw feature num: " << feats_undistort_->size() << ", downsampled feature num:" << feats_down_size_ 
-         << " effective feature num: " << effct_feat_num_ << " average residual: " << total_residual / effct_feat_num_ << endl;
+    // cout << "[ LIO ] Raw feature num: " << feats_undistort_->size() << ", downsampled feature num:" << feats_down_size_ 
+    //      << " effective feature num: " << effct_feat_num_ << " average residual: " << total_residual / effct_feat_num_ << endl;
 
     /*** Computation of Measuremnt Jacobian matrix H and measurents covarience
      * ***/
@@ -873,7 +874,7 @@ void VoxelMapManager::pubSinglePlane(visualization_msgs::msg::MarkerArray &plane
                                      const float alpha, const Eigen::Vector3d rgb)
 {
   visualization_msgs::msg::Marker plane;
-  plane.header.frame_id = "camera_init";
+  plane.header.frame_id = initial_frame;
   plane.header.stamp = rclcpp::Time();
   plane.ns = plane_ns;
   plane.id = single_plane.id_;

@@ -26,9 +26,12 @@ which is included as part of this source code package.
 #include <unordered_map>
 #include <visualization_msgs/msg/marker.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
+#include <string>
 
 #define VOXELMAP_HASH_P 116101
 #define VOXELMAP_MAX_N 10000000000
+
+static std::string initial_frame = "camera_init";
 
 static int voxel_plane_id = 0;
 

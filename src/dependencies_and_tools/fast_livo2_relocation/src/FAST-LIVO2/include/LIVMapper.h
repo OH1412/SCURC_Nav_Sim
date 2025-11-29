@@ -16,6 +16,7 @@ which is included as part of this source code package.
 #include "IMU_Processing.h"
 #include "vio.h"
 #include "preprocess.h"
+#include "voxel_map.h" // Added to include definitions of VoxelMapManagerPtr and initial_frame
 #ifdef PRE_ROS_IRON
 #include <cv_bridge/cv_bridge.h>
 #else
