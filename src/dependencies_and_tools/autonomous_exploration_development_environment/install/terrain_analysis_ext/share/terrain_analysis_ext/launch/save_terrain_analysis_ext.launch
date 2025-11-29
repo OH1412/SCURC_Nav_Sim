@@ -1,1 +1,6 @@
-/home/oh/SCURC_Nav_Sim/src/dependencies_and_tools/autonomous_exploration_development_environment/src/terrain_analysis_ext/launch/save_terrain_analysis_ext.launch
+<launch>
+  <node pkg="terrain_analysis_ext" exec="PCDSaverNode" name="PCDSaverNode" output="screen">
+    <param name="save_path" value="/home/sentry_ws/src/autonomous_exploration_development_environment/src/terrain_analysis_ext/maps/analysis_result.pcd" />
+    <param name="topic_name" value="/terrain_map_ext" />
+  </node>
+</launch>

@@ -1,1 +1,14 @@
-/home/oh/SCURC_Nav_Sim/src/dependencies_and_tools/autonomous_exploration_development_environment/build/velodyne_gazebo_plugins/ament_cmake_core/velodyne_gazebo_pluginsConfig-version.cmake
+# generated from ament/cmake/core/templates/nameConfig-version.cmake.in
+set(PACKAGE_VERSION "2.0.2")
+
+set(PACKAGE_VERSION_EXACT False)
+set(PACKAGE_VERSION_COMPATIBLE False)
+
+if("${PACKAGE_FIND_VERSION}" VERSION_EQUAL "${PACKAGE_VERSION}")
+  set(PACKAGE_VERSION_EXACT True)
+  set(PACKAGE_VERSION_COMPATIBLE True)
+endif()
+
+if("${PACKAGE_FIND_VERSION}" VERSION_LESS "${PACKAGE_VERSION}")
+  set(PACKAGE_VERSION_COMPATIBLE True)
+endif()

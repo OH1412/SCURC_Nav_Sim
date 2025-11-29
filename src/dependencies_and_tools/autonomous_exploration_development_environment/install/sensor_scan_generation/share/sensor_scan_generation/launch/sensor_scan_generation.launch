@@ -1,1 +1,7 @@
-/home/oh/SCURC_Nav_Sim/src/dependencies_and_tools/autonomous_exploration_development_environment/src/sensor_scan_generation/launch/sensor_scan_generation.launch
+<launch>
+
+  <node pkg="sensor_scan_generation" exec="sensorScanGeneration" name="sensorScanGeneration" output="screen">
+    <remap from="/registered_scan" to="/terrain_map_ext_exchanged"/>
+  </node>
+
+</launch>

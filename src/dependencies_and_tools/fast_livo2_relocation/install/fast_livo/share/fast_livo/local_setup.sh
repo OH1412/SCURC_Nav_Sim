@@ -2,7 +2,7 @@
 
 # since this file is sourced use either the provided AMENT_CURRENT_PREFIX
 # or fall back to the destination set at configure time
-: ${AMENT_CURRENT_PREFIX:="/home/oh/SCURC_Nav_Sim/src/dependencies_and_tools/fast_livo2_relocation/install/fast_livo"}
+: ${AMENT_CURRENT_PREFIX:="/home/congee/SCURC_Nav_Sim/src/dependencies_and_tools/fast_livo2_relocation/install/fast_livo"}
 if [ ! -d "$AMENT_CURRENT_PREFIX" ]; then
   if [ -z "$COLCON_CURRENT_PREFIX" ]; then
     echo "The compile time prefix path '$AMENT_CURRENT_PREFIX' doesn't " \

@@ -1,3 +1,1 @@
-source;share/vikit_ros/environment/ament_prefix_path.sh
-source;share/vikit_ros/environment/library_path.sh
-source;share/vikit_ros/environment/path.sh
+/home/congee/SCURC_Nav_Sim/src/dependencies_and_tools/fast_livo2_relocation/build/vikit_ros/ament_cmake_environment_hooks/local_setup.dsv

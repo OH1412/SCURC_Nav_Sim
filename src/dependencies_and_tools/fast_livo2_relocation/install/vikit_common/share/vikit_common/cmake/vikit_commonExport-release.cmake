@@ -12,8 +12,8 @@ set_target_properties(vikit_common::vikit_common PROPERTIES
   IMPORTED_SONAME_RELEASE "libvikit_common.so"
   )
 
-list(APPEND _IMPORT_CHECK_TARGETS vikit_common::vikit_common )
-list(APPEND _IMPORT_CHECK_FILES_FOR_vikit_common::vikit_common "${_IMPORT_PREFIX}/lib/libvikit_common.so" )
+list(APPEND _cmake_import_check_targets vikit_common::vikit_common )
+list(APPEND _cmake_import_check_files_for_vikit_common::vikit_common "${_IMPORT_PREFIX}/lib/libvikit_common.so" )
 
 # Commands beyond this point should not need to know the version.
 set(CMAKE_IMPORT_FILE_VERSION)

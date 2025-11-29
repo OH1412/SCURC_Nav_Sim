@@ -1,1 +1,2 @@
-/home/oh/SCURC_Nav_Sim/src/dependencies_and_tools/autonomous_exploration_development_environment/build/waypoint_example/ament_cmake_environment_hooks/local_setup.dsv
+source;share/waypoint_example/environment/ament_prefix_path.sh
+source;share/waypoint_example/environment/path.sh

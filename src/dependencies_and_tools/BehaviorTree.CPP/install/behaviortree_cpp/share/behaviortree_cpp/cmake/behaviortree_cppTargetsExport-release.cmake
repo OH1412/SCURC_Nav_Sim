@@ -12,8 +12,8 @@ set_target_properties(behaviortree_cpp::behaviortree_cpp PROPERTIES
   IMPORTED_SONAME_RELEASE "libbehaviortree_cpp.so"
   )
 
-list(APPEND _IMPORT_CHECK_TARGETS behaviortree_cpp::behaviortree_cpp )
-list(APPEND _IMPORT_CHECK_FILES_FOR_behaviortree_cpp::behaviortree_cpp "${_IMPORT_PREFIX}/lib/libbehaviortree_cpp.so" )
+list(APPEND _cmake_import_check_targets behaviortree_cpp::behaviortree_cpp )
+list(APPEND _cmake_import_check_files_for_behaviortree_cpp::behaviortree_cpp "${_IMPORT_PREFIX}/lib/libbehaviortree_cpp.so" )
 
 # Commands beyond this point should not need to know the version.
 set(CMAKE_IMPORT_FILE_VERSION)
