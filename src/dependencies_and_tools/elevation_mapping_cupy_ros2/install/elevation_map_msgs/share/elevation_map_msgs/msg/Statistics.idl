@@ -1,0 +1,15 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from elevation_map_msgs/msg/Statistics.msg
+// generated code does not contain a copyright notice
+
+#include "std_msgs/msg/Header.idl"
+
+module elevation_map_msgs {
+  module msg {
+    struct Statistics {
+      std_msgs::msg::Header header;
+
+      double pointcloud_process_fps;
+    };
+  };
+};

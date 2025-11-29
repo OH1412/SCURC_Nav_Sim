@@ -40,7 +40,7 @@ def generate_launch_description():
         # 如需要，可在此处通过 launch_arguments 传入仿真额外参数
     )
 
-    # 2) 导航 / 建图
+    # 2) 重定位&导航 / 建图
     nav_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(bringup_share, 'launch', 'bringup_all_in_one.launch.py')

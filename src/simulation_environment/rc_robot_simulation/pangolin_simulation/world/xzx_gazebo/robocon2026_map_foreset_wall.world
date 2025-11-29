@@ -107,7 +107,7 @@
           <pose>0 0 0.001 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>robocon2026map_dae/robocon2026map_without_foreset_new.dae</uri>
+              <uri>robocon2026map_dae/robocon2026map_try.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>
@@ -120,7 +120,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>robocon2026map_dae/robocon2026map_without_foreset_new.dae</uri>
+              <uri>robocon2026map_dae/robocon2026map_try.dae</uri>
               <scale>1 1 1</scale>
             </mesh>
           </geometry>

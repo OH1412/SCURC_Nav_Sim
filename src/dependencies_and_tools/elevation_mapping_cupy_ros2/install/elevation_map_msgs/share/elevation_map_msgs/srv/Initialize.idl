@@ -1,0 +1,29 @@
+// generated from rosidl_adapter/resource/srv.idl.em
+// with input from elevation_map_msgs/srv/Initialize.srv
+// generated code does not contain a copyright notice
+
+#include "geometry_msgs/msg/PointStamped.idl"
+
+module elevation_map_msgs {
+  module srv {
+    module Initialize_Request_Constants {
+      const uint8 POINTS = 0;
+      const uint8 NEAREST = 0;
+      const uint8 LINEAR = 1;
+      const uint8 CUBIC = 2;
+    };
+    @verbatim (language="comment", text=
+      "Initialization methods" "\n"
+      "TODO add more methods.")
+    struct Initialize_Request {
+      uint8 type;
+
+      uint8 method;
+
+      sequence<geometry_msgs::msg::PointStamped> points;
+    };
+    struct Initialize_Response {
+      boolean success;
+    };
+  };
+};

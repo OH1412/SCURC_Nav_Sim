@@ -25,9 +25,6 @@ _colcon_prefix_chain_bash_source_script "$COLCON_CURRENT_PREFIX/local_setup.bash
 COLCON_CURRENT_PREFIX="/home/oh/SCURC_Nav_Sim/src/robot_functionality/r2_bringup/install"
 _colcon_prefix_chain_bash_source_script "$COLCON_CURRENT_PREFIX/local_setup.bash"
 # setting COLCON_CURRENT_PREFIX avoids determining the prefix in the sourced script
-COLCON_CURRENT_PREFIX="/home/oh/SCURC_Nav_Sim/src/simulation_environment/rc_robot_simulation/livox_laser_simulation_RO2/install"
-_colcon_prefix_chain_bash_source_script "$COLCON_CURRENT_PREFIX/local_setup.bash"
-# setting COLCON_CURRENT_PREFIX avoids determining the prefix in the sourced script
 COLCON_CURRENT_PREFIX="/home/oh/SCURC_Nav_Sim/src/navigation_plugins/nav2_ext_plugins/costmap_intensity/install"
 _colcon_prefix_chain_bash_source_script "$COLCON_CURRENT_PREFIX/local_setup.bash"
 # setting COLCON_CURRENT_PREFIX avoids determining the prefix in the sourced script
@@ -50,6 +47,12 @@ COLCON_CURRENT_PREFIX="/home/oh/SCURC_Nav_Sim/src/core_navigation/navigation2/in
 _colcon_prefix_chain_bash_source_script "$COLCON_CURRENT_PREFIX/local_setup.bash"
 # setting COLCON_CURRENT_PREFIX avoids determining the prefix in the sourced script
 COLCON_CURRENT_PREFIX="/home/oh/SCURC_Nav_Sim/src/navigation_plugins/nav2_ext_plugins/velocity_smoother_ext/install"
+_colcon_prefix_chain_bash_source_script "$COLCON_CURRENT_PREFIX/local_setup.bash"
+# setting COLCON_CURRENT_PREFIX avoids determining the prefix in the sourced script
+COLCON_CURRENT_PREFIX="/home/oh/SCURC_Nav_Sim/src/simulation_environment/rc_robot_simulation/livox_laser_simulation_RO2/install"
+_colcon_prefix_chain_bash_source_script "$COLCON_CURRENT_PREFIX/local_setup.bash"
+# setting COLCON_CURRENT_PREFIX avoids determining the prefix in the sourced script
+COLCON_CURRENT_PREFIX="/home/oh/SCURC_Nav_Sim/src/dependencies_and_tools/elevation_mapping_cupy_ros2/install"
 _colcon_prefix_chain_bash_source_script "$COLCON_CURRENT_PREFIX/local_setup.bash"
 
 # source this prefix

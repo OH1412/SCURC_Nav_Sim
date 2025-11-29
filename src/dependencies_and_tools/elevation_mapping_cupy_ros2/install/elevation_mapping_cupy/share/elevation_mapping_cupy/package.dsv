@@ -1,0 +1,17 @@
+source;share/elevation_mapping_cupy/hook/cmake_prefix_path.ps1
+source;share/elevation_mapping_cupy/hook/cmake_prefix_path.dsv
+source;share/elevation_mapping_cupy/hook/cmake_prefix_path.sh
+source;share/elevation_mapping_cupy/hook/path.ps1
+source;share/elevation_mapping_cupy/hook/path.dsv
+source;share/elevation_mapping_cupy/hook/path.sh
+source;share/elevation_mapping_cupy/hook/pythonpath.ps1
+source;share/elevation_mapping_cupy/hook/pythonpath.dsv
+source;share/elevation_mapping_cupy/hook/pythonpath.sh
+source;share/elevation_mapping_cupy/hook/pythonscriptspath.ps1
+source;share/elevation_mapping_cupy/hook/pythonscriptspath.dsv
+source;share/elevation_mapping_cupy/hook/pythonscriptspath.sh
+source;share/elevation_mapping_cupy/local_setup.bash
+source;share/elevation_mapping_cupy/local_setup.dsv
+source;share/elevation_mapping_cupy/local_setup.ps1
+source;share/elevation_mapping_cupy/local_setup.sh
+source;share/elevation_mapping_cupy/local_setup.zsh

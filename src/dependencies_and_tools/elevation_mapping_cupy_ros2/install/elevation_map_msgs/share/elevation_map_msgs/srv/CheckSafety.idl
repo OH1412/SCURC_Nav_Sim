@@ -1,0 +1,29 @@
+// generated from rosidl_adapter/resource/srv.idl.em
+// with input from elevation_map_msgs/srv/CheckSafety.srv
+// generated code does not contain a copyright notice
+
+#include "geometry_msgs/msg/PolygonStamped.idl"
+
+module elevation_map_msgs {
+  module srv {
+    @verbatim (language="comment", text=
+      "Polygons to check")
+    struct CheckSafety_Request {
+      sequence<geometry_msgs::msg::PolygonStamped> polygons;
+
+      boolean compute_untraversable_polygon;
+    };
+    struct CheckSafety_Response {
+      sequence<boolean> is_safe;
+
+      @verbatim (language="comment", text=
+        "Estimate of the traversability of the path." "\n"
+        "Ranges from 0 to 1 where 0 means not traversable and 1 highly traversable.")
+      sequence<double> traversability;
+
+      @verbatim (language="comment", text=
+        "Polygons that are untraversable.")
+      sequence<geometry_msgs::msg::PolygonStamped> untraversable_polygons;
+    };
+  };
+};

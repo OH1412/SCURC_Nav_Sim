@@ -196,7 +196,7 @@ void Preprocess::avia_handler(const livox_ros_driver2::msg::CustomMsg::SharedPtr
       }
     }
   }
-  printf("[ Preprocess ] Output point number: %zu \n", pl_surf.points.size());
+  // printf("[ Preprocess ] Output point number: %zu \n", pl_surf.points.size());
 }
 
 void Preprocess::l515_handler(const sensor_msgs::msg::PointCloud2::ConstSharedPtr &msg)

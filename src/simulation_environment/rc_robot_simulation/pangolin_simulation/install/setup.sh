@@ -39,10 +39,6 @@ COLCON_CURRENT_PREFIX="/home/oh/SCURC_Nav_Sim/src/robot_functionality/r2_bringup
 _colcon_prefix_chain_sh_source_script "$COLCON_CURRENT_PREFIX/local_setup.sh"
 
 # setting COLCON_CURRENT_PREFIX avoids relying on the build time prefix of the sourced script
-COLCON_CURRENT_PREFIX="/home/oh/SCURC_Nav_Sim/src/simulation_environment/rc_robot_simulation/livox_laser_simulation_RO2/install"
-_colcon_prefix_chain_sh_source_script "$COLCON_CURRENT_PREFIX/local_setup.sh"
-
-# setting COLCON_CURRENT_PREFIX avoids relying on the build time prefix of the sourced script
 COLCON_CURRENT_PREFIX="/home/oh/SCURC_Nav_Sim/src/navigation_plugins/nav2_ext_plugins/costmap_intensity/install"
 _colcon_prefix_chain_sh_source_script "$COLCON_CURRENT_PREFIX/local_setup.sh"
 
@@ -72,6 +68,14 @@ _colcon_prefix_chain_sh_source_script "$COLCON_CURRENT_PREFIX/local_setup.sh"
 
 # setting COLCON_CURRENT_PREFIX avoids relying on the build time prefix of the sourced script
 COLCON_CURRENT_PREFIX="/home/oh/SCURC_Nav_Sim/src/navigation_plugins/nav2_ext_plugins/velocity_smoother_ext/install"
+_colcon_prefix_chain_sh_source_script "$COLCON_CURRENT_PREFIX/local_setup.sh"
+
+# setting COLCON_CURRENT_PREFIX avoids relying on the build time prefix of the sourced script
+COLCON_CURRENT_PREFIX="/home/oh/SCURC_Nav_Sim/src/simulation_environment/rc_robot_simulation/livox_laser_simulation_RO2/install"
+_colcon_prefix_chain_sh_source_script "$COLCON_CURRENT_PREFIX/local_setup.sh"
+
+# setting COLCON_CURRENT_PREFIX avoids relying on the build time prefix of the sourced script
+COLCON_CURRENT_PREFIX="/home/oh/SCURC_Nav_Sim/src/dependencies_and_tools/elevation_mapping_cupy_ros2/install"
 _colcon_prefix_chain_sh_source_script "$COLCON_CURRENT_PREFIX/local_setup.sh"
 
 
