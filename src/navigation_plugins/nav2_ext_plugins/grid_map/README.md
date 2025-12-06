@@ -1,554 +1,101 @@
-# Grid Map
+# Grid Map 栅格地图库
 
-## Overview
+## 概述 (Overview)
 
-This is a C++ library with [ROS] interface to manage two-dimensional grid maps with multiple data layers. It is designed for mobile robotic mapping to store data such as elevation, variance, color, friction coefficient, foothold quality, surface normal, traversability etc. It is used in the [Robot-Centric Elevation Mapping](https://github.com/anybotics/elevation_mapping) package designed for rough terrain navigation.
+这是一个带 **[ROS] 接口的 C++ 库**，用于管理多层二维栅格地图。它专为移动机器人建图设计，用于存储**高程 (elevation)**、**方差 (variance)**、**颜色 (color)**、**可通行度 (traversability)**、**表面法向量 (surface normal)** 等多种数据层。该库是 [ANYbotics/elevation\_mapping]（专为崎岖地形导航设计）等包的核心组成部分。
 
-Features:
+### 核心特性 (Features)
 
-* **Multi-layered:** Developed for universal 2.5-dimensional grid mapping with support for any number of layers.
-* **Efficient map re-positioning:** Data storage is implemented as two-dimensional circular buffer. This allows for non-destructive shifting of the map's position (e.g. to follow the robot) without copying data in memory.
-* **Based on Eigen:** Grid map data is stored as [Eigen] data types. Users can apply available Eigen algorithms directly to the map data for versatile and efficient data manipulation.
-* **Convenience functions:** Several helper methods allow for convenient and memory safe cell data access. For example, iterator functions for rectangular, circular, polygonal regions and lines are implemented.
-* **ROS interface:** Grid maps can be directly converted to and from ROS message types such as PointCloud2, OccupancyGrid, GridCells, and our custom GridMap message. Conversion packages provide compatibility with [costmap_2d], [PCL], and [OctoMap] data types.
-* **OpenCV interface:** Grid maps can be seamlessly converted from and to [OpenCV] image types to make use of the tools provided by [OpenCV].
-* **Visualizations:** The *grid_map_rviz_plugin* renders grid maps as 3d surface plots (height maps) in [RViz]. Additionally, the *grid_map_visualization* package helps to visualize grid maps as point clouds, occupancy grids, grid cells etc.
-* **Filters:** The *grid_map_filters* provides are range of filters to process grid maps as a sequence of filters. Parsing of mathematical expressions allows to flexibly setup powerful computations such as thresholding, normal vectors, smoothening, variance, inpainting, and matrix kernel convolutions.
+  * **多层支持 (Multi-layered):** 为通用的 2.5 维栅格建图开发，支持任意数量的数据层。
+  * **高效重定位 (Efficient map re-positioning):** 数据存储采用**二维循环缓冲区 (Circular Buffer)** 实现。这允许地图位置的非破坏性平移（例如跟随机器人移动），无需在内存中复制数据，效率极高。
+  * **基于 Eigen:** 栅格地图数据以 [Eigen] 数据类型存储。用户可以直接对地图数据应用现有的 Eigen 算法，实现通用且高效的数据处理。
+  * **便捷函数 (Convenience functions):** 实现了多种迭代器，支持对矩形、圆形、多边形区域和线条的数据进行方便且内存安全的访问。
+  * **丰富的 ROS 接口:** 栅格地图可以直接转换为多种 [ROS] 消息类型，如 **PointCloud2**、**OccupancyGrid**、**GridCells**，以及我们自定义的 **GridMap 消息**。提供了兼容 [costmap\_2d]、[PCL] 和 [OctoMap] 等数据类型的转换包。
+  * **OpenCV 接口:** 可以与 [OpenCV] 图像类型无缝转换，以便利用 [OpenCV] 提供的图像处理工具。
+  * **可视化 (Visualizations):** `grid_map_rviz_plugin` 可在 [RViz] 中将地图渲染为 3D 表面图（高度图）。`grid_map_visualization` 包可将地图转换为点云、占据栅格等用于可视化。
+  * **过滤器 (Filters):** `grid_map_filters` 提供一系列过滤器，可以对地图进行序列化处理。它支持解析数学表达式，可灵活实现阈值处理、法向量计算、平滑、方差、修补 (inpainting) 和矩阵核卷积等功能。
 
-The grid map package has been tested with ROS2 Foxy (under Ubuntu 20.04). This is research code, expect that it changes often and any fitness for a particular purpose is disclaimed.
+该库已在 **ROS 2 Foxy (Ubuntu 20.04)** 上进行了测试，并且持续适配 ROS 2 更高版本。
 
-The source code is released under a [BSD 3-Clause license](LICENSE).
+-----
 
-**Author: Péter Fankhauser<br />
-Affiliation: [ANYbotics](https://www.anybotics.com/)<br />
-Maintainer: Péter Fankhauser, pfankhauser@anybotics.com<br />**
-With contributions by: Tanja Baumann, Jeff Delmerico, Remo Diethelm, Perry Franklin, Dominic Jud, Ralph Kaestner, Philipp Krüsi, Alex Millane, Daniel Stonier, Elena Stumm, Martin Wermelinger, Christos Zalidis, Edo Jelavic, Ruben Grandia, Simone Arreghini
+## 📚 发布与引用 (Publications)
 
-This projected was initially developed at ETH Zurich (Autonomous Systems Lab & Robotic Systems Lab).
-
-[This work is conducted as part of ANYmal Research, a community to advance legged robotics.](https://www.anymal-research.org/)
-
-![Grid map example in RViz](grid_map_rviz_plugin/doc/grid_map_rviz_plugin_example.png)
-
-## Publications
-
-If you use this work in an academic context, please cite the following publication:
+如果您在学术环境中使用此工作，请引用以下出版物：
 
 > P. Fankhauser and M. Hutter,
 > **"A Universal Grid Map Library: Implementation and Use Case for Rough Terrain Navigation"**,
 > in Robot Operating System (ROS) – The Complete Reference (Volume 1), A. Koubaa (Ed.), Springer, 2016. ([PDF](http://www.researchgate.net/publication/284415855))
 
+```bibtex
+@incollection{Fankhauser2016GridMapLibrary,
+  author = {Fankhauser, P{\'{e}}ter and Hutter, Marco},
+  booktitle = {Robot Operating System (ROS) – The Complete Reference (Volume 1)},
+  title = {{A Universal Grid Map Library: Implementation and Use Case for Rough Terrain Navigation}},
+  chapter = {5},
+  editor = {Koubaa, Anis},
+  publisher = {Springer},
+  year = {2016},
+  isbn = {978-3-319-26052-5},
+  doi = {10.1007/978-3-319-26054-9{\_}5},
+  url = {http://www.springer.com/de/book/9783319260525}
+}
+```
 
-    @incollection{Fankhauser2016GridMapLibrary,
-      author = {Fankhauser, P{\'{e}}ter and Hutter, Marco},
-      booktitle = {Robot Operating System (ROS) – The Complete Reference (Volume 1)},
-      title = {{A Universal Grid Map Library: Implementation and Use Case for Rough Terrain Navigation}},
-      chapter = {5},
-      editor = {Koubaa, Anis},
-      publisher = {Springer},
-      year = {2016},
-      isbn = {978-3-319-26052-5},
-      doi = {10.1007/978-3-319-26054-9{\_}5},
-      url = {http://www.springer.com/de/book/9783319260525}
-    }
+-----
 
-## Documentation
+## 📦 包概览 (Packages Overview)
 
-An introduction to the grid map library including a tutorial is given in [this book chapter](http://www.researchgate.net/publication/284415855).
+该仓库由以下包组成：
 
-The C++ API is documented here:
-* [grid_map_core](http://docs.ros.org/kinetic/api/grid_map_core/html/index.html)
-* [grid_map_ros](http://docs.ros.org/kinetic/api/grid_map_ros/html/index.html)
-* [grid_map_costmap_2d](http://docs.ros.org/kinetic/api/grid_map_costmap_2d/html/index.html)
-* [grid_map_cv](http://docs.ros.org/kinetic/api/grid_map_cv/html/index.html)
-* [grid_map_filters](http://docs.ros.org/kinetic/api/grid_map_filters/html/index.html)
-* [grid_map_octomap](http://docs.ros.org/kinetic/api/grid_map_octomap/html/index.html)
-* [grid_map_pcl](http://docs.ros.org/kinetic/api/grid_map_pcl/html/index.html)
+### 核心与 ROS 接口
 
-## ~~Installation~~
+  * ***grid\_map***：栅格地图库的元包 (meta-package)。
+  * ***grid\_map\_core***：实现了栅格地图库的**核心算法**，提供 `GridMap` 类和迭代器等。**无 [ROS] 依赖**。
+  * ***grid\_map\_ros***：主 [ROS] 依赖包，提供将栅格地图与多种 [ROS] 消息类型进行转换的接口。
+  * ***grid\_map\_msgs***：包含围绕 [grid\_map\_msg/msg/GridMap] 消息类型定义的 [ROS] 消息和服务。
 
-### ~~Installation from Packages~~
+### 工具、过滤器与可视化
 
-~~To install all packages from the grid map library as Debian packages use~~
+  * ***grid\_map\_demos***：包含多个用于演示目的的节点。
+  * ***grid\_map\_filters***：基于 [ROS Filters]，用于对栅格地图应用各种计算过滤器。
+  * ***grid\_map\_rviz\_plugin***：[RViz] 插件，将地图可视化为 3D 表面图。
+  * ***grid\_map\_visualization***：节点，用于将 GridMap 消息转换为 PointCloud2 或 OccupancyGrid 等格式，用于 [RViz] 可视化。
 
-~~sudo apt-get install ros-$ROS_DISTRO-grid-map~~
+### 转换包 (Conversion Packages)
 
-### Building from Source
+  * ***grid\_map\_costmap\_2d***：提供从 [costmap\_2d] 地图类型进行转换的功能（用于 **Nav2 代价地图集成**）。
+  * ***grid\_map\_cv***：提供栅格地图与 [OpenCV] 图像类型之间的转换。
+  * ***grid\_map\_octomap***：提供栅格地图与 [OctoMap] 之间的转换。
+  * ***grid\_map\_pcl***：提供栅格地图与 [PCL] 点云和多边形网格之间的转换。
 
-#### Dependencies
+-----
 
-Install ROS 2 rolling from [here](https://docs.ros.org/en/rolling/Installation/Alternatives/Ubuntu-Install-Binary.html).
+## ⚠️ 版本与编译说明 (ROS 2 Humble 修正)
 
-Source the ROS 2 underlay workspace.
+### 依赖与构建
 
-    source /opt/ros/rolling/setup.bash
+请确保您已安装 ROS 2 Humble，并加载了 ROS 2 的依赖环境。
 
-Clone and build grid_map ROS2 dependencies.
-The *grid_map_core* package depends only on the linear algebra library [Eigen] which is installed through rosdep.
+#### C++ 源码兼容性修正 (cv\_bridge 路径)
 
+在 ROS 2 Humble 版本中，由于 `cv_bridge` 的头文件结构存在差异，直接使用 `<cv_bridge/cv_bridge.hpp>` 可能会导致编译失败。
 
-    mkdir -p ~/gridmap_dep/src
-    cd ~/gridmap_dep
-    wget https://raw.githubusercontent.com/ANYbotics/grid_map/rolling/tools/ros2_dependencies.repos
-    vcs import src < ros2_dependencies.repos
-    rosdep install -y --ignore-src --from-paths src
-    colcon build --symlink-install --packages-up-to pcl_ros
+**【关键修正】**：如果您在编译过程中遇到 `cv_bridge/cv_bridge.hpp: 没有那个文件或目录` 的错误，请检查您的 C++ 源码并进行路径修正：
 
-The other packages depend additionally on the [ROS] standard installation (*rclcpp*, *tf*, *filters*, *sensor_msgs*, *nav_msgs*, and *cv_bridge*). Other format specific conversion packages (e.g. *grid_map_cv*, *grid_map_pcl* etc.) depend on packages described below in *Packages Overview*.
+  * **错误代码：** `#include <cv_bridge/cv_bridge.hpp>` (或类似的 `.hpp` 路径)
+  * **实际路径：** 对应文件在系统中的实际路径可能是 `/opt/ros/humble/include/cv_bridge/cv_bridge/cv_bridge.h`。
+  * **修改建议：** 将cv_bridge.h复制到前一级文件夹下 `/opt/ros/humble/include/cv_bridge/cv_bridge.h`。
+为了解决此问题，在 `grid_map_cv` 、 `grid_map_ros` 、 `grid_map_demos` 等包含 `cv_bridge` 的头文件中，可能需要将包含路径修改为：
 
-#### Building grid_map
+```cpp
+#include <cv_bridge/cv_bridge.h> // 使用 .h 扩展名和嵌套路径
+```
 
-In a new terminal, source your underlay dependency workspace.
-    
-    source ~/gridmap_dep/install/setup.bash
+### 性能优化
 
-Clone the latest version from this repository and build it in a new grid_map workspace.
+为了最大化性能，请确保在 **Release** 模式下进行编译：
 
-    mkdir -p ~/gridmap_ws/src 
-    cd ~/gridmap_ws/src
-    git clone https://github.com/anybotics/grid_map.git --branch ros2
-    cd ../
-    rosdep install -y --ignore-src --from-paths src
-    colcon build --symlink-install
-    
-
-To maximize performance, make sure to build in *Release* mode. You can specify the build type by setting
-
-    colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
-
-
-### Packages Overview
-
-This repository consists of following packages:
-
-* ***grid_map*** is the meta-package for the grid map library.
-* ***grid_map_core*** implements the algorithms of the grid map library. It provides the `GridMap` class and several helper classes such as the iterators. This package is implemented without [ROS] dependencies.
-* ***grid_map_ros*** is the main package for [ROS] dependent projects using the grid map library. It provides the interfaces to convert grid maps from and to several [ROS] message types.
-* ***grid_map_demos*** contains several nodes for demonstration purposes.
-* ***grid_map_filters*** builds on the [ROS Filters] package to process grid maps as a sequence of filters.
-* ***grid_map_msgs*** holds the [ROS] message and service definitions around the [grid_map_msg/msg/GridMap] message type.
-* ***grid_map_rviz_plugin*** is an [RViz] plugin to visualize grid maps as 3d surface plots (height maps).
-* ***grid_map_visualization*** contains a node written to convert GridMap messages to other [ROS] message types for example for  visualization in [RViz].
-
-Additional conversion packages:
-
-* ***grid_map_costmap_2d*** provides conversions of grid maps from [costmap_2d] map types.
-* ***grid_map_cv*** provides conversions of grid maps from and to [OpenCV] image types.
-* ***grid_map_octomap*** provides conversions of grid maps from OctoMap ([OctoMap]) maps.
-* ***grid_map_pcl*** provides conversions of grid maps from Point Cloud Library ([PCL](http://pointclouds.org/)) polygon meshes and point clouds. For details, see the grid map pcl package [README](grid_map_pcl/README.md).
-
-### Unit Tests
-
-Run the unit tests with
-
-    colcon test --packages-up-to grid_map
-
-View test results with
-
-    colcon test-result --verbose
-
-if you are using [colcon](https://colcon.readthedocs.io/en/released/index.html).
-
-## Usage
-
-### Demonstrations
-
-The *grid_map_demos* package contains several demonstration nodes. Use this code to verify your installation of the grid map packages and to get you started with your own usage of the library.
-
-*Note: The octomap_to_gridmap_demo_launch.py is not working at the moment, pending the port of octomap_server see issue [OctoMap/octomap_mapping/#76](https://github.com/OctoMap/octomap_mapping/issues/76).*
-
-Before running the demos make sure you source your grid_map overlay workspace
-
-    source ~/gridmap_ws/install/setup.bash
-
-* *[simple_demo](grid_map_demos/src/simple_demo_node.cpp)* demonstrates a simple example for using the grid map library. This ROS node creates a grid map, adds data to it, and publishes it. To see the result in RViz, execute the command
-
-        ros2 launch grid_map_demos simple_demo_launch.py
-
-* *[tutorial_demo](grid_map_demos/src/tutorial_demo_node.cpp)* is an extended demonstration of the library's functionalities. Launch the *tutorial_demo* with
-
-        ros2 launch grid_map_demos tutorial_demo_launch.py
-
-* *[iterators_demo](grid_map_demos/src/IteratorsDemo.cpp)* showcases the usage of the grid map iterators. Launch it with
-
-        ros2 launch grid_map_demos iterators_demo_launch.py
-
-* *[image_to_gridmap_demo](grid_map_demos/src/ImageToGridmapDemo.cpp)* demonstrates how to convert data from an [image](grid_map_demos/data/eth_logo.png) to a grid map. Start the demonstration with
-
-        ros2 launch grid_map_demos image_to_gridmap_demo_launch.py
-
-    ![Image to grid map demo result](grid_map_demos/doc/image_to_grid_map_demo_result.png)
-
-* *[opencv_demo](grid_map_demos/src/opencv_demo_node.cpp)* demonstrates map manipulations with help of [OpenCV] functions. Start the demonstration with
-
-        ros2 launch grid_map_demos opencv_demo_launch.py
-
-    ![OpenCV demo result](grid_map_demos/doc/opencv_demo_result.gif)
-
-* *[resolution_change_demo](grid_map_demos/src/resolution_change_demo_node.cpp)* shows how the resolution of a grid map can be changed with help of the [OpenCV] image scaling methods. The see the results, use
-
-        ros2 launch grid_map_demos resolution_change_demo_launch.py
-
-* *[filters_demo](grid_map_demos/src/FiltersDemo.cpp)* uses a chain of [ROS Filters] to process a grid map. Starting from the elevation of a terrain map, the demo uses several filters to show how to compute surface normals, use inpainting to fill holes, smoothen/blur the map, and use math expressions to detect edges, compute roughness and traversability. The filter chain setup is configured in the [`filters_demo_filter_chain.yaml`](grid_map_demos/config/filters_demo_filter_chain.yaml) file. Launch the demo with
-
-        ros2 launch grid_map_demos filters_demo_launch.py
-
-    [![Filters demo results](grid_map_demos/doc/filters_demo_preview.gif)](grid_map_demos/doc/filters_demo.gif)
-
- For more information about grid map filters, see [grid_map_filters](#grid_map_filters).
-
-* *[interpolation_demo](grid_map_demos/src/InterpolationDemo.cpp)* shows the result of different interpolation methods on the resulting surface. The start the demo, use
-
-        ros2 launch grid_map_demos interpolation_demo_launch.py
-
-<img src="grid_map_core/doc/interpolationSineWorld.gif" width="256" height="252">
-<img src="grid_map_core/doc/interpolationGaussWorld.gif" width="256" height="252">
-
-The user can play with different worlds (surfaces) and different interpolation settings in the [`interpolation_demo.yaml`](grid_map_demos/config/interpolation_demo.yaml) file. The visualization displays the ground truth in green and yellow color. The interpolation result is shown in red and purple colors. Also, the demo computes maximal and average interpolation errors, as well as the average time required for a single interpolation query.
-
-Grid map features four different interpolation methods (in order of increasing accuracy and increasing complexity):
-* **NN** - Nearest Neighbour (fastest, but least accurate).
-* **Linear** - Linear interpolation.
-* **Cubic convolution** - Piecewise cubic interpolation. Implemented using the cubic convolution algorithm.
-* **Cubic** - Cubic interpolation (slowest, but most accurate).
-
-For more details check the literature listed in  [`CubicInterpolation.hpp`](grid_map_core/include/grid_map_core/CubicInterpolation.hpp) file.
-
-### Conventions & Definitions
-
-[![Grid map layers](grid_map_core/doc/grid_map_layers.png)](grid_map_core/doc/grid_map_layers.pdf)
-
-[![Grid map conventions](grid_map_core/doc/grid_map_conventions.png)](grid_map_core/doc/grid_map_conventions.pdf)
-
-
-### Iterators
-
-The grid map library contains various iterators for convenience.
-
-Grid map | Submap | Circle | Line | Polygon
-:---: | :---: | :---: | :---: | :---:
-[![Grid map iterator](grid_map_core/doc/iterators/grid_map_iterator_preview.gif)](grid_map_core/doc/iterators/grid_map_iterator.gif) | [![Submap iterator](grid_map_core/doc/iterators/submap_iterator_preview.gif)](grid_map_core/doc/iterators/submap_iterator.gif) | [![Circle iterator](grid_map_core/doc/iterators/circle_iterator_preview.gif)](grid_map_core/doc/iterators/circle_iterator.gif) | [![Line iterator](grid_map_core/doc/iterators/line_iterator_preview.gif)](grid_map_core/doc/iterators/line_iterator.gif) | [![Polygon iterator](grid_map_core/doc/iterators/polygon_iterator_preview.gif)](grid_map_core/doc/iterators/polygon_iterator.gif)
-__Ellipse__ | __Spiral__
-[![Ellipse iterator](grid_map_core/doc/iterators/ellipse_iterator_preview.gif)](grid_map_core/doc/iterators/ellipse_iterator.gif) | [![Spiral iterator](grid_map_core/doc/iterators/spiral_iterator_preview.gif)](grid_map_core/doc/iterators/spiral_iterator.gif)
-
-Using the iterator in a `for` loop is common. For example, iterate over the entire grid map with the `GridMapIterator` with
-
-    for (grid_map::GridMapIterator iterator(map); !iterator.isPastEnd(); ++iterator) {
-        cout << "The value at index " << (*iterator).transpose() << " is " << map.at("layer", *iterator) << endl;
-    }
-
-The other grid map iterators follow the same form. You can find more examples on how to use the different iterators in the *[iterators_demo](grid_map_demos/src/IteratorsDemo.cpp)* node.
-
-Note: For maximum efficiency when using iterators, it is recommended to locally store direct access to the data layers of the grid map with `grid_map::Matrix& data = map["layer"]` outside the `for` loop:
-
-    grid_map::Matrix& data = map["layer"];
-    for (GridMapIterator iterator(map); !iterator.isPastEnd(); ++iterator) {
-        const Index index(*iterator);
-        cout << "The value at index " << index.transpose() << " is " << data(index(0), index(1)) << endl;
-    }
-
-You can find a benchmarking of the performance of the iterators in the `iterator_benchmark` node of the `grid_map_demos` package which can be run with
-
-    rosrun grid_map_demos iterator_benchmark
-
-Beware that while iterators are convenient, it is often the cleanest and most efficient to make use of the built-in [Eigen] methods. Here are some examples:
-
-* Setting a constant value to all cells of a layer:
-
-        map["layer"].setConstant(3.0);
-
-* Adding two layers:
-
-        map["sum"] = map["layer_1"] + map["layer_2"];
-
-* Scaling a layer:
-
-        map["layer"] = 2.0 * map["layer"];
-
-* Max. values between two layers:
-
-        map["max"] = map["layer_1"].cwiseMax(map["layer_2"]);
-
-* Compute the root mean squared error:
-
-        map.add("error", (map.get("layer_1") - map.get("layer_2")).cwiseAbs());
-        unsigned int nCells = map.getSize().prod();
-        double rootMeanSquaredError = sqrt((map["error"].array().pow(2).sum()) / nCells);
-
-
-### Changing the Position of the Map
-
-There are two different methods to change the position of the map:
-* `setPosition(...)`: Changes the position of the map without changing data stored in the map. This changes the corresponce between the data and the map frame.
-* `move(...)`: Relocates the grid map such that the corresponce between data and the map frame does not change. Data in the overlapping region before and after the position change remains stored. Data that falls outside of the map at its new position is discarded. Cells that cover previously unknown regions are emptied (set to nan). The data storage is implemented as two-dimensional circular buffer to minimize computational effort.
-
-`setPosition(...)` | `move(...)`
-:---: | :---:
-![Grid map iterator](grid_map_core/doc/setposition_method.gif) | ![Submap iterator](grid_map_core/doc/move_method.gif)|
-
-
-## Packages
-
-### grid_map_rviz_plugin
-
-This [RViz] plugin visualizes a grid map layer as 3d surface plot (height map). A separate layer can be chosen as layer for the color information.
-
-![Grid map visualization in RViz](grid_map_rviz_plugin/doc/grid_map_rviz_plugin.png)
-
-
-### grid_map_visualization
-
-This node subscribes to a topic of type [grid_map_msgs/msg/GridMap] and publishes messages that can be visualized in [RViz]. The published topics of the visualizer can be fully configure with a YAML parameter file. Any number of visualizations with different parameters can be added. An example is [here](grid_map_demos/config/tutorial_demo.yaml) for the configuration file of the *tutorial_demo*.
-
-Point cloud | Vectors | Occupancy grid | Grid cells
---- | --- | --- | ---
-[![Point cloud](grid_map_visualization/doc/point_cloud_preview.jpg)](grid_map_visualization/doc/point_cloud.jpg) | [![Vectors](grid_map_visualization/doc/vectors_preview.jpg)](grid_map_visualization/doc/vectors.jpg) | [![Occupancy grid](grid_map_visualization/doc/occupancy_grid_preview.jpg)](grid_map_visualization/doc/occupancy_grid.jpg) | [![Grid cells](grid_map_visualization/doc/grid_cells_preview.jpg)](grid_map_visualization/doc/grid_cells.jpg)
-
-#### Parameters
-
-* **`grid_map_topic`** (string, default: "/grid_map")
-
-    The name of the grid map topic to be visualized. See below for the description of the visualizers.
-
-
-#### Subscribed Topics
-
-* **`/grid_map`** ([grid_map_msgs/msg/GridMap])
-
-    The grid map to visualize.
-
-
-#### Published Topics
-
-The published topics are configured with the [YAML parameter file](grid_map_demos/config/tutorial_demo.yaml). Possible topics are:
-
-* **`point_cloud`** ([sensor_msgs/msg/PointCloud2])
-
-    Shows the grid map as a point cloud. Select which layer to transform as points with the `layer` parameter.
-
-        name: elevation
-        type: point_cloud
-        params:
-         layer: elevation
-         flat: false # optional
-
-* **`flat_point_cloud`** ([sensor_msgs/msg/PointCloud2])
-
-    Shows the grid map as a "flat" point cloud, i.e. with all points at the same height *z*. This is convenient to visualize 2d maps or images (or even video streams) in [RViz] with help of its `Color Transformer`. The parameter `height` determines the desired *z*-position of the flat point cloud.
-
-        name: flat_grid
-        type: flat_point_cloud
-        params:
-         height: 0.0
-
-    Note: In order to omit points in the flat point cloud from empty/invalid cells, specify the layers which should be checked for validity with `setBasicLayers(...)`.
-
-* **`vectors`** ([visualization_msgs/msg/Marker])
-
-    Visualizes vector data of the grid map as visual markers. Specify the layers which hold the *x*-, *y*-, and *z*-components of the vectors with the `layer_prefix` parameter. The parameter `position_layer` defines the layer to be used as start point of the vectors.
-
-        name: surface_normals
-        type: vectors
-        params:
-         layer_prefix: normal_
-         position_layer: elevation
-         scale: 0.06
-         line_width: 0.005
-         color: 15600153 # red
-
-* **`occupancy_grid`** ([nav_msgs/msg/OccupancyGrid])
-
-    Visualizes a layer of the grid map as occupancy grid. Specify the layer to be visualized with the `layer` parameter, and the upper and lower bound with `data_min` and `data_max`.
-
-        name: traversability_grid
-        type: occupancy_grid
-        params:
-         layer: traversability
-         data_min: -0.15
-         data_max: 0.15
-
-* **`grid_cells`** ([nav_msgs/msg/GridCells])
-
-    Visualizes a layer of the grid map as grid cells. Specify the layer to be visualized with the `layer` parameter, and the upper and lower bounds with `lower_threshold` and `upper_threshold`.
-
-        name: elevation_cells
-        type: grid_cells
-        params:
-         layer: elevation
-         lower_threshold: -0.08 # optional, default: -inf
-         upper_threshold: 0.08 # optional, default: inf
-
-* **`region`** ([visualization_msgs/msg/Marker])
-
-    Shows the boundary of the grid map.
-
-        name: map_region
-        type: map_region
-        params:
-         color: 3289650
-         line_width: 0.003
-
-*Note: Color values are in RGB form as concatenated integers (for each channel value 0-255). The values can be generated like [this](http://www.wolframalpha.com/input/?i=BitOr%5BBitShiftLeft%5Br%2C16%5D%2C+BitShiftLeft%5Bg%2C8%5D%2C+b%5D+where+%7Br%3D0%2C+g%3D255%2C+b%3D0%7D) as an example for the color green (red: 0, green: 255, blue: 0).*
-
-### grid_map_filters
-
-The *grid_map_filters* package containts several filters which can be applied a grid map to perform computations on the data in the layers. The grid map filters are based on [ROS Filters], which means that a chain of filters can be configured as a YAML file. Furthermore, additional filters can be written and made available through the ROS plugin mechanism, such as the [`InpaintFilter`](grid_map_cv/include/grid_map_cv/InpaintFilter.hpp) from the `grid_map_cv` package.
-
-Several basic filters are provided in the *grid_map_filters* package:
-
-* **`gridMapFilters/ThresholdFilter`**
-
-    Set values below/above a threshold to a specified value.
-
-        name: lower_threshold
-        type: gridMapFilters/ThresholdFilter
-        params:
-          layer: layer_name
-          lower_threshold: 0.0 # alternative: upper_threshold
-          set_to: 0.0 # # Other uses: .nan, .inf
-
-* **`gridMapFilters/MeanInRadiusFilter`**
-
-    Compute for each cell of a layer the mean value inside a radius.
-
-        name: mean_in_radius
-        type: gridMapFilters/MeanInRadiusFilter
-        params:
-          input_layer: input
-          output_layer: output
-          radius: 0.06 # in m.
-
-* **`gridMapFilters/NormalVectorsFilter`**
-
-    Compute the normal vectors of a layer in a map.
-
-        name: surface_normals
-        type: gridMapFilters/NormalVectorsFilter
-        params:
-          input_layer: input
-          output_layers_prefix: normal_vectors_
-          radius: 0.05
-          normal_vector_positive_axis: z
-
-* **`gridMapFilters/NormalColorMapFilter`**
-
-    Compute a new color layer based on normal vectors layers.
-
-        name: surface_normals
-        type: gridMapFilters/NormalColorMapFilter
-        params:
-          input_layers_prefix: normal_vectors_
-          output_layer: normal_color
-
-* **`gridMapFilters/MathExpressionFilter`**
-
-    Parse and evaluate a mathematical matrix expression with layers of a grid map. See [EigenLab] for the documentation of the expressions.
-
-        name: math_expression
-        type: gridMapFilters/MathExpressionFilter
-        params:
-          output_layer: output
-          expression: acos(normal_vectors_z) # Slope.
-          # expression: abs(elevation - elevation_smooth) # Surface roughness.
-          # expression: 0.5 * (1.0 - (slope / 0.6)) + 0.5 * (1.0 - (roughness / 0.1)) # Weighted and normalized sum.
-
-* **`gridMapFilters/SlidingWindowMathExpressionFilter`**
-
-    Parse and evaluate a mathematical matrix expression within a sliding window on a layer of a grid map. See [EigenLab] for the documentation of the expressions.
-
-        name: math_expression
-        type: gridMapFilters/SlidingWindowMathExpressionFilter
-        params:
-          input_layer: input
-          output_layer: output
-          expression: meanOfFinites(input) # Box blur
-          # expression: sqrt(sumOfFinites(square(input - meanOfFinites(input))) ./ numberOfFinites(input)) # Standard deviation
-          # expression: 'sumOfFinites([0,-1,0;-1,5,-1;0,-1,0].*elevation_inpainted)' # Sharpen with kernel matrix
-          compute_empty_cells: true
-          edge_handling: crop # options: inside, crop, empty, mean
-          window_size: 5 # in number of cells (optional, default: 3), make sure to make this compatible with the kernel matrix
-          # window_length: 0.05 # instead of window_size, in m
-
-* **`gridMapFilters/DuplicationFilter`**
-
-    Duplicate a layer of a grid map.
-
-        name: duplicate
-        type: gridMapFilters/DuplicationFilter
-        params:
-          input_layer: input
-          output_layer: output
-
-* **`gridMapFilters/DeletionFilter`**
-
-    Delete layers from a grid map.
-
-        name: delete
-        type: gridMapFilters/DeletionFilter
-        params:
-          layers: [color, score] # List of layers.
-
-Additionally, the *grid_map_cv* package provides the following filters:
-
-* **`gridMapCv/InpaintFilter`**
-
-    Use OpenCV to inpaint/fill holes in a layer.
-
-        name: inpaint
-        type: gridMapCv/InpaintFilter
-        params:
-          input_layer: input
-          output_layer: output
-          radius: 0.05 # in m
-
-
-## Build Status
-
-### Devel Job Status
-
-| | Indigo | Kinetic | Lunar | Melodic |
-| --- | --- | --- | --- | --- |
-| grid_map | [![Build Status](http://build.ros.org/buildStatus/icon?job=Idev__grid_map__ubuntu_trusty_amd64)](http://build.ros.org/job/Idev__grid_map__ubuntu_trusty_amd64/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Kdev__grid_map__ubuntu_xenial_amd64)](http://build.ros.org/job/Kdev__grid_map__ubuntu_xenial_amd64/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Ldev__grid_map__ubuntu_xenial_amd64)](http://build.ros.org/job/Ldev__grid_map__ubuntu_xenial_amd64/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Mdev__grid_map__ubuntu_bionic_amd64)](http://build.ros.org/job/Mdev__grid_map__ubuntu_bionic_amd64/) |
-| doc | [![Build Status](http://build.ros.org/buildStatus/icon?job=Idoc__grid_map__ubuntu_trusty_amd64)](http://build.ros.org/job/Idoc__grid_map__ubuntu_trusty_amd64/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Kdoc__grid_map__ubuntu_xenial_amd64)](http://build.ros.org/job/Kdoc__grid_map__ubuntu_xenial_amd64/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Ldoc__grid_map__ubuntu_xenial_amd64)](http://build.ros.org/job/Ldoc__grid_map__ubuntu_xenial_amd64/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Mdoc__grid_map__ubuntu_bionic_amd64)](http://build.ros.org/job/Mdoc__grid_map__ubuntu_bionic_amd64/) |
-
-### Release Job Status
-
-| | Indigo | Kinetic | Lunar | Melodic |
-| --- | --- | --- | --- | --- |
-| grid_map | [![Build Status](http://build.ros.org/buildStatus/icon?job=Ibin_uT64__grid_map__ubuntu_trusty_amd64__binary)](http://build.ros.org/job/Ibin_uT64__grid_map__ubuntu_trusty_amd64__binary/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Kbin_uX64__grid_map__ubuntu_xenial_amd64__binary)](http://build.ros.org/job/Kbin_uX64__grid_map__ubuntu_xenial_amd64__binary/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Lbin_uX64__grid_map__ubuntu_xenial_amd64__binary)](http://build.ros.org/job/Lbin_uX64__grid_map__ubuntu_xenial_amd64__binary/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Mbin_uB64__grid_map__ubuntu_bionic_amd64__binary)](http://build.ros.org/job/Mbin_uB64__grid_map__ubuntu_bionic_amd64__binary/) |
-| grid_map_core | [![Build Status](http://build.ros.org/buildStatus/icon?job=Ibin_uT64__grid_map_core__ubuntu_trusty_amd64__binary)](http://build.ros.org/job/Ibin_uT64__grid_map_core__ubuntu_trusty_amd64__binary/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Kbin_uX64__grid_map_core__ubuntu_xenial_amd64__binary)](http://build.ros.org/job/Kbin_uX64__grid_map_core__ubuntu_xenial_amd64__binary/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Lbin_uX64__grid_map_core__ubuntu_xenial_amd64__binary)](http://build.ros.org/job/Lbin_uX64__grid_map_core__ubuntu_xenial_amd64__binary/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Mbin_uB64__grid_map_core__ubuntu_bionic_amd64__binary)](http://build.ros.org/job/Mbin_uB64__grid_map_core__ubuntu_bionic_amd64__binary/) |
-| grid_map_costmap_2d | [![Build Status](http://build.ros.org/buildStatus/icon?job=Ibin_uT64__grid_map_costmap_2d__ubuntu_trusty_amd64__binary)](http://build.ros.org/job/Ibin_uT64__grid_map_costmap_2d__ubuntu_trusty_amd64__binary/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Kbin_uX64__grid_map_costmap_2d__ubuntu_xenial_amd64__binary)](http://build.ros.org/job/Kbin_uX64__grid_map_costmap_2d__ubuntu_xenial_amd64__binary/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Lbin_uX64__grid_map_costmap_2d__ubuntu_xenial_amd64__binary)](http://build.ros.org/job/Lbin_uX64__grid_map_costmap_2d__ubuntu_xenial_amd64__binary/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Mbin_uB64__grid_map_costmap_2d__ubuntu_bionic_amd64__binary)](http://build.ros.org/job/Mbin_uB64__grid_map_costmap_2d__ubuntu_bionic_amd64__binary/) |
-| grid_map_cv | [![Build Status](http://build.ros.org/buildStatus/icon?job=Ibin_uT64__grid_map_cv__ubuntu_trusty_amd64__binary)](http://build.ros.org/job/Ibin_uT64__grid_map_cv__ubuntu_trusty_amd64__binary/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Kbin_uX64__grid_map_cv__ubuntu_xenial_amd64__binary)](http://build.ros.org/job/Kbin_uX64__grid_map_cv__ubuntu_xenial_amd64__binary/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Lbin_uX64__grid_map_cv__ubuntu_xenial_amd64__binary)](http://build.ros.org/job/Lbin_uX64__grid_map_cv__ubuntu_xenial_amd64__binary/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Mbin_uB64__grid_map_cv__ubuntu_bionic_amd64__binary)](http://build.ros.org/job/Mbin_uB64__grid_map_cv__ubuntu_bionic_amd64__binary/) |
-| grid_map_demos | [![Build Status](http://build.ros.org/buildStatus/icon?job=Ibin_uT64__grid_map_demos__ubuntu_trusty_amd64__binary)](http://build.ros.org/job/Ibin_uT64__grid_map_demos__ubuntu_trusty_amd64__binary/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Kbin_uX64__grid_map_demos__ubuntu_xenial_amd64__binary)](http://build.ros.org/job/Kbin_uX64__grid_map_demos__ubuntu_xenial_amd64__binary/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Lbin_uX64__grid_map_demos__ubuntu_xenial_amd64__binary)](http://build.ros.org/job/Lbin_uX64__grid_map_demos__ubuntu_xenial_amd64__binary/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Mbin_uB64__grid_map_demos__ubuntu_bionic_amd64__binary)](http://build.ros.org/job/Mbin_uB64__grid_map_demos__ubuntu_bionic_amd64__binary/) |
-| grid_map_filters | [![Build Status](http://build.ros.org/buildStatus/icon?job=Ibin_uT64__grid_map_filters__ubuntu_trusty_amd64__binary)](http://build.ros.org/job/Ibin_uT64__grid_map_filters__ubuntu_trusty_amd64__binary/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Kbin_uX64__grid_map_filters__ubuntu_xenial_amd64__binary)](http://build.ros.org/job/Kbin_uX64__grid_map_filters__ubuntu_xenial_amd64__binary/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Lbin_uX64__grid_map_filters__ubuntu_xenial_amd64__binary)](http://build.ros.org/job/Lbin_uX64__grid_map_filters__ubuntu_xenial_amd64__binary/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Mbin_uB64__grid_map_filters__ubuntu_bionic_amd64__binary)](http://build.ros.org/job/Mbin_uB64__grid_map_filters__ubuntu_bionic_amd64__binary/) |
-| grid_map_loader | [![Build Status](http://build.ros.org/buildStatus/icon?job=Ibin_uT64__grid_map_loader__ubuntu_trusty_amd64__binary)](http://build.ros.org/job/Ibin_uT64__grid_map_loader__ubuntu_trusty_amd64__binary/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Kbin_uX64__grid_map_loader__ubuntu_xenial_amd64__binary)](http://build.ros.org/job/Kbin_uX64__grid_map_loader__ubuntu_xenial_amd64__binary/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Lbin_uX64__grid_map_loader__ubuntu_xenial_amd64__binary)](http://build.ros.org/job/Lbin_uX64__grid_map_loader__ubuntu_xenial_amd64__binary/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Mbin_uB64__grid_map_loader__ubuntu_bionic_amd64__binary)](http://build.ros.org/job/Mbin_uB64__grid_map_loader__ubuntu_bionic_amd64__binary/) |
-| grid_map_msgs | [![Build Status](http://build.ros.org/buildStatus/icon?job=Ibin_uT64__grid_map_msgs__ubuntu_trusty_amd64__binary)](http://build.ros.org/job/Ibin_uT64__grid_map_msgs__ubuntu_trusty_amd64__binary/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Kbin_uX64__grid_map_msgs__ubuntu_xenial_amd64__binary)](http://build.ros.org/job/Kbin_uX64__grid_map_msgs__ubuntu_xenial_amd64__binary/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Lbin_uX64__grid_map_msgs__ubuntu_xenial_amd64__binary)](http://build.ros.org/job/Lbin_uX64__grid_map_msgs__ubuntu_xenial_amd64__binary/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Mbin_uB64__grid_map_msgs__ubuntu_bionic_amd64__binary)](http://build.ros.org/job/Mbin_uB64__grid_map_msgs__ubuntu_bionic_amd64__binary/) |
-| grid_map_octomap | [![Build Status](http://build.ros.org/buildStatus/icon?job=Ibin_uT64__grid_map_octomap__ubuntu_trusty_amd64__binary)](http://build.ros.org/job/Ibin_uT64__grid_map_octomap__ubuntu_trusty_amd64__binary/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Kbin_uX64__grid_map_octomap__ubuntu_xenial_amd64__binary)](http://build.ros.org/job/Kbin_uX64__grid_map_octomap__ubuntu_xenial_amd64__binary/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Lbin_uX64__grid_map_octomap__ubuntu_xenial_amd64__binary)](http://build.ros.org/job/Lbin_uX64__grid_map_octomap__ubuntu_xenial_amd64__binary/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Mbin_uB64__grid_map_octomap__ubuntu_bionic_amd64__binary)](http://build.ros.org/job/Mbin_uB64__grid_map_octomap__ubuntu_bionic_amd64__binary/) |
-| grid_map_pcl | [![Build Status](http://build.ros.org/buildStatus/icon?job=Ibin_uT64__grid_map_pcl__ubuntu_trusty_amd64__binary)](http://build.ros.org/job/Ibin_uT64__grid_map_pcl__ubuntu_trusty_amd64__binary/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Kbin_uX64__grid_map_pcl__ubuntu_xenial_amd64__binary)](http://build.ros.org/job/Kbin_uX64__grid_map_pcl__ubuntu_xenial_amd64__binary/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Lbin_uX64__grid_map_pcl__ubuntu_xenial_amd64__binary)](http://build.ros.org/job/Lbin_uX64__grid_map_pcl__ubuntu_xenial_amd64__binary/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Mbin_uB64__grid_map_pcl__ubuntu_bionic_amd64__binary)](http://build.ros.org/job/Mbin_uB64__grid_map_pcl__ubuntu_bionic_amd64__binary/) |
-| grid_map_ros | [![Build Status](http://build.ros.org/buildStatus/icon?job=Ibin_uT64__grid_map_ros__ubuntu_trusty_amd64__binary)](http://build.ros.org/job/Ibin_uT64__grid_map_ros__ubuntu_trusty_amd64__binary/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Kbin_uX64__grid_map_ros__ubuntu_xenial_amd64__binary)](http://build.ros.org/job/Kbin_uX64__grid_map_ros__ubuntu_xenial_amd64__binary/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Lbin_uX64__grid_map_ros__ubuntu_xenial_amd64__binary)](http://build.ros.org/job/Lbin_uX64__grid_map_ros__ubuntu_xenial_amd64__binary/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Mbin_uB64__grid_map_ros__ubuntu_bionic_amd64__binary)](http://build.ros.org/job/Mbin_uB64__grid_map_ros__ubuntu_bionic_amd64__binary/) |
-| grid_map_rviz_plugin | [![Build Status](http://build.ros.org/buildStatus/icon?job=Ibin_uT64__grid_map_rviz_plugin__ubuntu_trusty_amd64__binary)](http://build.ros.org/job/Ibin_uT64__grid_map_rviz_plugin__ubuntu_trusty_amd64__binary/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Kbin_uX64__grid_map_rviz_plugin__ubuntu_xenial_amd64__binary)](http://build.ros.org/job/Kbin_uX64__grid_map_rviz_plugin__ubuntu_xenial_amd64__binary/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Lbin_uX64__grid_map_rviz_plugin__ubuntu_xenial_amd64__binary)](http://build.ros.org/job/Lbin_uX64__grid_map_rviz_plugin__ubuntu_xenial_amd64__binary/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Mbin_uB64__grid_map_rviz_plugin__ubuntu_bionic_amd64__binary)](http://build.ros.org/job/Mbin_uB64__grid_map_rviz_plugin__ubuntu_bionic_amd64__binary/) |
-| grid_map_sdf | [![Build Status](http://build.ros.org/buildStatus/icon?job=Ibin_uT64__grid_map_sdf__ubuntu_trusty_amd64__binary)](http://build.ros.org/job/Ibin_uT64__grid_map_sdf__ubuntu_trusty_amd64__binary/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Kbin_uX64__grid_map_sdf__ubuntu_xenial_amd64__binary)](http://build.ros.org/job/Kbin_uX64__grid_map_sdf__ubuntu_xenial_amd64__binary/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Lbin_uX64__grid_map_sdf__ubuntu_xenial_amd64__binary)](http://build.ros.org/job/Lbin_uX64__grid_map_sdf__ubuntu_xenial_amd64__binary/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Mbin_uB64__grid_map_sdf__ubuntu_bionic_amd64__binary)](http://build.ros.org/job/Mbin_uB64__grid_map_sdf__ubuntu_bionic_amd64__binary/) |
-| grid_map_visualization | [![Build Status](http://build.ros.org/buildStatus/icon?job=Ibin_uT64__grid_map_visualization__ubuntu_trusty_amd64__binary)](http://build.ros.org/job/Ibin_uT64__grid_map_visualization__ubuntu_trusty_amd64__binary/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Kbin_uX64__grid_map_visualization__ubuntu_xenial_amd64__binary)](http://build.ros.org/job/Kbin_uX64__grid_map_visualization__ubuntu_xenial_amd64__binary/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Lbin_uX64__grid_map_visualization__ubuntu_xenial_amd64__binary)](http://build.ros.org/job/Lbin_uX64__grid_map_visualization__ubuntu_xenial_amd64__binary/) | [![Build Status](http://build.ros.org/buildStatus/icon?job=Mbin_uB64__grid_map_visualization__ubuntu_bionic_amd64__binary)](http://build.ros.org/job/Mbin_uB64__grid_map_visualization__ubuntu_bionic_amd64__binary/) |
-
-
-## Bugs & Feature Requests
-
-Please report bugs and request features using the [Issue Tracker](https://github.com/anybotics/grid_map/issues).
-
-[ROS]: http://www.ros.org
-[RViz]: http://wiki.ros.org/rviz
-[Eigen]: http://eigen.tuxfamily.org
-[OpenCV]: http://opencv.org/
-[OctoMap]: https://octomap.github.io/
-[PCL]: http://pointclouds.org/
-[costmap_2d]: http://wiki.ros.org/costmap_2d
-[grid_map_msgs/msg/GridMapInfo]: http://docs.ros.org/api/grid_map_msgs/msg/html/msg/GridMapInfo.html
-[grid_map_msgs/msg/GridMap]: http://docs.ros.org/api/grid_map_msgs/msg/html/msg/GridMap.html
-[grid_map_msgs/msg/GetGridMap]: http://docs.ros.org/api/grid_map_msgs/msg/html/srv/GetGridMap.html
-[sensor_msgs/msg/PointCloud2]: http://docs.ros.org/api/sensor_msgs/msg/html/msg/PointCloud2.html
-[visualization_msgs/msg/Marker]: http://docs.ros.org/api/visualization_msgs/msg/html/msg/Marker.html
-[geometry_msgs/msg/PolygonStamped]: http://docs.ros.org/api/geometry_msgs/msg/html/msg/PolygonStamped.html
-[nav_msgs/msg/OccupancyGrid]: http://docs.ros.org/api/nav_msgs/msg/html/msg/OccupancyGrid.html
-[nav_msgs/msg/GridCells]: http://docs.ros.org/api/nav_msgs/msg/html/msg/GridCells.html
-[ROS Filters]: http://wiki.ros.org/filters
-[EigenLab]: https://github.com/leggedrobotics/EigenLab
+```bash
+colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
+```

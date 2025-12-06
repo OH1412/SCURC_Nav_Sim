@@ -295,6 +295,22 @@ local_costmap:
       resolution: 0.05
       robot_radius: 0.1
       plugins: ["local_obstacle_layer", "local_inflation_layer"]
+      # 这里可以加入traversability_grid_map_layer来处理地形代价地图
+      # plugins: ["local_obstacle_layer", "local_inflation_layer", "traversability_grid_map_layer"] # 添加你的层
+      
+      # traversability_grid_map_layer:
+      #   plugin: "grid_map_costmap_2d::GridMapCostmap2D"
+      #   grid_map_topic: "/elevation_mapping/elevation_map_raw" 
+      #   map_layer_name: "traversability"
+      #   # 原始数据范围（0.0 到 1.0）
+      #   data_min: 0.0
+      #   data_max: 1.0
+      #   # 成本值映射：将 traversability 值 (1.0=安全) 映射到 Costmap (0=安全)
+      #   cost_map_mode: "INVERTED_COST_TO_OCCUPANCY" # 使用反转模式
+        
+      #   # 阈值设置：确保低可通行度区域被视为致命障碍 (254)
+      #   fatal_cost_threshold: 0.2 # 可通行度低于 0.2 的区域被视为致命障碍
+      #   unknown_cost_value: 255
       local_inflation_layer:
         # This layer places an exponential decay functions around obstacles to 
         # increase cost to traverse near collision. It also places a lethal cost 
@@ -321,25 +337,6 @@ local_costmap:
           clearing: True
           marking: True
           data_type: "PointCloud2"
-      # local_obstacle_layer:
-      #   plugin: "nav2_costmap_2d::ObstacleLayer"
-      #   enabled: True
-      #   footprint_clearing_enabled: True
-      #   max_obstacle_height: 2.0
-      #   min_obstacle_height: -0.5
-      #   combination_method: 1
-      #   observation_sources: pointcloud
-      #   pointcloud:  # no frame set, uses frame from message
-      #     topic: /segmentation/obstacle
-      #     max_obstacle_height: 2.0
-      #     min_obstacle_height: -0.5
-      #     obstacle_max_range: 5.0
-      #     obstacle_min_range: 0.2
-      #     raytrace_max_range: 8.0
-      #     raytrace_min_range: 0.2
-      #     clearing: True
-      #     marking: True
-      #     data_type: "PointCloud2"
       static_layer:
         plugin: "nav2_costmap_2d::StaticLayer"
         map_subscribe_transient_local: True
