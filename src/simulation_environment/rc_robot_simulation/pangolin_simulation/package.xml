@@ -4,11 +4,11 @@
   <name>pangolin_simulation</name>
   <version>1.0.0</version>
   <description>
-    Gazebo simulation package for the RMUC
+    Gazebo simulation package for RoboCon 2026 Wulin Tanmi (Martial Arts Mystery)
   </description>
-  <maintainer email="1120220476@smbu.edu.cn">Lihan Chen</maintainer>
+  <maintainer email="1294595013@qq.com">oh</maintainer>
   <license>TODO</license>
-  <author email="1120220476@smbu.edu.cn">Lihan Chen</author>
+  <author email="1294595013@qq.com">oh</author>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
   <depend>gazebo_ros_pkgs</depend>
