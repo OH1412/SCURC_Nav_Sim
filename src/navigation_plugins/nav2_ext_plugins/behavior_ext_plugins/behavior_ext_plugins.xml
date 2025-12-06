@@ -3,5 +3,10 @@
 	  <class name="nav2_behaviors/BackUpTwzFree" type="nav2_behaviors::BackUpTwzFree" base_class_type="nav2_core::Behavior">
 	    <description></description>
 	  </class>
+	  <class name="behavior_ext_plugins/HeightControlAction" 
+         type="behavior_ext_plugins::HeightControlAction" 
+         base_class_type="nav2_behavior_tree::BtActionNodeBase">
+        <description>Control robot height to target value</description>
+      </class>
 	</library>
 </class_libraries>

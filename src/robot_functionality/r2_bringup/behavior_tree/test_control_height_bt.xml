@@ -1,0 +1,31 @@
+<root main_tree_to_execute="MainTree">
+  <BehaviorTree ID="MainTree">
+    <Sequence name="complex_task_sequence">
+      <!-- 1. 移动到楼梯前 -->
+      <NavigateToPose name="move_to_staircase" goal="{staircase_goal}"/>
+      
+      <!-- 2. 上升到目标高度 -->
+      <HeightControlAction target_height="0.5" name="height_control"/>
+
+      <!-- 3. 如果高度到达，执行下一步 -->
+      <If condition="{height_reached}">
+        <Sequence>
+          <!-- 4. 移动到目标位置 -->
+          <NavigateToPose name="move_to_target" goal="{target_goal}"/>
+          
+          <!-- 5. 执行任务（例如拍照、检测等） -->
+          <Wait name="perform_task" duration="5"/>
+          
+          <!-- 6. 下降到原始高度 -->
+          <HeightControlAction 
+            name="lower_to_ground" 
+            target_height="0.0" 
+            height_reached="{height_lowered}"/>
+        </Sequence>
+        <LogError msg="Failed to reach target height"/>
+      </If>
+      
+      <LogInfo msg="Complex task completed!"/>
+    </Sequence>
+  </BehaviorTree>
+</root>

@@ -28,7 +28,8 @@ endif()
 
 # 3 install
 install(DIRECTORY launch maps params behavior_tree rviz
-  DESTINATION share/${PROJECT_NAME})
+  DESTINATION share/${PROJECT_NAME}
+  )
 
 
 # 4 include 
