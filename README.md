@@ -411,9 +411,9 @@ ros2 run rqt_graph rqt_graph
 
 ## 📞 联系方式
 
-**项目维护者**: Pangolin战队 OH
-**技术支持**: [GitHub Issues](https://github.com/OH1412/SCURC_Nav_Sim/issues)  
-**文档**: [项目Wiki](https://github.com/OH1412/SCURC_Nav_Sim/wiki)
+- **项目维护者**: Pangolin战队 OH
+- **技术支持**: [GitHub Issues](https://github.com/OH1412/SCURC_Nav_Sim/issues)  
+- **文档**: [项目Wiki](https://github.com/OH1412/SCURC_Nav_Sim/wiki)
 
 ---
 
