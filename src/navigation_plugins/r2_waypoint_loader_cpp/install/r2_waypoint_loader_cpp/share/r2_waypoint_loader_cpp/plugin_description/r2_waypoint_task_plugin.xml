@@ -1,7 +1,0 @@
-<library path="libr2_waypoint_task_plugin">
-  <class name="r2_waypoint_loader_cpp/R2WaypointTask"
-         type="r2_waypoint_loader_cpp::R2WaypointTask"
-         base_class_type="nav2_core::WaypointTaskExecutor">
-    <description>R2航点任务插件，执行上升/降落操作</description>
-  </class>
-</library>

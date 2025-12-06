@@ -1,1 +1,0 @@
-/home/oh/SCURC_Nav_Sim/src/dependencies_and_tools/autonomous_exploration_development_environment/build/local_planner/ament_cmake_environment_hooks/local_setup.bash

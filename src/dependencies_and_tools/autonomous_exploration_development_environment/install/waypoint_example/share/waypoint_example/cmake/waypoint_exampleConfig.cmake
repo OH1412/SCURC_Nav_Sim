@@ -1,1 +1,0 @@
-/home/oh/SCURC_Nav_Sim/src/dependencies_and_tools/autonomous_exploration_development_environment/build/waypoint_example/ament_cmake_core/waypoint_exampleConfig.cmake

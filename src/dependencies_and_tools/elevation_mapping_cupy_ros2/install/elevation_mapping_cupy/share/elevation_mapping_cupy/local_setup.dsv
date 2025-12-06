@@ -1,3 +1,0 @@
-source;share/elevation_mapping_cupy/environment/ament_prefix_path.sh
-source;share/elevation_mapping_cupy/environment/path.sh
-source;share/elevation_mapping_cupy/environment/pythonpath.sh

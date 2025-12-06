@@ -1,1 +1,0 @@
-/home/oh/SCURC_Nav_Sim/src/navigation_plugins/nav2_ext_plugins/velocity_smoother_ext/build/velocity_smoother_ext/ament_cmake_core/velocity_smoother_extConfig-version.cmake
