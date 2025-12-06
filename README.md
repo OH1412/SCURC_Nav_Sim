@@ -6,10 +6,10 @@
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
 
-**版本**: 1.0.0
-**状态**: 开发中 🚧
-**ROS版本**: ROS 2 Humble Hawksbill
-**Ubuntu版本**: Ubuntu 22.04 LTS
+- **版本**: 1.0.0
+- **状态**: 开发中 🚧
+- **ROS版本**: ROS 2 Humble Hawksbill
+- **Ubuntu版本**: Ubuntu 22.04 LTS
 
 ### 📝 重要说明
 
