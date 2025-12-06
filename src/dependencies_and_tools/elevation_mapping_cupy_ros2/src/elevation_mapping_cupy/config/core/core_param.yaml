@@ -45,6 +45,7 @@ elevation_mapping:
     cleanup_step: 0.1                               # subtitute this value from validity layer at visibiltiy cleanup.
     cleanup_cos_thresh: 0.1                         # subtitute this value from validity layer at visibiltiy cleanup.
 
+    # 可通行度调节参数
     safe_thresh: 0.7                                # if traversability is smaller, it is counted as unsafe cell.
     safe_min_thresh: 0.4                            # polygon is unsafe if there exists lower traversability than this.
     max_unsafe_n: 10                                # if the number of cells under safe_thresh exceeds this value, polygon is unsafe.

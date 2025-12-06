@@ -16,4 +16,5 @@ source ~/SCURC_Nav_Sim/src/robot_functionality/r2_bringup/install/setup.sh
 source ~/SCURC_Nav_Sim/src/simulation_environment/rc_robot_simulation/livox_laser_simulation_RO2/install/setup.sh
 source ~/SCURC_Nav_Sim/src/simulation_environment/rc_robot_simulation/pangolin_simulation/install/setup.sh
 source ~/SCURC_Nav_Sim/src/dependencies_and_tools/elevation_mapping_cupy_ros2/install/setup.sh
+source ~/SCURC_Nav_Sim/src/navigation_plugins/nav2_ext_plugins/grid_map/install/setup.sh
 echo "所有模块环境已加载"
