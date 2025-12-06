@@ -202,8 +202,9 @@ sudo apt install -y ros-humble-image-transport-plugins
 
 - **技术支持**: [GitHub Issues](https://github.com/OH1412/FAST-LIVO2-ROS2-Humble/issues)
 
-- **维护者**: Pangolin战队 getting
+- **维护者**: [Pangolin战队](https://github.com/mose1s/RC_vision_2026) @[Getting](https://github.com/Getting05)
 
+- **贡献者**: [Pangolin战队全体成员](https://github.com/mose1s/RC_vision_2026)
 ---
 
 *最后更新: 2025年11月5日*

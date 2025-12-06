@@ -108,12 +108,4 @@ colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
 
 ---
 
-## 📞 联系与支持
-
-- **项目主页**: [SCURC Navigation Simulation](https://github.com/OH1412/SCURC_Nav_Sim)
-- **技术支持**: [GitHub Issues](https://github.com/OH1412/SCURC_Nav_Sim/issues)
-- **维护者**: Pangolin战队 OH
-
----
-
 *最后更新: 2025年12月6日*

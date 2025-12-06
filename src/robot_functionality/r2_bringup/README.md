@@ -373,7 +373,8 @@ ros2 service call /global_costmap/clear_entirely_global_costmap std_srvs/srv/Emp
 
 - **项目主页**: [SCURC Navigation Simulation](https://github.com/OH1412/SCURC_Nav_Sim)
 - **技术支持**: [GitHub Issues](https://github.com/OH1412/SCURC_Nav_Sim/issues)
-- **维护者**: Pangolin战队 OH
+- **维护者**: [Pangolin战队](https://github.com/mose1s/RC_vision_2026) @[OH](https://github.com/OH1412)
+- **贡献者**: [Pangolin战队全体成员](https://github.com/mose1s/RC_vision_2026)
 
 ---
 
