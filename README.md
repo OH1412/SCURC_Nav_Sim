@@ -39,12 +39,30 @@ SCURC导航仿真系统是一个基于 **ROS 2 Humble** 的全自主移动机器
 ```mermaid
 graph TD
     A["Gazebo仿真环境 / 真实机器人"] --> B["传感器数据 (Lidar/IMU)"]
+    
+    %% SLAM 部分
     B --> C["FAST-LIVO2 SLAM"]
-    B --> D["GPU高程建图 (Elevation Mapping Cupy)"]
-    C -->|"TF: map->odom"| D
-    D -->|"GridMap/Costmap"| E["Nav2导航栈"]
+    
+    %% 双流感知部分 - 平行关系
+    B --> D1["GPU高程建图<br>(Elevation Mapping Cupy)"]
+    B --> D2["地形分析<br>(Terrain Analysis)"]
+    
+    %% TF 变换关系
+    C -.->|"TF: map->odom"| D1
+    C -.->|"TF: map->sensor"| D2
+    
+    %% 数据融合到 Nav2
+    D1 -->|"GridMap (2.5D地形)"| E["Nav2导航栈<br>(Costmap Layer)"]
+    D2 -->|"PointCloud2 (障碍物/坡度)"| E
+    
+    %% 决策与控制
     E --> F["行为树决策模块 (BT.CPP)"]
     F --> G["机器人运动控制 (cmd_vel)"]
+    
+    %% 样式调整（可选，让图更清晰）
+    style D1 fill:#e1f5fe,stroke:#01579b
+    style D2 fill:#e1f5fe,stroke:#01579b
+    style E fill:#fff9c4,stroke:#fbc02d
 ```
 
 ---
