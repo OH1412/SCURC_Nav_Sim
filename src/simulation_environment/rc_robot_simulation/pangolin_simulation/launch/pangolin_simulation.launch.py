@@ -148,6 +148,34 @@ def generate_launch_description():
         arguments=['-d' + os.path.join(bringup_dir, 'rviz', 'rviz2.rviz')]
     )
 
+    # PointCloud2 to LaserScan 节点
+    # 将 3D 点云转换为 2D 激光扫描，供 AMCL 等 2D 导航算法使用
+    pointcloud_to_laserscan_node = Node(
+        package='pointcloud_to_laserscan',
+        executable='pointcloud_to_laserscan_node',
+        name='pointcloud_to_laserscan',
+        remappings=[
+            ('cloud_in', '/livox/lidar/pointcloud'),  # 输入点云话题（PointCloud2 格式）
+            ('scan', '/scan')               # 输出激光扫描话题
+        ],
+        parameters=[{
+            'use_sim_time': use_sim_time,
+            'target_frame': 'base_link',    # 转换到的目标坐标系
+            'transform_tolerance': 0.01,
+            'min_height': -0.06,             # 点云最小高度（车轮高度0.06m）
+            'max_height': 0.5,              # 点云最大高度
+            'angle_min': -3.14159,          # 扫描起始角度 (-180°)
+            'angle_max': 3.14159,           # 扫描结束角度 (180°)
+            'angle_increment': 0.0087,      # 角度增量 (~0.5°)
+            'scan_time': 0.1,               # 扫描时间
+            'range_min': 0.5,               # 最小测量距离（0.31*2^(1/2)）m
+            'range_max': 30.0,              # 最大测量距离
+            'use_inf': True,                # 使用 inf 表示无效测量
+            'inf_epsilon': 1.0
+        }],
+        output='screen'
+    )
+
     def create_gazebo_launch_group(world_type):
         world_config = get_world_config(world_type)
         if world_config is None:
@@ -207,6 +235,9 @@ def generate_launch_description():
     ld.add_action(gazebo_client_launch)
     ld.add_action(bringup_RoboconWithWall_cmd_group)  # 有墙赛道（默认激活）
     ld.add_action(bringup_RoboconWithoutWall_cmd_group)  # 无墙赛道
+
+    # 点云转激光扫描节点
+    ld.add_action(pointcloud_to_laserscan_node)
 
     # Uncomment this line if you want to start RViz
     ld.add_action(start_rviz_cmd)

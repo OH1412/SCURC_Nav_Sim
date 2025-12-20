@@ -44,7 +44,7 @@ def generate_launch_description():
     log_level = LaunchConfiguration('log_level')
 
     lifecycle_nodes = [
-                       'map_server',
+                       # 'map_server',  # 已在 relocalization.launch.py 中启动
                        'controller_server',
                        'smoother_server',
                        'planner_server',
@@ -86,7 +86,7 @@ def generate_launch_description():
 
     declare_use_sim_time_cmd = DeclareLaunchArgument(
         'use_sim_time',
-        default_value='false',
+        default_value='true',  # 仿真环境默认使用仿真时间
         description='Use simulation (Gazebo) clock if true')
 
     declare_params_file_cmd = DeclareLaunchArgument(
@@ -117,16 +117,7 @@ def generate_launch_description():
     load_nodes = GroupAction(
         condition=IfCondition(PythonExpression(['not ', use_composition])),
         actions=[
-            Node(
-                package='nav2_map_server',
-                executable='map_server',
-                name='map_server',
-                output='screen',
-                respawn=use_respawn,
-                respawn_delay=2.0,
-                parameters=[configured_params],
-                arguments=['--ros-args', '--log-level', log_level],
-                remappings=remappings),
+            # map_server 已在 relocalization.launch.py 中启动，此处不再重复
             Node(
                 package='nav2_controller',
                 executable='controller_server',
@@ -213,12 +204,7 @@ def generate_launch_description():
         condition=IfCondition(use_composition),
         target_container=container_name_full,
         composable_node_descriptions=[
-            ComposableNode(
-                package='nav2_map_server',
-                plugin='nav2_map_server::MapServer',
-                name='map_server',
-                parameters=[configured_params],
-                remappings=remappings),
+            # map_server 已在 relocalization.launch.py 中启动，此处不再重复
             ComposableNode(
                 package='nav2_controller',
                 plugin='nav2_controller::ControllerServer',

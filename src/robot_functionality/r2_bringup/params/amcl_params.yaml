@@ -1,0 +1,67 @@
+# AMCL 参数配置 (用于 ICP 初始化 + AMCL 持续定位)
+# 配合 pointcloud_to_laserscan 和 fast_livo 使用
+
+amcl:
+  ros__parameters:
+    use_sim_time: True  # 仿真环境使用仿真时间
+
+    # 坐标系设置
+    base_frame_id: "base_link"
+    odom_frame_id: "odom"
+    global_frame_id: "map"
+    
+    # ⚡ 关键：启用 TF 发布 (map -> odom)
+    tf_broadcast: true
+
+    # 话题设置 (对接 pointcloud_to_laserscan)
+    scan_topic: "scan"
+
+    # 初始位姿设置
+    # 注意：ICP 会通过 /initialpose 话题覆盖这个值
+    set_initial_pose: false  # 禁用自动初始位姿，等待 ICP 提供
+    initial_pose:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      yaw: 0.0
+
+    # 运动模型 (全向轮/麦克纳姆轮)
+    robot_model_type: "nav2_amcl::OmniMotionModel"
+    # 运动噪声：FastLivo 精度很高，适当设小
+    alpha1: 0.2
+    alpha2: 0.2
+    alpha3: 0.2
+    alpha4: 0.2
+    alpha5: 0.2 
+
+    # 粒子滤波参数
+    min_particles: 500
+    max_particles: 3000
+    update_min_d: 0.20      # 移动 0.2m 更新一次
+    update_min_a: 0.20      # 转动 0.2rad 更新一次
+    resample_interval: 1
+    transform_tolerance: 0.1
+    recovery_alpha_fast: 0.1
+    recovery_alpha_slow: 0.001
+
+    # 激光模型参数 (适配 Livox 转换后的 LaserScan)
+    laser_max_range: 30.0
+    laser_min_range: 0.1
+    max_beams: 100
+    laser_model_type: "likelihood_field"
+    z_hit: 0.5
+    z_rand: 0.5
+    sigma_hit: 0.2
+    laser_likelihood_max_dist: 2.0
+    do_beamskip: false
+
+map_server:
+  ros__parameters:
+    use_sim_time: True  # 仿真环境使用仿真时间
+    yaml_filename: ""  # 在 launch 文件中覆盖
+
+lifecycle_manager:
+  ros__parameters:
+    use_sim_time: True  # 仿真环境使用仿真时间
+    autostart: true
+    node_names: ['map_server', 'amcl']
