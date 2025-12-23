@@ -12,6 +12,8 @@
 
   <buildtool_depend>ament_cmake</buildtool_depend>
   <depend>gazebo_ros_pkgs</depend>
+  <depend>rclpy</depend>
+  <depend>sensor_msgs</depend>
 
   <build_depend>launch_ros</build_depend>
   <exec_depend>launch_ros</exec_depend>

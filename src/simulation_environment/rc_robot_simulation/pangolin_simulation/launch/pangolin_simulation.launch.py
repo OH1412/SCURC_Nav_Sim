@@ -156,7 +156,7 @@ def generate_launch_description():
         name='pointcloud_to_laserscan',
         remappings=[
             ('cloud_in', '/livox/lidar/pointcloud'),  # 输入点云话题（PointCloud2 格式）
-            ('scan', '/scan')               # 输出激光扫描话题
+            ('scan', '/raw_scan')               # 输出激光扫描话题
         ],
         parameters=[{
             'use_sim_time': use_sim_time,
@@ -169,9 +169,25 @@ def generate_launch_description():
             'angle_increment': 0.0087,      # 角度增量 (~0.5°)
             'scan_time': 0.1,               # 扫描时间
             'range_min': 0.5,               # 最小测量距离（0.31*2^(1/2)）m
-            'range_max': 30.0,              # 最大测量距离
+            'range_max': 25.0,              # 最大测量距离
             'use_inf': True,                # 使用 inf 表示无效测量
             'inf_epsilon': 1.0
+        }],
+        output='screen'
+    )
+
+    # LaserScan 过滤节点
+    # 过滤掉有效数据比例不足的扫描帧
+    scan_filter_node = Node(
+        package='pangolin_simulation',
+        executable='scan_filter_node.py',
+        name='scan_filter',
+        parameters=[{
+            'use_sim_time': use_sim_time,
+            'valid_ratio_threshold': 0.7,   # 有效数据比例阈值 (70%)
+            'input_topic': '/raw_scan',     # 输入话题 (来自 pointcloud_to_laserscan)
+            'output_topic': '/scan',        # 输出话题
+            'log_filtered': False           # 是否打印被过滤的帧信息
         }],
         output='screen'
     )
@@ -238,6 +254,9 @@ def generate_launch_description():
 
     # 点云转激光扫描节点
     ld.add_action(pointcloud_to_laserscan_node)
+    
+    # LaserScan 过滤节点
+    ld.add_action(scan_filter_node)
 
     # Uncomment this line if you want to start RViz
     ld.add_action(start_rviz_cmd)

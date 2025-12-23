@@ -50,6 +50,12 @@ endif()
 ## Install ##
 #############
 
+# Install Python scripts
+install(PROGRAMS
+  scripts/scan_filter_node.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 ament_auto_package(
   INSTALL_TO_SHARE
   launch
