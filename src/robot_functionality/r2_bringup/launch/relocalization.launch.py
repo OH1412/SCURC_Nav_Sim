@@ -50,6 +50,7 @@ def generate_launch_description():
         output='screen',
         remappings=[('icp_result', '/initialpose')],
         parameters=[
+            {'use_sim_time': True},
             {'initial_x': 0.0},
             {'initial_y': 0.0},
             {'initial_z': 0.0},

@@ -1,6 +1,7 @@
 /**:
   ros__parameters:
-    locate_in_prior_map: true
+    locate_in_prior_map: false
+    # 这个地方改成true会报错找不到地图文件，find是ros1语法，还未修改
     prior_map_path: "$(find r2_bringup)/maps/test.pcd"
 
     common:

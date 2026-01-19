@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root BTCPP_format="4">
+  <BehaviorTree ID="fly_step_mission">
+    <Sequence name="FlyStepMission">
+
+      <!-- 1. 地面导航到 A 点（在台阶前） -->
+      <Nav2PoseNode
+        frame_id="map"
+        x="0"
+        y="0"
+        yaw="1.57" />
+
+      <!-- 2. 受控上升：从当前 z 升到 z_up（略高于台阶） -->
+      <AscendNode
+        z_target="1.00"
+        z_speed="1.0"
+        max_duration="5.0" />
+
+      <!-- 3. 在空中移动到 B 上方的平面位置 -->
+      <Nav2PoseNode
+        frame_id="map"
+        x="-2.0"
+        y="-1.0"
+        yaw="1.57" />
+
+      <!-- 4. 受控下降：从 z_up 降到平台高度 z_target -->
+      <DescendNode
+        z_target="0.492"
+        z_speed="0.5"
+        max_duration="5.0" />
+
+    </Sequence>
+  </BehaviorTree>
+</root>

@@ -13,6 +13,7 @@ source ~/SCURC_Nav_Sim/src/navigation_plugins/nav2_ext_plugins/costmap_intensity
 source ~/SCURC_Nav_Sim/src/navigation_plugins/nav2_ext_plugins/behavior_ext_plugins/install/setup.sh
 source ~/SCURC_Nav_Sim/src/navigation_plugins/nav2_ext_plugins/velocity_smoother_ext/install/setup.sh
 source ~/SCURC_Nav_Sim/src/robot_functionality/r2_bringup/install/setup.sh
+source ~/SCURC_Nav_Sim/src/robot_functionality/rc_decision/fly_step_mission/install/setup.sh
 source ~/SCURC_Nav_Sim/src/simulation_environment/rc_robot_simulation/livox_laser_simulation_RO2/install/setup.sh
 source ~/SCURC_Nav_Sim/src/simulation_environment/rc_robot_simulation/pangolin_simulation/install/setup.sh
 source ~/SCURC_Nav_Sim/src/dependencies_and_tools/elevation_mapping_cupy_ros2/install/setup.sh
