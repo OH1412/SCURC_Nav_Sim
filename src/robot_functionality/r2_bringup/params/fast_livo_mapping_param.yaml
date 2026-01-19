@@ -1,6 +1,6 @@
 /**:
     ros__parameters:
-        locate_in_prior_map: false
+        locate_in_prior_map: false     # false = 建图模式, true = 重定位模式
         feature_extract_enable: false
         point_filter_num: 3
         max_iteration: 3
@@ -8,7 +8,7 @@
         filter_size_map: 0.5
         cube_side_length: 1000.0
         runtime_pos_log_enable: false
-        map_file_path: "../maps/pre/test.pcd"
+        map_file_path: ""              # 建图模式不需要先验地图
 
         common:
             odom_frame_id: "odom"
@@ -17,7 +17,10 @@
             send_odom_base_tf: true
             lid_topic:  "/livox/lidar"
             imu_topic:  "/livox/imu"
+            img_en: 0                   # 0: 不使用相机, 1: 使用相机
+            lidar_en: 1                 # 0: 不使用LiDAR, 1: 使用LiDAR
             time_sync_en: false         # ONLY turn on when external time synchronization is really not possible
+            ros_driver_bug_fix: true    # 仿真环境必须开启，修复 IMU/LiDAR 时间戳不同步问题
             time_offset_lidar_to_imu: 0.0 # Time offset between lidar and IMU calibrated by other algorithms, e.g. LI-Init (can be found in README).
                                         # This param will take effect no matter what time_sync_en is. So if the time offset is not known exactly, please set as 0.0
 
@@ -51,5 +54,6 @@
 
         pcd_save:
             pcd_save_en: true
-            interval: -1                 # how many LiDAR frames saved in each pcd file; 
-                                        # -1 : all frames will be saved in ONE pcd file, may lead to memory crash when having too much frames.
+            interval: -1                # how many LiDAR frames saved in each pcd file; 
+                                        # -1 : all frames will be saved in ONE pcd file
+                                        # 设为正数可以定期保存，避免进程被强杀时丢失数据

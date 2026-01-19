@@ -88,7 +88,7 @@ def generate_launch_description():
         }],
             remappings=[('/cloud_in', '/terrain_map_at_scan')]
     )
-            
+    # ros2 run nav2_map_server map_saver_cli -t /projected_map -f ./src/robot_functionality/r2_bringup/maps/test_map
     ld = LaunchDescription()
     ld.add_action(odom_map_trans)
     ld.add_action(terrain_analysis_ext)

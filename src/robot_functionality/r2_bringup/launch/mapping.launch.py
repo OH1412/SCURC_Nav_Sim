@@ -12,14 +12,19 @@ def generate_launch_description():
   config_path = os.path.join(
       get_package_share_directory('r2_bringup'), 'params') 
 
+  fast_livo_share = get_package_share_directory('fast_livo')
+  fast_livo_config_dir = os.path.join(fast_livo_share, 'config')
+  camera_config = os.path.join(fast_livo_config_dir, 'camera_MARS_LVIG.yaml')
   
-  # fast-livo localization   
-  fast_livo_param = '../params/fast_livo_mapping_param.yaml'
+  # fast-livo mapping   
+  fast_livo_param = os.path.join(config_path, 'fast_livo_mapping_param.yaml')
   fast_livo_node = Node(
         package='fast_livo',
         executable='fastlivo_mapping',
+        arguments=['--ros-args', '--log-level', 'warn'],
         parameters=[
-          fast_livo_param
+          fast_livo_param,
+          camera_config
         ],
         output='screen',
         remappings=[('/aft_mapped_to_init','/state_estimation')]

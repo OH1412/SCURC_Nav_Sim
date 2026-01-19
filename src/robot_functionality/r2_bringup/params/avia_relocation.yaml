@@ -1,6 +1,6 @@
 /**:
   ros__parameters:
-    locate_in_prior_map: false
+    locate_in_prior_map: true
     prior_map_path: "$(find r2_bringup)/maps/test.pcd"
 
     common:
@@ -15,7 +15,7 @@
       time_offset_lidar_to_imu: 0.0 # Time offset between lidar and IMU calibrated by other algorithms, e.g. LI-Init (can be found in README).
       img_en: 0
       lidar_en: 1
-      ros_driver_bug_fix: false
+      ros_driver_bug_fix: true
 
     extrin_calib:
       extrinsic_T: [0.0, 0.0, 0.0]

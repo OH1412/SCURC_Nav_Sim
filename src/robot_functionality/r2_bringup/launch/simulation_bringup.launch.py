@@ -17,7 +17,7 @@ def generate_launch_description():
 
     declare_mode = DeclareLaunchArgument(
         'mode', default_value='nav',
-        description="Run mode: 'nav' (navigation) or 'mapping' (mapping)"
+        description="Run mode: 'nav' (navigation) or 'map' (mapping)"
     )
     declare_delay = DeclareLaunchArgument(
         'delay_after_sim', default_value='10.0',
@@ -57,7 +57,7 @@ def generate_launch_description():
 
     # ---- 修正后的条件判断（给 mode 加引号参与比较）----
     is_nav = IfCondition(PythonExpression(["'", mode, "'", " == 'nav'"]))
-    is_mapping = IfCondition(PythonExpression(["'", mode, "'", " == 'mapping'"]))
+    is_mapping = IfCondition(PythonExpression(["'", mode, "'", " == 'map'"]))
 
     delayed_nav = TimerAction(
         period=delay_after_sim,
