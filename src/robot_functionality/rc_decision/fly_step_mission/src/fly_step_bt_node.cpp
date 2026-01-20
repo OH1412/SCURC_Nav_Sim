@@ -13,10 +13,6 @@
 #include "fly_step_mission/ascend_node.hpp"
 #include "fly_step_mission/descend_node.hpp"
 #include "fly_step_mission/path_generator_node.hpp"
-#include "fly_step_mission/waypoint_task_executor_node.hpp"
-#include "fly_step_mission/check_ascend_required.hpp"
-#include "fly_step_mission/check_descend_required.hpp"
-#include "fly_step_mission/delayed_task_executor_node.hpp"
 #include "fly_step_mission/dynamic_path_task_executor.hpp"
 
 using namespace std::chrono_literals;
@@ -32,6 +28,11 @@ int main(int argc, char ** argv)
   std::string bt_xml_file;
   node->get_parameter("bt_xml_file", bt_xml_file);
 
+  // 读取 waypoints_file 参数（由 launch 提供）
+  node->declare_parameter<std::string>("waypoints_file", "");
+  std::string waypoints_file;
+  node->get_parameter("waypoints_file", waypoints_file);
+
   if (bt_xml_file.empty()) {
     RCLCPP_ERROR(node->get_logger(),
       "Parameter 'bt_xml_file' is empty. Please set path to BT xml file.");
@@ -41,61 +42,9 @@ int main(int argc, char ** argv)
   // 3. 创建 BT 工厂
   BT::BehaviorTreeFactory factory;
 
-  // 3.1 注册 Nav2PoseNode
-  BT::NodeBuilder nav2pose_builder =
-    [node](const std::string & name, const BT::NodeConfiguration & config)
-    {
-      return std::make_unique<Nav2PoseNode>(name, config, node);
-    };
-  factory.registerBuilder<Nav2PoseNode>("Nav2PoseNode", nav2pose_builder);
 
-  // 3.2 注册 AscendNode
-  BT::NodeBuilder ascend_builder =
-    [node](const std::string & name, const BT::NodeConfiguration & config)
-    {
-      return std::make_unique<AscendNode>(name, config, node);
-    };
-  factory.registerBuilder<AscendNode>("AscendNode", ascend_builder);
-
-  // 3.3 注册 DescendNode
-  BT::NodeBuilder descend_builder =
-    [node](const std::string & name, const BT::NodeConfiguration & config)
-    {
-      return std::make_unique<DescendNode>(name, config, node);
-    };
-  factory.registerBuilder<DescendNode>("DescendNode", descend_builder);
-
-  // 3.4 注册 PathGeneratorNode
-  BT::NodeBuilder path_gen_builder =
-    [node](const std::string & name, const BT::NodeConfiguration & config)
-    {
-      return std::make_unique<fly_step_mission::PathGeneratorNode>(name, config, node);
-    };
-  factory.registerBuilder<fly_step_mission::PathGeneratorNode>("PathGeneratorNode", path_gen_builder);
-
-  // 3.5 注册 WaypointTaskExecutorNode
-  BT::NodeBuilder wp_task_exec_builder =
-    [node](const std::string & name, const BT::NodeConfiguration & config)
-    {
-      return std::make_unique<fly_step_mission::WaypointTaskExecutorNode>(name, config, node);
-    };
-  factory.registerBuilder<fly_step_mission::WaypointTaskExecutorNode>("WaypointTaskExecutorNode", wp_task_exec_builder);
-
-  // 3.6 注册 CheckAscendRequired
-  factory.registerNodeType<fly_step_mission::CheckAscendRequired>("CheckAscendRequired");
-
-  // 3.7 注册 CheckDescendRequired
-  factory.registerNodeType<fly_step_mission::CheckDescendRequired>("CheckDescendRequired");
-
-  // 3.8 注册 DelayedTaskExecutorNode
-  BT::NodeBuilder delayed_task_exec_builder =
-    [node](const std::string & name, const BT::NodeConfiguration & config)
-    {
-      return std::make_unique<fly_step_mission::DelayedTaskExecutorNode>(name, config, node);
-    };
-  factory.registerBuilder<fly_step_mission::DelayedTaskExecutorNode>("DelayedTaskExecutorNode", delayed_task_exec_builder);
-
-  // 3.9 注册 DynamicPathTaskExecutor
+  // 注册 Deliberate set of nodes required by the two BTs
+  // 3.x 注册 DynamicPathTaskExecutor
   BT::NodeBuilder dynamic_path_exec_builder =
     [node](const std::string & name, const BT::NodeConfiguration & config)
     {
@@ -103,8 +52,49 @@ int main(int argc, char ** argv)
     };
   factory.registerBuilder<fly_step_mission::DynamicPathTaskExecutor>("DynamicPathTaskExecutor", dynamic_path_exec_builder);
 
-  // 4. 从 XML 创建行为树
-  BT::Tree tree = factory.createTreeFromFile(bt_xml_file);
+  // 注册 Nav2PoseNode
+  BT::NodeBuilder nav2pose_builder =
+    [node](const std::string & name, const BT::NodeConfiguration & config)
+    {
+      return std::make_unique<Nav2PoseNode>(name, config, node);
+    };
+  factory.registerBuilder<Nav2PoseNode>("Nav2PoseNode", nav2pose_builder);
+
+  // 注册 AscendNode
+  BT::NodeBuilder ascend_builder =
+    [node](const std::string & name, const BT::NodeConfiguration & config)
+    {
+      return std::make_unique<AscendNode>(name, config, node);
+    };
+  factory.registerBuilder<AscendNode>("AscendNode", ascend_builder);
+
+  // 注册 DescendNode
+  BT::NodeBuilder descend_builder =
+    [node](const std::string & name, const BT::NodeConfiguration & config)
+    {
+      return std::make_unique<DescendNode>(name, config, node);
+    };
+  factory.registerBuilder<DescendNode>("DescendNode", descend_builder);
+
+  // 注册 PathGeneratorNode
+  BT::NodeBuilder path_gen_builder =
+    [node](const std::string & name, const BT::NodeConfiguration & config)
+    {
+      return std::make_unique<fly_step_mission::PathGeneratorNode>(name, config, node);
+    };
+  factory.registerBuilder<fly_step_mission::PathGeneratorNode>("PathGeneratorNode", path_gen_builder);
+
+  // 4. 将 waypoints_file 放入黑板并从 XML 创建行为树（使 BT 节点可以使用 {waypoints_file} 引用）
+  BT::Blackboard::Ptr blackboard = BT::Blackboard::create();
+  if (!waypoints_file.empty()) {
+    blackboard->set<std::string>("waypoints_file", waypoints_file);
+    RCLCPP_INFO(node->get_logger(), "Using waypoints_file from parameter: %s", waypoints_file.c_str());
+  } else {
+    RCLCPP_WARN(node->get_logger(), "Parameter 'waypoints_file' is empty; BT nodes will use their default path if any");
+  }
+
+  // create tree with injected blackboard
+  BT::Tree tree = factory.createTreeFromFile(bt_xml_file, blackboard);
   RCLCPP_INFO(node->get_logger(), "Loaded BT xml: %s", bt_xml_file.c_str());
 
   rclcpp::Rate rate(10.0);  // 10 Hz tick

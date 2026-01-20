@@ -1,8 +1,7 @@
 /**:
   ros__parameters:
-    locate_in_prior_map: false
-    # 这个地方改成true会报错找不到地图文件，find是ros1语法，还未修改
-    prior_map_path: "$(find r2_bringup)/maps/test.pcd"
+    locate_in_prior_map: false     # false = 建图模式, true = 重定位模式（持续输出与先验地图对齐后的里程计/位姿）
+    prior_map_path: "../maps/test.pcd"
 
     common:
       odom_frame_id: "odom"          # 父帧：odom

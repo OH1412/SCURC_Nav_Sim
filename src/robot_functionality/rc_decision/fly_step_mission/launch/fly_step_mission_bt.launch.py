@@ -7,6 +7,7 @@ from launch_ros.actions import Node
 def generate_launch_description():
     pkg_share = get_package_share_directory('fly_step_mission')
     bt_xml = os.path.join(pkg_share, 'behavior_trees', 'fly_step_mission.xml')
+    waypoints_file = os.path.join(pkg_share, 'config', 'waypoints.yaml')
 
     fly_step_bt_node = Node(
         package='fly_step_mission',
@@ -14,7 +15,8 @@ def generate_launch_description():
         name='fly_step_bt_node',
         output='screen',
         parameters=[{
-            'bt_xml_file': bt_xml
+            'bt_xml_file': bt_xml,
+            'waypoints_file': waypoints_file
         }]
     )
 

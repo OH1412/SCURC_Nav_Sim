@@ -23,11 +23,19 @@ def generate_launch_description():
     
     # ----- Arguments -----
     bt_xml_file = LaunchConfiguration('bt_xml_file')
+
+    waypoints_file = LaunchConfiguration('waypoints_file')
     
     declare_bt_xml = DeclareLaunchArgument(
         'bt_xml_file',
         default_value=os.path.join(fly_step_share, 'behavior_trees', 'dynamic_waypoint_mission.xml'),
         description='Path to the behavior tree XML file'
+    )
+
+    declare_waypoints = DeclareLaunchArgument(
+        'waypoints_file',
+        default_value=os.path.join(fly_step_share, 'config', 'waypoints.yaml'),
+        description='Path to the waypoints YAML file'
     )
 
     # ----- Log Info -----
@@ -50,7 +58,8 @@ def generate_launch_description():
         parameters=[{
             'bt_xml_file': bt_xml_file,
             'use_sim_time': True,
-            'wait_for_nav2_timeout': 60.0
+            'wait_for_nav2_timeout': 60.0,
+            'waypoints_file': waypoints_file
         }]
     )
 
@@ -58,6 +67,7 @@ def generate_launch_description():
     ld = LaunchDescription()
     
     ld.add_action(declare_bt_xml)
+    ld.add_action(declare_waypoints)
     ld.add_action(log_start)
     ld.add_action(fly_step_bt_node)
 

@@ -23,10 +23,6 @@ add_executable(fly_step_bt_node
   src/ascend_node.cpp
   src/descend_node.cpp
   src/path_generator_node.cpp
-  src/waypoint_task_executor_node.cpp
-  src/check_ascend_required.cpp
-  src/check_descend_required.cpp
-  src/delayed_task_executor_node.cpp
   src/dynamic_path_task_executor.cpp
 )
 ament_target_dependencies(fly_step_bt_node
