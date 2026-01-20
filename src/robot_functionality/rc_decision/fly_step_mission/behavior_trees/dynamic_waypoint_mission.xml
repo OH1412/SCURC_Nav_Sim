@@ -3,15 +3,15 @@
   <BehaviorTree ID="dynamic_waypoint_mission">
     <Sequence name="DynamicWaypointMission">
       
-      <!-- 1. 路径生成：根据输入的主航点生成完整路径（包括过渡航点） -->
+      <SetBlackboard output_key="MainWPs" value="[-1, 2, 5, 4, 7, 10]" />
+      
       <PathGeneratorNode 
-        main_waypoints="[-1,2,5,4,7,10]" 
+        main_waypoints="{MainWPs}" 
         waypoints_file="/home/oh/SCURC_Nav_Sim/src/robot_functionality/rc_decision/fly_step_mission/config/waypoints.yaml" />
       
-      <!-- 2. 动态执行路径和任务 -->
       <DynamicPathTaskExecutor 
         waypoint_path="{generated_path}"
-        main_waypoints="[-1,2]"
+        main_waypoints="{MainWPs}"
         waypoints_file="/home/oh/SCURC_Nav_Sim/src/robot_functionality/rc_decision/fly_step_mission/config/waypoints.yaml"
         ascend_margin_mm="200" />
       

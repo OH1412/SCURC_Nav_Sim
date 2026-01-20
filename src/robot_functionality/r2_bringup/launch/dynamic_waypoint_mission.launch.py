@@ -79,7 +79,7 @@ def generate_launch_description():
         parameters=[{
             'bt_xml_file': bt_xml_file,
             'use_sim_time': True,
-            'wait_for_nav2_timeout': 60.0  # 等待 Nav2 action server 的超时时间
+            'wait_for_nav2_timeout': 30.0  # 等待 Nav2 action server 的超时时间
         }],
         condition=IfCondition(auto_start_bt)  # 只有当 auto_start_bt=true 时才启动
     )

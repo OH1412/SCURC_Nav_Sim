@@ -141,7 +141,7 @@ controller_server:
     general_goal_checker:
       stateful: False
       plugin: "nav2_controller::SimpleGoalChecker"
-      xy_goal_tolerance: 0.2
+      xy_goal_tolerance: 0.25
       yaw_goal_tolerance: 3.14
     FollowPath:    
       # plugin: "nav2_mppi_controller::MPPIControllerExt"
@@ -328,7 +328,7 @@ local_costmap:
         # robot is non-circular for optimized first-order collision checking.
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 3.0
-        inflation_radius: 5.0
+        inflation_radius: 1.0
       local_obstacle_layer:
         plugin: "costmap_intensity::ObstacleLayerIntensity"
         enabled: True

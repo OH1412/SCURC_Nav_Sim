@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <set>
 #include <functional>
 
 #include <behaviortree_cpp_v3/action_node.h>
@@ -18,6 +19,7 @@
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include <yaml-cpp/yaml.h>
+#include <future>
 #include <fstream>
 
 #include "fly_step_mission/waypoint_mission_node.hpp"
@@ -49,12 +51,16 @@ private:
     std::vector<geometry_msgs::msg::PoseStamped> full_path_;
     std::map<std::string, WaypointTaskInfo> wp_task_map_;
     std::vector<std::string> wp_ids_;
+    std::set<std::string> main_wp_ids_set_;
     size_t current_index_;
     std::string current_waypoint_id_;
     bool task_executed_;
     bool requires_next_waypoint_task_;
     std::string next_waypoint_task_type_;
     std::string waypoints_file_;
+    // 异步握手相关变量
+    bool goal_handshake_pending_;
+    std::shared_future<rclcpp_action::Client<nav2_msgs::action::NavigateToPose>::GoalHandle::SharedPtr> future_goal_handle_;
     
     // 当前状态
     enum State {
@@ -74,6 +80,7 @@ private:
     double target_descend_height_;
     double ascend_speed_;
     double descend_speed_;
+    int descend_margin_mm_;
     double ascend_max_duration_;
     double descend_max_duration_;
     int ascend_margin_mm_;

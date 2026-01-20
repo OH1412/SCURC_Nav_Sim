@@ -3,6 +3,8 @@
 #include <iostream>
 #include <memory>
 #include <future>
+#include <set> 
+#include <string>
 
 namespace fly_step_mission
 {
@@ -16,13 +18,14 @@ DynamicPathTaskExecutor::DynamicPathTaskExecutor(
     target_ascend_height_(0.0), target_descend_height_(0.0), 
     ascend_speed_(0.5), descend_speed_(0.5), 
     ascend_max_duration_(10.0), descend_max_duration_(10.0),
-    ascend_margin_mm_(200), // 初始化默认裕量为200mm
+    ascend_margin_mm_(200), // 初始化上升裕量为 200mm
+    descend_margin_mm_(100), // 初始化下降裕量为 100mm
     nav_goal_sent_(false), nav_result_ready_(false)
 {
     // 创建 Nav2 Action Client
     nav_client_ = rclcpp_action::create_client<NavigateToPose>(node_, "navigate_to_pose");
     
-    // 创建速度发布者（用于升降控制）
+    // 创建速度发布者
     vel_pub_ = node_->create_publisher<geometry_msgs::msg::Twist>("cmd_vel", 10);
     
     // 创建 TF buffer 和 listener
@@ -38,8 +41,8 @@ BT::PortsList DynamicPathTaskExecutor::providedPorts()
         BT::InputPort<std::vector<geometry_msgs::msg::PoseStamped>>("waypoint_path", "Complete path with waypoints to execute"),
         BT::InputPort<std::vector<int>>("main_waypoints", "Main waypoint IDs for task mapping"),
         BT::InputPort<std::string>("waypoints_file", "Path to waypoints YAML file with task definitions"),
-        // [新增] 升降裕量参数，默认200mm
-        BT::InputPort<int>("ascend_margin_mm", 200, "Extra height margin for ascend tasks in mm (default: 200)")
+        BT::InputPort<int>("ascend_margin_mm", 200, "Extra height margin for ascend tasks in mm (default: 200)"),
+        BT::InputPort<int>("descend_margin_mm", 100, "Subtract margin from descend tasks in mm (default: 100)")
     };
 }
 
@@ -107,7 +110,6 @@ bool DynamicPathTaskExecutor::parseTaskInfoFromYaml()
 std::string DynamicPathTaskExecutor::getWaypointIdByIndex(size_t index)
 {
     if (index >= full_path_.size()) return "";
-
     auto& target_pose = full_path_[index].pose;
 
     // 使用 all_wp_map_ 查找最接近的航点ID
@@ -117,7 +119,6 @@ std::string DynamicPathTaskExecutor::getWaypointIdByIndex(size_t index)
     for (const auto& [wp_id, wp_pose] : all_wp_map_) {
         double x = wp_pose.pose.position.x;
         double y = wp_pose.pose.position.y;
-        
         double distance = sqrt(pow(target_pose.position.x - x, 2) + pow(target_pose.position.y - y, 2));
         
         if (distance < min_distance && distance < 0.1) { // 误差小于0.1米认为是同一个点
@@ -141,31 +142,40 @@ BT::NodeStatus DynamicPathTaskExecutor::onStart()
 {
     RCLCPP_INFO(node_->get_logger(), "Starting DynamicPathTaskExecutor...");
 
-    // 获取升降裕量参数
+    // 1a. 获取升降裕量
     if (!getInput("ascend_margin_mm", ascend_margin_mm_)) {
-        ascend_margin_mm_ = 200; // 如果XML没配置，默认200
-        RCLCPP_INFO(node_->get_logger(), "Ascend margin not set, using default: 200mm");
-    } else {
-        RCLCPP_INFO(node_->get_logger(), "Ascend margin set to: %d mm", ascend_margin_mm_);
+        ascend_margin_mm_ = 200;
     }
 
-    // 从黑板获取路径（由PathGeneratorNode生成）
+    // 1b. 获取下降裕量
+    if (!getInput("descend_margin_mm", descend_margin_mm_)) {
+        descend_margin_mm_ = 100;
+        RCLCPP_INFO(node_->get_logger(), "Descend margin not set, using default: 100mm");
+    } else {
+        RCLCPP_INFO(node_->get_logger(), "Descend margin set to: %d mm", descend_margin_mm_);
+    }
+
+    // 2. 获取并存储主航点 ID 集合
+    main_wp_ids_set_.clear();
+    std::vector<int> main_wps_input;
+    if (getInput("main_waypoints", main_wps_input)) {
+        for(int id : main_wps_input) {
+            main_wp_ids_set_.insert(std::to_string(id));
+        }
+        RCLCPP_INFO(node_->get_logger(), "Loaded %zu main waypoints for logic checking.", main_wp_ids_set_.size());
+    } else {
+        RCLCPP_WARN(node_->get_logger(), "Failed to load main_waypoints port!");
+    }
+
+    // 3. 从黑板获取路径（由PathGeneratorNode生成）
     try {
         full_path_ = config().blackboard->get<std::vector<geometry_msgs::msg::PoseStamped>>("generated_path");
-        RCLCPP_INFO(node_->get_logger(), "Got generated_path from blackboard with %zu waypoints", full_path_.size());
-        
-        // 调试：打印从黑板获取的每个航点坐标
-        for (size_t i = 0; i < full_path_.size(); ++i) {
-            RCLCPP_INFO(node_->get_logger(), "  [DEBUG] Blackboard waypoint[%zu]: X=%.3f, Y=%.3f, frame=%s",
-                i, full_path_[i].pose.position.x, full_path_[i].pose.position.y,
-                full_path_[i].header.frame_id.c_str());
-        }
     } catch (const std::exception& e) {
-        RCLCPP_ERROR(node_->get_logger(), "Failed to get 'generated_path' from blackboard: %s", e.what());
+        RCLCPP_ERROR(node_->get_logger(), "Failed to get 'generated_path': %s", e.what());
         return BT::NodeStatus::FAILURE;
     }
 
-    // 从黑板获取任务映射（由PathGeneratorNode生成）
+    // 4. 从黑板获取任务映射（由PathGeneratorNode生成）
     try {
         wp_task_map_ = config().blackboard->get<std::map<std::string, WaypointTaskInfo>>("waypoint_task_map");
         RCLCPP_INFO(node_->get_logger(), "Got waypoint_task_map from blackboard with %zu tasks", wp_task_map_.size());
@@ -178,15 +188,13 @@ BT::NodeStatus DynamicPathTaskExecutor::onStart()
         }
     }
 
-    // 从黑板获取所有航点映射（用于ID查找）
+    // 5. 获取所有航点映射
     try {
         all_wp_map_ = config().blackboard->get<std::map<std::string, geometry_msgs::msg::PoseStamped>>("all_wp_map");
-        RCLCPP_INFO(node_->get_logger(), "Got all_wp_map from blackboard with %zu waypoints", all_wp_map_.size());
     } catch (const std::exception& e) {
-        RCLCPP_WARN(node_->get_logger(), "Failed to get 'all_wp_map' from blackboard: %s", e.what());
+        RCLCPP_WARN(node_->get_logger(), "Failed to get 'all_wp_map': %s", e.what());
     }
 
-    // 初始化索引
     current_index_ = 0;
     state_ = NAVIGATING_TO_WAYPOINT;
     task_executed_ = false;
@@ -209,20 +217,44 @@ BT::NodeStatus DynamicPathTaskExecutor::onStart()
 
 BT::NodeStatus DynamicPathTaskExecutor::onRunning()
 {
+    bool should_execute_task = false;
+    auto task_it = wp_task_map_.end();
+
     switch (state_) {
         case NAVIGATING_TO_WAYPOINT:
         {
             // 如果还没发送导航目标，先发送
             if (!nav_goal_sent_) {
-                RCLCPP_INFO(node_->get_logger(), "Starting navigation to waypoint %zu (ID: %s)", 
+                RCLCPP_INFO(node_->get_logger(), "Navigating to WP %zu (ID: %s)", 
                            current_index_, current_waypoint_id_.c_str());
                 
                 if (!startNavigation(current_target_pose_)) {
                     RCLCPP_ERROR(node_->get_logger(), "Failed to start navigation");
                     return BT::NodeStatus::FAILURE;
                 }
+                nav_goal_sent_ = true;
+                goal_handshake_pending_ = true; // 标记开始握手
+                return BT::NodeStatus::RUNNING; // 立即返回，不阻塞
             }
-            
+
+            if (goal_handshake_pending_) {
+                // 检查 future 是否这就绪了 (wait_for 0秒 = 立即检查)
+                if (future_goal_handle_.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+                    auto goal_handle = future_goal_handle_.get();
+                    if (!goal_handle) {
+                        RCLCPP_ERROR(node_->get_logger(), "Navigation goal was rejected by server");
+                        return BT::NodeStatus::FAILURE;
+                    }
+                    // 握手成功
+                    nav_goal_handle_ = goal_handle;
+                    goal_handshake_pending_ = false; 
+                    RCLCPP_INFO(node_->get_logger(), "Goal accepted by server.");
+                } else {
+                    // 还没收到回复，下一帧再来检查
+                    return BT::NodeStatus::RUNNING;
+                }
+            }
+
             // 检查导航状态
             auto nav_status = checkNavigationStatus();
             if (nav_status == BT::NodeStatus::RUNNING) {
@@ -235,65 +267,89 @@ BT::NodeStatus DynamicPathTaskExecutor::onRunning()
             // 导航成功，进入任务检查阶段
             RCLCPP_INFO(node_->get_logger(), "Reached waypoint %zu (ID: %s)", 
                        current_index_, current_waypoint_id_.c_str());
+
+            // 重置导航相关标志，防止影响下一次导航
+            nav_goal_sent_ = false;
+            nav_result_ready_ = false;
+            goal_handshake_pending_ = false;
+
             state_ = CHECKING_TASK;
             return BT::NodeStatus::RUNNING;
         }
 
         case CHECKING_TASK:
         {
-            // 检查当前航点是否有任务
-            auto task_it = wp_task_map_.find(current_waypoint_id_);
+            // 默认是否执行任务：否
+            should_execute_task = false;
+
+            // 1. 检查是否有任务定义
+            task_it = wp_task_map_.find(current_waypoint_id_);
             if (task_it != wp_task_map_.end()) {
-                WaypointTaskInfo task_info = task_it->second;
-                RCLCPP_INFO(node_->get_logger(), "Found task for waypoint %s: %s", 
-                           current_waypoint_id_.c_str(), task_info.action.c_str());
-
-                if (task_info.action == "ascend") {
-                    // 立即执行上升任务
-                    RCLCPP_INFO(node_->get_logger(), "Preparing to execute immediate ascend task");
-
-                    // 获取当前Z值
-                    double current_z = 0.0;
-                    if (!getCurrentZ(current_z)) {
-                        RCLCPP_WARN(node_->get_logger(), "Could not get current Z, using 0.0");
+                
+                // 2. 检查上一个航点是否是主航点
+                // 只有当前一点是主航点时，当前点的任务才有效 (例如 -1 是主航点，则 -1_front 执行)
+                if (current_index_ > 0) {
+                    std::string prev_wp_id = getWaypointIdByIndex(current_index_ - 1);
+                    
+                    // 检查 prev_wp_id 是否存在于主航点集合中
+                    if (main_wp_ids_set_.find(prev_wp_id) != main_wp_ids_set_.end()) {
+                        should_execute_task = true;
+                        RCLCPP_INFO(node_->get_logger(), "Task Approved: Previous WP (%s) is a Main Waypoint.", prev_wp_id.c_str());
+                    } else {
+                        RCLCPP_INFO(node_->get_logger(), "Task Skipped: Previous WP (%s) is NOT a Main Waypoint.", prev_wp_id.c_str());
                     }
+                } else {
+                    // 如果是第0个点，通常没有“上一个点”，所以不执行任务
+                    RCLCPP_INFO(node_->get_logger(), "Task Skipped: Start point has no previous waypoint.");
+                }
+
+                // 3. 执行逻辑
+                if (should_execute_task) {
+                    WaypointTaskInfo task_info = task_it->second;
+
+                    if (task_info.action == "ascend") {
+                        // Ascend 任务执行逻辑
+                        double current_z = 0.0;
+                        if (!getCurrentZ(current_z)) RCLCPP_WARN(node_->get_logger(), "No TF for Z");
 
                     // 加上裕量 ascend_margin_mm_
-                    int effective_height_mm = task_info.height_mm + ascend_margin_mm_;
-                    target_ascend_height_ = current_z + (effective_height_mm / 1000.0);
-                    
-                    state_ = EXECUTING_ASCEND;
-                    action_start_time_ = node_->get_clock()->now();
-                    
-                    RCLCPP_INFO(node_->get_logger(), "Starting ascend: current_z=%.3f, target=%.3f, base_height=%d, margin=%d, total=%d",
-                               current_z, target_ascend_height_, task_info.height_mm, ascend_margin_mm_, effective_height_mm);
-                    
-                    return BT::NodeStatus::RUNNING;
-                }
-                else if (task_info.action == "delayed_descend") {
-                    // 标记下一个航点需要执行下降任务
-                    RCLCPP_INFO(node_->get_logger(), "Marking delayed descend task for next waypoint (height_mm=%d)", 
-                               task_info.height_mm);
-                    
-                    requires_next_waypoint_task_ = true;
-                    next_waypoint_task_type_ = "descend";
-                    // 保存下降高度供后续使用
-                    // target_descend_height_ 会在实际执行时根据当前Z计算
-                    
-                    // 重置导航状态，移动到下一个航点
-                    nav_goal_sent_ = false;
-                    nav_result_ready_ = false;
-                    
-                    current_index_++;
-                    if (current_index_ >= full_path_.size()) {
-                        state_ = COMPLETED;
-                        return BT::NodeStatus::SUCCESS;
+                        int effective_height_mm = task_info.height_mm + ascend_margin_mm_;
+                        target_ascend_height_ = current_z + (effective_height_mm / 1000.0);
+                        state_ = EXECUTING_ASCEND;
+                        action_start_time_ = node_->get_clock()->now();
+                        
+                        RCLCPP_INFO(node_->get_logger(), ">>> START ASCEND: Target=%.3f (Margin=%d)", target_ascend_height_, ascend_margin_mm_);
+                        return BT::NodeStatus::RUNNING;
                     }
-                    
-                    current_target_pose_ = full_path_[current_index_];
-                    current_waypoint_id_ = getWaypointIdByIndex(current_index_);
-                    state_ = NAVIGATING_TO_WAYPOINT;
-                    return BT::NodeStatus::RUNNING;
+                    else if (task_info.action == "delayed_descend") {
+                        // 标记阶段：计算并保存“净下降距离”
+                        RCLCPP_INFO(node_->get_logger(), ">>> MARKED DESCEND for next WP. Raw: %d, Margin: %d", task_info.height_mm, descend_margin_mm_);
+                        requires_next_waypoint_task_ = true;
+                        next_waypoint_task_type_ = "descend";
+
+                        // 计算：任务高度 - 裕量 (例如 200 - 100 = 100mm)
+                        int effective_drop_mm = task_info.height_mm - descend_margin_mm_;
+                        if (effective_drop_mm < 0) effective_drop_mm = 0; // 防止变成上升
+
+                        // 等到了下一个点执行时，计算绝对坐标
+                        target_descend_height_ = effective_drop_mm / 1000.0;
+
+                        // 跳转到移动逻辑
+                        // 重置导航状态，移动到下一个航点
+                        nav_goal_sent_ = false;
+                        nav_result_ready_ = false;
+
+                        current_index_++;
+                        if (current_index_ >= full_path_.size()) {
+                            state_ = COMPLETED;
+                            return BT::NodeStatus::SUCCESS;
+                        }
+
+                        current_target_pose_ = full_path_[current_index_];
+                        current_waypoint_id_ = getWaypointIdByIndex(current_index_);
+                        state_ = NAVIGATING_TO_WAYPOINT;
+                        return BT::NodeStatus::RUNNING;
+                    }
                 }
             } else {
                 RCLCPP_DEBUG(node_->get_logger(), "No task found for waypoint %s", current_waypoint_id_.c_str());
@@ -301,25 +357,29 @@ BT::NodeStatus DynamicPathTaskExecutor::onRunning()
 
             // 检查是否有延迟任务需要在此航点执行
             if (requires_next_waypoint_task_ && next_waypoint_task_type_ == "descend") {
-                RCLCPP_INFO(node_->get_logger(), "Executing delayed descend task at waypoint %s", current_waypoint_id_.c_str());
-
+                RCLCPP_INFO(node_->get_logger(), "Executing marked delayed descend task.");
+                
                 // 获取当前Z值
                 double current_z = 0.0;
                 if (!getCurrentZ(current_z)) {
                     RCLCPP_WARN(node_->get_logger(), "Could not get current Z, using 0.0");
                 }
 
-                target_descend_height_ = current_z - 0.2; // 默认下降200mm，后续可从配置读取
+                // 执行阶段：取出暂存的“下降距离”，计算绝对目标
+                double drop_distance = target_descend_height_;
+
+                // 目标 = 当前高度 - 下降距离 (0.4 - 0.1 = 0.3)
+                target_descend_height_ = current_z - drop_distance;
+
                 state_ = EXECUTING_DESCEND;
                 action_start_time_ = node_->get_clock()->now();
                 
-                RCLCPP_INFO(node_->get_logger(), "Starting descend: current_z=%.3f, target=%.3f",
-                           current_z, target_descend_height_);
+                RCLCPP_INFO(node_->get_logger(), "Starting descend: current_z=%.3f, drop=%.3f, target=%.3f",
+                           current_z, drop_distance, target_descend_height_);
                 
                 // 重置延迟任务标记
                 requires_next_waypoint_task_ = false;
                 next_waypoint_task_type_ = "none";
-                
                 return BT::NodeStatus::RUNNING;
             }
 
@@ -327,13 +387,11 @@ BT::NodeStatus DynamicPathTaskExecutor::onRunning()
             // 重置导航状态
             nav_goal_sent_ = false;
             nav_result_ready_ = false;
-            
             current_index_++;
             if (current_index_ >= full_path_.size()) {
                 state_ = COMPLETED;
                 return BT::NodeStatus::SUCCESS;
             }
-
             current_target_pose_ = full_path_[current_index_];
             current_waypoint_id_ = getWaypointIdByIndex(current_index_);
             state_ = NAVIGATING_TO_WAYPOINT;
@@ -368,13 +426,11 @@ BT::NodeStatus DynamicPathTaskExecutor::onRunning()
                 // 重置导航状态，准备下一个航点
                 nav_goal_sent_ = false;
                 nav_result_ready_ = false;
-                
                 current_index_++;
                 if (current_index_ >= full_path_.size()) {
                     state_ = COMPLETED;
                     return BT::NodeStatus::SUCCESS;
                 }
-
                 current_target_pose_ = full_path_[current_index_];
                 current_waypoint_id_ = getWaypointIdByIndex(current_index_);
                 state_ = NAVIGATING_TO_WAYPOINT;
@@ -393,7 +449,7 @@ BT::NodeStatus DynamicPathTaskExecutor::onRunning()
             if (elapsed > descend_max_duration_) {
                 RCLCPP_WARN(node_->get_logger(), "Descend timeout (%.2fs > %.2fs)", elapsed, descend_max_duration_);
                 publishZVelocity(0.0);
-                return BT::NodeStatus::FAILURE;
+                return BT::NodeStatus::FAILURE; // 或者 SUCCESS，视安全性而定
             }
             
             // 获取当前高度
@@ -414,20 +470,17 @@ BT::NodeStatus DynamicPathTaskExecutor::onRunning()
                 // 重置导航状态，准备下一个航点
                 nav_goal_sent_ = false;
                 nav_result_ready_ = false;
-                
                 current_index_++;
                 if (current_index_ >= full_path_.size()) {
                     state_ = COMPLETED;
                     return BT::NodeStatus::SUCCESS;
                 }
-
                 current_target_pose_ = full_path_[current_index_];
                 current_waypoint_id_ = getWaypointIdByIndex(current_index_);
                 state_ = NAVIGATING_TO_WAYPOINT;
                 return BT::NodeStatus::RUNNING;
             }
             
-            // 继续下降
             publishZVelocity(-descend_speed_);
             return BT::NodeStatus::RUNNING;
         }
@@ -492,24 +545,25 @@ bool DynamicPathTaskExecutor::startNavigation(const geometry_msgs::msg::PoseStam
     RCLCPP_INFO(node_->get_logger(), "Sending navigation goal: (%.2f, %.2f) frame=%s",
         goal.pose.position.x, goal.pose.position.y, goal.header.frame_id.c_str());
 
-    auto future_goal_handle = nav_client_->async_send_goal(nav_goal, send_goal_options);
+    future_goal_handle_ = nav_client_->async_send_goal(nav_goal, send_goal_options);
+    // auto future_goal_handle = nav_client_->async_send_goal(nav_goal, send_goal_options);
 
-    // 等待 goal 被接受
-    if (rclcpp::spin_until_future_complete(node_, future_goal_handle, std::chrono::seconds(5))
-        != rclcpp::FutureReturnCode::SUCCESS)
-    {
-        RCLCPP_ERROR(node_->get_logger(), "Failed to send navigation goal");
-        return false;
-    }
+    // // 等待 goal 被接受
+    // if (rclcpp::spin_until_future_complete(node_, future_goal_handle, std::chrono::seconds(5))
+    //     != rclcpp::FutureReturnCode::SUCCESS)
+    // {
+    //     RCLCPP_ERROR(node_->get_logger(), "Failed to send navigation goal");
+    //     return false;
+    // }
 
-    nav_goal_handle_ = future_goal_handle.get();
-    if (!nav_goal_handle_) {
-        RCLCPP_ERROR(node_->get_logger(), "Navigation goal was rejected");
-        return false;
-    }
+    // nav_goal_handle_ = future_goal_handle.get();
+    // if (!nav_goal_handle_) {
+    //     RCLCPP_ERROR(node_->get_logger(), "Navigation goal was rejected");
+    //     return false;
+    // }
 
-    nav_goal_sent_ = true;
-    RCLCPP_INFO(node_->get_logger(), "Navigation goal accepted");
+    // nav_goal_sent_ = true;
+    // RCLCPP_INFO(node_->get_logger(), "Navigation goal accepted");
     return true;
 }
 
@@ -543,8 +597,8 @@ BT::NodeStatus DynamicPathTaskExecutor::checkNavigationStatus()
 bool DynamicPathTaskExecutor::getCurrentZ(double & z_out)
 {
     try {
-        if (!tf_buffer_->canTransform("map", "base_link", tf2::TimePointZero, std::chrono::seconds(5))) {
-            RCLCPP_WARN(node_->get_logger(), "TF not available after 5s (map -> base_link)");
+        if (!tf_buffer_->canTransform("map", "base_link", tf2::TimePointZero, std::chrono::milliseconds(10))) {
+            RCLCPP_WARN(node_->get_logger(), "TF not available after 10ms (map -> base_link)");
             return false;
         }
         auto tf = tf_buffer_->lookupTransform("map", "base_link", tf2::TimePointZero);
