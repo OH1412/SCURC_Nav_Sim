@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root BTCPP_format="4">
+  <BehaviorTree ID="universal_waypoint_mission">
+    <Sequence name="UniversalWaypointMission">
+      
+      <!-- 1. 路径生成：根据输入的主航点生成完整路径（包括过渡航点） -->
+      <PathGeneratorNode 
+        main_waypoints="[-1,2]" 
+        waypoints_file="/home/oh/SCURC_Nav_Sim/src/robot_functionality/rc_decision/fly_step_mission/config/waypoints.yaml" />
+      
+      <!-- 2. 遍历并处理路径中的每个航点 -->
+      <Sequence name="ProcessEachWaypointInOrder">
+        
+        <!-- 处理-1号主航点 -->
+        <Sequence name="Handle_Waypoint_-1">
+          <!-- 导航到航点 -->
+          <Nav2PoseNode 
+            frame_id="map"
+            x="-1.75"
+            y="-0.15"
+            yaw="1.57" />
+          
+          <!-- 检查该航点是否有任务，并记录延迟任务 -->
+          <WaypointTaskExecutorNode 
+            current_waypoint_id="-1"
+            waypoint_task_map="{waypoint_task_map}" />
+        </Sequence>
+        
+        <!-- 处理-1_front过渡航点 -->
+        <Sequence name="Handle_Waypoint_-1_front">
+          <!-- 导航到航点 -->
+          <Nav2PoseNode 
+            frame_id="map"
+            x="-1.75"
+            y="0.35"
+            yaw="1.57" />
+          
+          <!-- 检查该航点是否有立即任务 -->
+          <WaypointTaskExecutorNode 
+            current_waypoint_id="-1_front"
+            waypoint_task_map="{waypoint_task_map}" />
+          
+          <!-- 执行立即任务（如上升） -->
+          <Fallback name="ExecuteImmediateTask_-1_front">
+            <Sequence name="ExecuteAscend_-1_front">
+              <CheckAscendRequired task_type="{task_type}" />
+              <AscendNode
+                z_target="{target_ascend_height}"
+                z_speed="{ascend_speed}"
+                max_duration="{ascend_max_duration}" />
+            </Sequence>
+            <AlwaysSuccess />
+          </Fallback>
+          
+          <!-- 检查并执行前一个航点标记的延迟任务 -->
+          <DelayedTaskExecutorNode 
+            requires_next_waypoint_task="{requires_next_waypoint_task}"
+            next_waypoint_task_type="{next_waypoint_task_type}" />
+          
+          <!-- 执行延迟任务（如下降） -->
+          <Fallback name="ExecuteDelayedTask_-1_front">
+            <Sequence name="ExecuteDescend_-1_front">
+              <CheckDescendRequired task_type="{executed_task_type}" />
+              <DescendNode
+                z_target="{target_descend_height}"
+                z_speed="{descend_speed}"
+                max_duration="{descend_max_duration}" />
+            </Sequence>
+            <AlwaysSuccess />
+          </Fallback>
+        </Sequence>
+        
+        <!-- 处理2号主航点 -->
+        <Sequence name="Handle_Waypoint_2">
+          <!-- 导航到航点 -->
+          <Nav2PoseNode 
+            frame_id="map"
+            x="-1.75"
+            y="1.05"
+            yaw="1.57" />
+          
+          <!-- 检查该航点是否有任务，并记录延迟任务 -->
+          <WaypointTaskExecutorNode 
+            current_waypoint_id="2"
+            waypoint_task_map="{waypoint_task_map}" />
+        </Sequence>
+        
+        <!-- 处理2_front过渡航点 -->
+        <Sequence name="Handle_Waypoint_2_front">
+          <!-- 导航到航点 -->
+          <Nav2PoseNode 
+            frame_id="map"
+            x="-1.75"
+            y="1.55"
+            yaw="1.57" />
+          
+          <!-- 检查该航点是否有立即任务 -->
+          <WaypointTaskExecutorNode 
+            current_waypoint_id="2_front"
+            waypoint_task_map="{waypoint_task_map}" />
+          
+          <!-- 执行立即任务（如上升） -->
+          <Fallback name="ExecuteImmediateTask_2_front">
+            <Sequence name="ExecuteAscend_2_front">
+              <CheckAscendRequired task_type="{task_type}" />
+              <AscendNode
+                z_target="{target_ascend_height}"
+                z_speed="{ascend_speed}"
+                max_duration="{ascend_max_duration}" />
+            </Sequence>
+            <AlwaysSuccess />
+          </Fallback>
+          
+          <!-- 检查并执行前一个航点标记的延迟任务 -->
+          <DelayedTaskExecutorNode 
+            requires_next_waypoint_task="{requires_next_waypoint_task}"
+            next_waypoint_task_type="{next_waypoint_task_type}" />
+          
+          <!-- 执行延迟任务（如下降） -->
+          <Fallback name="ExecuteDelayedTask_2_front">
+            <Sequence name="ExecuteDescend_2_front">
+              <CheckDescendRequired task_type="{executed_task_type}" />
+              <DescendNode
+                z_target="{target_descend_height}"
+                z_speed="{descend_speed}"
+                max_duration="{descend_max_duration}" />
+            </Sequence>
+            <AlwaysSuccess />
+          </Fallback>
+        </Sequence>
+        
+      </Sequence>
+      
+    </Sequence>
+  </BehaviorTree>
+</root>

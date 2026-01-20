@@ -1,11 +1,23 @@
 #include <memory>
 #include <string>
 #include <chrono>
+#include <vector>
+#include <sstream>
 #include <rclcpp/rclcpp.hpp>
 #include <behaviortree_cpp_v3/bt_factory.h>
+
+// 必须在其他 fly_step_mission 头文件之前包含类型转换头文件
+#include "fly_step_mission/bt_type_conversions.hpp"
+
 #include "fly_step_mission/nav2_pose_node.hpp"
 #include "fly_step_mission/ascend_node.hpp"
 #include "fly_step_mission/descend_node.hpp"
+#include "fly_step_mission/path_generator_node.hpp"
+#include "fly_step_mission/waypoint_task_executor_node.hpp"
+#include "fly_step_mission/check_ascend_required.hpp"
+#include "fly_step_mission/check_descend_required.hpp"
+#include "fly_step_mission/delayed_task_executor_node.hpp"
+#include "fly_step_mission/dynamic_path_task_executor.hpp"
 
 using namespace std::chrono_literals;
 int main(int argc, char ** argv)
@@ -45,13 +57,51 @@ int main(int argc, char ** argv)
     };
   factory.registerBuilder<AscendNode>("AscendNode", ascend_builder);
 
-  // 3.3 注册 DescendNode（如果已经实现了）
+  // 3.3 注册 DescendNode
   BT::NodeBuilder descend_builder =
     [node](const std::string & name, const BT::NodeConfiguration & config)
     {
       return std::make_unique<DescendNode>(name, config, node);
     };
   factory.registerBuilder<DescendNode>("DescendNode", descend_builder);
+
+  // 3.4 注册 PathGeneratorNode
+  BT::NodeBuilder path_gen_builder =
+    [node](const std::string & name, const BT::NodeConfiguration & config)
+    {
+      return std::make_unique<fly_step_mission::PathGeneratorNode>(name, config, node);
+    };
+  factory.registerBuilder<fly_step_mission::PathGeneratorNode>("PathGeneratorNode", path_gen_builder);
+
+  // 3.5 注册 WaypointTaskExecutorNode
+  BT::NodeBuilder wp_task_exec_builder =
+    [node](const std::string & name, const BT::NodeConfiguration & config)
+    {
+      return std::make_unique<fly_step_mission::WaypointTaskExecutorNode>(name, config, node);
+    };
+  factory.registerBuilder<fly_step_mission::WaypointTaskExecutorNode>("WaypointTaskExecutorNode", wp_task_exec_builder);
+
+  // 3.6 注册 CheckAscendRequired
+  factory.registerNodeType<fly_step_mission::CheckAscendRequired>("CheckAscendRequired");
+
+  // 3.7 注册 CheckDescendRequired
+  factory.registerNodeType<fly_step_mission::CheckDescendRequired>("CheckDescendRequired");
+
+  // 3.8 注册 DelayedTaskExecutorNode
+  BT::NodeBuilder delayed_task_exec_builder =
+    [node](const std::string & name, const BT::NodeConfiguration & config)
+    {
+      return std::make_unique<fly_step_mission::DelayedTaskExecutorNode>(name, config, node);
+    };
+  factory.registerBuilder<fly_step_mission::DelayedTaskExecutorNode>("DelayedTaskExecutorNode", delayed_task_exec_builder);
+
+  // 3.9 注册 DynamicPathTaskExecutor
+  BT::NodeBuilder dynamic_path_exec_builder =
+    [node](const std::string & name, const BT::NodeConfiguration & config)
+    {
+      return std::make_unique<fly_step_mission::DynamicPathTaskExecutor>(name, config, node);
+    };
+  factory.registerBuilder<fly_step_mission::DynamicPathTaskExecutor>("DynamicPathTaskExecutor", dynamic_path_exec_builder);
 
   // 4. 从 XML 创建行为树
   BT::Tree tree = factory.createTreeFromFile(bt_xml_file);

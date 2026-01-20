@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root BTCPP_format="4">
+  <BehaviorTree ID="waypoint_follower_mission">
+    <Sequence name="WaypointFollowerMission">
+      
+      <!-- 1. 路径生成：根据输入的主航点生成完整路径（包括过渡航点） -->
+      <PathGeneratorNode 
+        main_waypoints="[-1,2]" 
+        waypoints_file="/home/oh/SCURC_Nav_Sim/src/robot_functionality/rc_decision/fly_step_mission/config/waypoints.yaml" />
+      
+      <!-- 2. 使用FollowWaypoints跟随生成的完整路径 -->
+      <FollowWaypoints poses="{generated_path}" />
+      
+    </Sequence>
+  </BehaviorTree>
+  
+  <!-- 定义一个更复杂的任务执行行为树 -->
+  <BehaviorTree ID="waypoint_task_execution_mission">
+    <Sequence name="WaypointTaskExecutionMission">
+      
+      <!-- 1. 路径生成：根据输入的主航点生成完整路径（包括过渡航点） -->
+      <PathGeneratorNode 
+        main_waypoints="[-1,2]" 
+        waypoints_file="/home/oh/SCURC_Nav_Sim/src/robot_functionality/rc_decision/fly_step_mission/config/waypoints.yaml" />
+      
+      <!-- 2. 遍历路径中的每个航点并执行相应任务 -->
+      <Sequence name="ProcessEachWaypoint">
+        <!-- 这里我们手动展开一些关键航点的处理，实际应用中可能需要更多动态逻辑 -->
+        
+        <!-- 处理第一个航点 -->
+        <Sequence name="ProcessFirstWaypoint">
+          <!-- 导航到第一个航点 -->
+          <Nav2PoseNode 
+            frame_id="map"
+            x="-1.75"
+            y="-0.15"
+            yaw="1.57" />
+          
+          <!-- 检查是否有任务需要执行 -->
+          <WaypointTaskExecutorNode 
+            current_waypoint_id="-1"
+            waypoint_task_map="{waypoint_task_map}" />
+        </Sequence>
+        
+        <!-- 处理过渡点（例如-1_front，需要上升） -->
+        <Sequence name="ProcessTransitionWaypoint1">
+          <!-- 导航到过渡点 -->
+          <Nav2PoseNode 
+            frame_id="map"
+            x="-1.75"
+            y="0.35"
+            yaw="1.57" />
+          
+          <!-- 检查是否有任务需要执行 -->
+          <WaypointTaskExecutorNode 
+            current_waypoint_id="-1_front"
+            waypoint_task_map="{waypoint_task_map}" />
+          
+          <!-- 如果任务是上升，则执行上升 -->
+          <IfThenElse>
+            <CompareValue value_A="{task_type}" value_B="ascend" />
+            <AscendNode
+              z_target="{target_ascend_height}"
+              z_speed="{ascend_speed}"
+              max_duration="{ascend_max_duration}" />
+            <AlwaysSuccess/>
+          </IfThenElse>
+        </Sequence>
+        
+        <!-- 处理第二个主航点 -->
+        <Sequence name="ProcessSecondWaypoint">
+          <!-- 导航到第二个航点 -->
+          <Nav2PoseNode 
+            frame_id="map"
+            x="-1.75"
+            y="1.05"
+            yaw="1.57" />
+          
+          <!-- 检查是否有任务需要执行 -->
+          <WaypointTaskExecutorNode 
+            current_waypoint_id="2"
+            waypoint_task_map="{waypoint_task_map}" />
+        </Sequence>
+        
+        <!-- 处理过渡点（例如2_front，可能需要上升） -->
+        <Sequence name="ProcessTransitionWaypoint2">
+          <!-- 导航到过渡点 -->
+          <Nav2PoseNode 
+            frame_id="map"
+            x="-1.75"
+            y="1.55"
+            yaw="1.57" />
+          
+          <!-- 检查是否有任务需要执行 -->
+          <WaypointTaskExecutorNode 
+            current_waypoint_id="2_front"
+            waypoint_task_map="{waypoint_task_map}" />
+          
+          <!-- 如果任务是上升，则执行上升 -->
+          <IfThenElse>
+            <CompareValue value_A="{task_type}" value_B="ascend" />
+            <AscendNode
+              z_target="{target_ascend_height}"
+              z_speed="{ascend_speed}"
+              max_duration="{ascend_max_duration}" />
+            <AlwaysSuccess/>
+          </IfThenElse>
+        </Sequence>
+        
+      </Sequence>
+      
+    </Sequence>
+  </BehaviorTree>
+</root>

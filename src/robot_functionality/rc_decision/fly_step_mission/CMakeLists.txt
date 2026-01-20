@@ -14,6 +14,7 @@ find_package(nav2_msgs REQUIRED)
 find_package(behaviortree_cpp_v3 REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
+find_package(yaml-cpp REQUIRED)
 
 # 可执行文件：一个 cpp 里同时写 BT 节点 + tick 主函数
 add_executable(fly_step_bt_node
@@ -21,6 +22,12 @@ add_executable(fly_step_bt_node
   src/nav2_pose_node.cpp
   src/ascend_node.cpp
   src/descend_node.cpp
+  src/path_generator_node.cpp
+  src/waypoint_task_executor_node.cpp
+  src/check_ascend_required.cpp
+  src/check_descend_required.cpp
+  src/delayed_task_executor_node.cpp
+  src/dynamic_path_task_executor.cpp
 )
 ament_target_dependencies(fly_step_bt_node
   rclcpp
@@ -32,14 +39,16 @@ ament_target_dependencies(fly_step_bt_node
   tf2_geometry_msgs
   tf2_ros
 )
+target_link_libraries(fly_step_bt_node yaml-cpp)
 install(TARGETS
   fly_step_bt_node
   DESTINATION lib/${PROJECT_NAME}
 )
-# 安装行为树 XML、launch
+# 安装行为树 XML、launch、config
 install(DIRECTORY
   behavior_trees
   launch
+  config
   include
   DESTINATION share/${PROJECT_NAME}
 )
