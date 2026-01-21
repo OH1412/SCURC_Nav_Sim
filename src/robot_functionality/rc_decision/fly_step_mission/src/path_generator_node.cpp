@@ -2,6 +2,8 @@
 #include "fly_step_mission/bt_type_conversions.hpp"
 #include <cmath>
 #include <iostream>
+// ament helper to locate package share dir
+#include <ament_index_cpp/get_package_share_directory.hpp>
 
 namespace fly_step_mission
 {
@@ -14,9 +16,14 @@ PathGeneratorNode::PathGeneratorNode(
 {
     // 从配置中获取航点文件路径
     if (!getInput("waypoints_file", waypoints_file_)) {
-        // 默认路径
-        waypoints_file_ = std::string(getenv("HOME")) + "/r2_ws/src/r2_waypoint_loader_cpp/config/waypoints.yaml";
-        RCLCPP_WARN(node_->get_logger(), "Parameter 'waypoints_file' not found, using default: %s", waypoints_file_.c_str());
+        try {
+            std::string pkg_share = ament_index_cpp::get_package_share_directory("fly_step_mission");
+            waypoints_file_ = pkg_share + "/config/waypoints.yaml";
+        } catch (const std::exception & e) {
+            waypoints_file_ = std::string("config/waypoints.yaml");
+            RCLCPP_WARN(node_->get_logger(), "Could not find package share dir: %s; falling back to: %s", e.what(), waypoints_file_.c_str());
+        }
+        RCLCPP_INFO(node_->get_logger(), "Parameter 'waypoints_file' not found, using default: %s", waypoints_file_.c_str());
     }
     
     RCLCPP_INFO(node_->get_logger(), "PathGeneratorNode initialized with waypoints file: %s", waypoints_file_.c_str());

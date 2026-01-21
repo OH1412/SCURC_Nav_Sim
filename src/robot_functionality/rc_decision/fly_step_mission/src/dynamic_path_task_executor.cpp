@@ -5,6 +5,8 @@
 #include <future>
 #include <set> 
 #include <string>
+// ament helper to locate package share dir
+#include <ament_index_cpp/get_package_share_directory.hpp>
 
 namespace fly_step_mission
 {
@@ -50,8 +52,15 @@ bool DynamicPathTaskExecutor::parseTaskInfoFromYaml()
 {
     // 获取航点文件路径
     if (!getInput("waypoints_file", waypoints_file_)) {
-        waypoints_file_ = std::string(getenv("HOME")) + "/r2_ws/src/r2_waypoint_loader_cpp/config/waypoints.yaml";
-        RCLCPP_WARN(node_->get_logger(), "Parameter 'waypoints_file' not found, using default: %s", waypoints_file_.c_str());
+        try {
+            std::string pkg_share = ament_index_cpp::get_package_share_directory("fly_step_mission");
+            waypoints_file_ = pkg_share + "/config/waypoints.yaml";
+        } catch (const std::exception & e) {
+            // 如果查询失败，使用包内相对路径（运行时从安装或源码顶层查找）
+            waypoints_file_ = std::string("config/waypoints.yaml");
+            RCLCPP_WARN(node_->get_logger(), "Could not find package share dir: %s; falling back to: %s", e.what(), waypoints_file_.c_str());
+        }
+        RCLCPP_INFO(node_->get_logger(), "Parameter 'waypoints_file' not found, using default: %s", waypoints_file_.c_str());
     }
 
     // 打开YAML文件
