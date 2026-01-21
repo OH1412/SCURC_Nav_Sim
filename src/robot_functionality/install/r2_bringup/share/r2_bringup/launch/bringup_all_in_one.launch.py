@@ -50,10 +50,10 @@ def generate_launch_description():
     actions=[
         start_navigation
     ]
-  )
+    )
     
     ld = LaunchDescription()
-
+    # ld.add_action(control_height)
     ld.add_action(start_relocalization)
     ld.add_action(delayed_start_navigation)
 

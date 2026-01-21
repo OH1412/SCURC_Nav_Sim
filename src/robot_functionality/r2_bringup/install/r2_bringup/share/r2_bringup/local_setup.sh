@@ -1,1 +1,0 @@
-/home/oh/SCURC_Nav_Sim/src/robot_functionality/r2_bringup/build/r2_bringup/ament_cmake_environment_hooks/local_setup.sh

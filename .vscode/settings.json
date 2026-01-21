@@ -82,5 +82,6 @@
         "__nullptr": "cpp",
         "utilities.hpp": "c",
         "core": "cpp"
-    }
+    },
+    "kiroAgent.configureMCP": "Disabled"
 }

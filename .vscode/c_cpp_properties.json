@@ -5,7 +5,10 @@
             "includePath": [
                 "${workspaceFolder}/**",
                 "/usr/include/**",
-                "/opt/ros/humble/include/**"
+                "/opt/ros/humble/include/**",
+                "${workspaceFolder}/src/robot_functionality/src/kfs_detection_nav/include/**",
+                "${workspaceFolder}/i",
+                "${workspaceFolder}/install/yolov8_ros2_msgs/include/yolov8_ros2_msgs"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",

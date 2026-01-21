@@ -23,6 +23,14 @@ function _colcon_prefix_chain_powershell_source_script {
 
 # source chained prefixes
 _colcon_prefix_chain_powershell_source_script "/opt/ros/humble\local_setup.ps1"
+_colcon_prefix_chain_powershell_source_script "/home/congee/SCURC_Nav_Sim/src/core_navigation/install\local_setup.ps1"
+_colcon_prefix_chain_powershell_source_script "/home/congee/SCURC_Nav_Sim/src/simulation_environment/gazebo_for_humble/install\local_setup.ps1"
+_colcon_prefix_chain_powershell_source_script "/home/congee/SCURC_Nav_Sim/src/dependencies_and_tools/fast_livo2_relocation/install\local_setup.ps1"
+_colcon_prefix_chain_powershell_source_script "/home/congee/SCURC_Nav_Sim/src/dependencies_and_tools/BehaviorTree.CPP/install\local_setup.ps1"
+_colcon_prefix_chain_powershell_source_script "/home/congee/SCURC_Nav_Sim/src/dependencies_and_tools/autonomous_exploration_development_environment/install\local_setup.ps1"
+_colcon_prefix_chain_powershell_source_script "/home/congee/SCURC_Nav_Sim/src/navigation_plugins/install\local_setup.ps1"
+_colcon_prefix_chain_powershell_source_script "/home/congee/SCURC_Nav_Sim/src/simulation_environment/rc_robot_simulation/install\local_setup.ps1"
+_colcon_prefix_chain_powershell_source_script "/home/congee/SCURC_Nav_Sim/install\local_setup.ps1"
 
 # source this prefix
 $env:COLCON_CURRENT_PREFIX=(Split-Path $PSCommandPath -Parent)
