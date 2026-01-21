@@ -7,12 +7,12 @@
       
       <PathGeneratorNode 
         main_waypoints="{MainWPs}" 
-        waypoints_file="/home/oh/SCURC_Nav_Sim/src/robot_functionality/rc_decision/fly_step_mission/config/waypoints.yaml" />
+        waypoints_file="{waypoints_file}" />
       
       <DynamicPathTaskExecutor 
         waypoint_path="{generated_path}"
         main_waypoints="{MainWPs}"
-        waypoints_file="/home/oh/SCURC_Nav_Sim/src/robot_functionality/rc_decision/fly_step_mission/config/waypoints.yaml"
+        waypoints_file="{waypoints_file}"
         ascend_margin_mm="200" />
       
     </Sequence>

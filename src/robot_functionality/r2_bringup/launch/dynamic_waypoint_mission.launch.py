@@ -49,6 +49,8 @@ def generate_launch_description():
 
     # ----- Behavior Tree XML Path -----
     bt_xml_file = os.path.join(fly_step_share, 'behavior_trees', 'dynamic_waypoint_mission.xml')
+    # 默认的 waypoints 文件（来自 fly_step_mission 包）
+    waypoints_file = os.path.join(fly_step_share, 'config', 'waypoints.yaml')
 
     # ===== 1) 启动仿真环境 =====
     sim_launch = IncludeLaunchDescription(
@@ -79,7 +81,8 @@ def generate_launch_description():
         parameters=[{
             'bt_xml_file': bt_xml_file,
             'use_sim_time': True,
-            'wait_for_nav2_timeout': 30.0  # 等待 Nav2 action server 的超时时间
+            'wait_for_nav2_timeout': 30.0,  # 等待 Nav2 action server 的超时时间
+            'waypoints_file': waypoints_file
         }],
         condition=IfCondition(auto_start_bt)  # 只有当 auto_start_bt=true 时才启动
     )
