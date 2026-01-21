@@ -10,6 +10,25 @@ KfsManager::KfsManager() : Node("kfs_manager")
         10,  // 队列大小
         std::bind(&KfsManager::yolo_callback, this, std::placeholders::_1)  // 回调函数
     );
+<<<<<<< HEAD
+=======
+
+    odometry_subscription_ = this->create_subscription<nav_msgs::msg::Odometry>(
+        "/state_estimation", 10,
+        std::bind(&KfsManager::odometry_callback, this, std::placeholders::_1));
+  
+  // ===== 新增：地形点云订阅 =====
+    terrain_subscription_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(
+        "/terrain_map_ext", 10,
+        std::bind(&KfsManager::terrain_callback, this, std::placeholders::_1));
+  
+  // ===== 新增：TF初始化 =====
+  // 这两行必须成对出现，顺序重要！
+    tf_buffer_ = std::make_shared<tf2_ros::Buffer>(this->get_clock());
+    tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
+  
+
+>>>>>>> 54397099922242ec8ae745e171eebbe3b2b243ef
     decision_publisher_ = this->create_publisher<yolov8_ros2_msgs::msg::KFSDecision>(
         "/kfs_decision",  // 发布话题名称
         10                // 队列大小
@@ -171,6 +190,11 @@ void KfsManager::yolo_callback(const yolov8_ros2_msgs::msg::BoundingBoxes::Share
     // }
 }
 
+<<<<<<< HEAD
+=======
+
+
+>>>>>>> 54397099922242ec8ae745e171eebbe3b2b243ef
 int main(int argc, char **argv)
 {
     rclcpp::init(argc, argv);

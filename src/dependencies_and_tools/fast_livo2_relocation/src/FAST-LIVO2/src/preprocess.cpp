@@ -11,7 +11,7 @@ which is included as part of this source code package.
 */
 
 #include "preprocess.h"
-
+#include <omp.h>  // 关键：引入OpenMP头文件
 #define RETURN0 0x00
 #define RETURN0AND1 0x10
 

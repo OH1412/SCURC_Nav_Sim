@@ -63,6 +63,7 @@ ament_target_dependencies(${library_name}
 
 
 pluginlib_export_plugin_description_file(nav2_core behavior_ext_plugins.xml)
+pluginlib_export_plugin_description_file(nav2_behavior_tree behavior_ext_plugins.xml)
 
 install(TARGETS ${library_name}
   ARCHIVE DESTINATION lib
@@ -76,6 +77,13 @@ install(DIRECTORY include/
 
 install(FILES behavior_ext_plugins.xml
   DESTINATION share/${PROJECT_NAME}
+  
+)
+
+set_target_properties(behavior_ext_plugins_lib PROPERTIES
+  CXX_VISIBILITY_PRESET hidden
+  VISIBILITY_INLINES_HIDDEN 1
+  POSITION_INDEPENDENT_CODE ON
 )
 
 if(BUILD_TESTING)
