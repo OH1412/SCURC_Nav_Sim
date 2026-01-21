@@ -1,0 +1,76 @@
+<root main_tree_to_execute="MainTree">
+
+  <!-- ================= 仅声明自定义节点 ================= -->
+  <TreeNodesModel>
+    <HeightControlAction>
+      <InputPort name="target_height" type="double"/>
+      <OutputPort name="height_reached" type="bool"/>
+    </HeightControlAction>
+  </TreeNodesModel>
+
+  <!-- ================= 主行为树 ================= -->
+  <BehaviorTree ID="MainTree">
+
+    <RecoveryNode number_of_retries="12" name="NavigateRecovery">
+
+      <PipelineSequence name="NavigateWithReplanning">
+
+        <!-- ===== 路径规划阶段 ===== -->
+        <RateController hz="2.0">
+          <RecoveryNode number_of_retries="1" name="ComputePathToPose">
+            <Fallback>
+              <ReactiveSequence>
+                <Inverter>
+                  <PathExpiringTimer seconds="1" path="{path}"/>
+                </Inverter>
+                <IsPathValid path="{path}"/>
+              </ReactiveSequence>
+              <ComputePathToPose
+                goal="{goal}"
+                path="{path}"
+                planner_id="GridBased"/>
+            </Fallback>
+
+            <Sequence>
+              <ClearEntireCostmap service_name="local_costmap/clear_entirely_local_costmap"/>
+              <ClearEntireCostmap service_name="global_costmap/clear_entirely_global_costmap"/>
+            </Sequence>
+          </RecoveryNode>
+        </RateController>
+
+        <!-- ===== 控制阶段：高度校正 + 跟踪 ===== -->
+        <RecoveryNode number_of_retries="1" name="FollowPath">
+
+          <!-- ⭐ 并行执行高度控制和路径跟踪 -->
+          <ParallelNode success_threshold="2" failure_threshold="1" name="HeightAdjustedFollow">
+            <HeightControlAction target_height="0.3"/>
+            <FollowPath path="{path}" controller_id="FollowPath"/>
+          </ParallelNode>
+
+          <Sequence>
+            <ClearEntireCostmap service_name="local_costmap/clear_entirely_local_costmap"/>
+            <ClearEntireCostmap service_name="global_costmap/clear_entirely_global_costmap"/>
+          </Sequence>
+
+        </RecoveryNode>
+
+      </PipelineSequence>
+
+      <!-- ===== 恢复行为 ===== -->
+      <ReactiveFallback>
+        <GoalUpdated/>
+        <RoundRobin>
+          <Sequence>
+            <ClearEntireCostmap service_name="local_costmap/clear_entirely_local_costmap"/>
+            <ClearEntireCostmap service_name="global_costmap/clear_entirely_global_costmap"/>
+          </Sequence>
+          <Spin spin_dist="0.785"/>
+          <BackUp backup_dist="0.1" backup_speed="0.2"/>
+          <Wait wait_duration="1"/>
+        </RoundRobin>
+      </ReactiveFallback>
+
+    </RecoveryNode>
+
+  </BehaviorTree>
+</root>

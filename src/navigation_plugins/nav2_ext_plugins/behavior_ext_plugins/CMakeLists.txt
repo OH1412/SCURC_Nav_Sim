@@ -53,7 +53,6 @@ set(dependencies
 
 add_library(${library_name} SHARED
   plugins/back_up_twz_free_action.cpp
-  plugins/height_control_action.cpp
 )
 
 target_compile_definitions(${library_name} PUBLIC "PLUGINLIB__DISABLE_BOOST_FUNCTIONS")
@@ -78,6 +77,7 @@ install(DIRECTORY include/
 
 install(FILES behavior_ext_plugins.xml
   DESTINATION share/${PROJECT_NAME}
+  
 )
 
 set_target_properties(behavior_ext_plugins_lib PROPERTIES

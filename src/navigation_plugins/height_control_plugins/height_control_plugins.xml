@@ -1,0 +1,9 @@
+<class_libraries>
+  <library path="height_control_plugins">
+    <class name="HeightControlAction"
+           type="height_control_plugins::HeightControlAction"
+           base_class_type="BT::StatefulActionNode">
+      <description>Height control BT plugin</description>
+    </class>
+  </library>
+</class_libraries>

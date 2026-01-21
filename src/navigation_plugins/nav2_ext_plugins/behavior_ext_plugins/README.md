@@ -3,5 +3,5 @@
 在robot_functionality/r2_bringup/behavior_tree/test_control_height_bt.xml中设置target_height\
 使用时需要在/robot_functionality/r2_bringup/params/nav2_params.yaml文件bt_navigator 部分加入 
 ```bash
-- behavior_ext_plugins 
+- behavior_ext_plugins_lib 
 ```

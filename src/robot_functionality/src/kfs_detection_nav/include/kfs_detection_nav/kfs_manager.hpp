@@ -5,6 +5,14 @@
 #include "std_msgs/msg/string.hpp"
 #include "yolov8_ros2_msgs/msg/kfs_decision.hpp"
 
+// ========== 新增头文件 ==========
+#include "nav_msgs/msg/odometry.hpp"          // 里程计消息类型
+#include "sensor_msgs/msg/point_cloud2.hpp"   // 点云消息类型
+#include "tf2_ros/buffer.h"                   // TF缓冲区
+#include "tf2_ros/transform_listener.h"       // TF监听器
+#include "geometry_msgs/msg/point_stamped.hpp" // 坐标点消息
+// ================================
+
 class KfsManager : public rclcpp::Node
 {
 public:
@@ -21,6 +29,8 @@ private:
 
 
     void timer_callback();
+    void odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg);
+    void terrain_callback(const sensor_msgs::msg::PointCloud2::SharedPtr msg);
     void yolo_callback(const yolov8_ros2_msgs::msg::BoundingBoxes::SharedPtr msg);
     rclcpp::Subscription<yolov8_ros2_msgs::msg::BoundingBoxes>::SharedPtr yolo_subscription_;
     yolov8_ros2_msgs::msg::BoundingBoxes latest_detections_;
@@ -31,6 +41,13 @@ private:
     std::vector<yolov8_ros2_msgs::msg::BoundingBox> fake_kfs_list_;
 
     rclcpp::TimerBase::SharedPtr timer_;
+
+    rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odometry_subscription_;
+    rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr terrain_subscription_;
+
+    std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
+    std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
+  
 };
 
 #endif

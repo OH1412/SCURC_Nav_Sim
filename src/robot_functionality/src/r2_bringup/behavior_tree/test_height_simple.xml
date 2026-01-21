@@ -1,0 +1,22 @@
+<root main_tree_to_execute="MainTree">
+
+  <!-- 声明自定义节点 -->
+  <TreeNodesModel>
+    <HeightControlAction>
+      <InputPort name="target_height" type="double"/>
+      <OutputPort name="height_reached" type="bool"/>
+    </HeightControlAction>
+  </TreeNodesModel>
+
+  <!-- 简单的高度控制测试树 -->
+  <BehaviorTree ID="MainTree">
+    <Sequence>
+      <!-- 只执行高度控制，不做其他事情 -->
+      <HeightControlAction target_height="0.3"/>
+      
+      <!-- 达到目标高度后等待 -->
+      <Wait wait_duration="5"/>
+    </Sequence>
+  </BehaviorTree>
+
+</root>

@@ -12,7 +12,7 @@ which is included as part of this source code package.
 
 #include "IMU_Processing.h"
 #include <rcpputils/asserts.hpp>
-
+#include <omp.h>  // 关键：引入OpenMP头文件
 const bool time_list(PointType &x, PointType &y) { return (x.curvature < y.curvature); }
 
 ImuProcess::ImuProcess() : Eye3d(M3D::Identity()),
