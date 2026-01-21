@@ -1,1 +1,0 @@
-/home/congee/SCURC_Nav_Sim/src/dependencies_and_tools/fast_livo2_relocation/build/livox_ros_driver2/rosidl_generator_py/livox_ros_driver2/msg/_custom_msg_s.c

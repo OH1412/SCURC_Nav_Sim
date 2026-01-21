@@ -1,1 +1,0 @@
-camera_info_manager:cv_bridge:gazebo:gazebo_dev:gazebo_msgs:gazebo_ros:geometry_msgs:ignition-math6:image_transport:launch:nav_msgs:rclcpp:sensor_msgs:std_msgs:std_srvs:tf2_geometry_msgs:tf2_ros:trajectory_msgs:urdf:world

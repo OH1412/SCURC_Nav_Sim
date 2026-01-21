@@ -1,1 +1,0 @@
-/home/congee/SCURC_Nav_Sim/src/dependencies_and_tools/fast_livo2_relocation/src/livox_ros_driver2/launch_ROS2/rviz_HAP_launch.py

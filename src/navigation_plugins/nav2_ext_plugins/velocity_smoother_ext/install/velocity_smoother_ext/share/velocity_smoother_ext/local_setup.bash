@@ -1,1 +1,0 @@
-/home/oh/SCURC_Nav_Sim/src/navigation_plugins/nav2_ext_plugins/velocity_smoother_ext/build/velocity_smoother_ext/ament_cmake_environment_hooks/local_setup.bash

@@ -1,1 +1,0 @@
-/home/congee/SCURC_Nav_Sim/src/dependencies_and_tools/fast_livo2_relocation/src/rpg_vikit/vikit_ros/include/vikit/params_helper.h
