@@ -1,1 +1,0 @@
-/home/congee/SCURC_Nav_Sim/src/dependencies_and_tools/fast_livo2_relocation/build/icp_relocalization/ament_cmake_environment_hooks/local_setup.bash

@@ -1,1 +1,0 @@
-/home/congee/SCURC_Nav_Sim/src/dependencies_and_tools/fast_livo2_relocation/build/vikit_ros/ament_cmake_core/vikit_rosConfig-version.cmake
