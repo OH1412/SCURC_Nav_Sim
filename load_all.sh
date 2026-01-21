@@ -31,5 +31,6 @@ _source_if_exists "$HOME/SCURC_Nav_Sim/src/robot_functionality/yolo_simulator/in
 _source_if_exists "$HOME/SCURC_Nav_Sim/src/robot_functionality/rc_interfaces/yolov8_ros2_msgs/install/setup.sh"
 _source_if_exists "$HOME/SCURC_Nav_Sim/src/simulation_environment/rc_robot_simulation/livox_laser_simulation_RO2/install/setup.sh"
 _source_if_exists "$HOME/SCURC_Nav_Sim/src/simulation_environment/rc_robot_simulation/pangolin_simulation/install/setup.sh"
+_source_if_exists "$HOME/SCURC_Nav_Sim/src/yolo_ros2_ws/yolov8_ros2/install/setup.sh"
 
 echo "所有模块环境已尝试加载"

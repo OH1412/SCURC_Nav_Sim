@@ -6,7 +6,7 @@ KfsManager::KfsManager() : Node("kfs_manager")
     timer_ = this->create_wall_timer(std::chrono::seconds(1),
         std::bind(&KfsManager::timer_callback, this));
     yolo_subscription_ = this->create_subscription<yolov8_ros2_msgs::msg::BoundingBoxes>(
-        "/yolo_simulator/detections",  // 接收yolo话题名称
+        "/yolov8/BoundingBoxes",  // 接收yolo话题名称
         10,  // 队列大小
         std::bind(&KfsManager::yolo_callback, this, std::placeholders::_1)  // 回调函数
     );

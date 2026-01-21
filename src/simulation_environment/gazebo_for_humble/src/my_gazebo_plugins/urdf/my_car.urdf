@@ -1,3 +1,0 @@
-<model name="my_car">
-  <plugin name="hello_plugin" filename="libhello_plugin.so" />
-</model>
