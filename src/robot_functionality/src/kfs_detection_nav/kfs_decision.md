@@ -1,14 +1,10 @@
 # 🤖 KFS 决策接口文档 (KFS Decision Interface)
 
 ### 🎯 用途
-`KfsManager` 节点处理来自 YOLO 检测器的原始数据，并发布**高级决策信息** `/kfs_decision`。
-行为树订阅此话题来：
-- 确定是否有可抓取的真 KFS
-- 可抓取的真 KFS 信息
-- 周围是否有假 KFS
-- 假的 KFS 信息
+`KfsManager` 节点处理来自 YOLO 检测器的原始数据，并发布**高级决策信息** 。
 
-## 话题信息
+
+## 话题1:识别到的KFS信息
 
 ### 基础信息
 | 属性 | 值 |
@@ -26,8 +22,11 @@ ros2 run yolo_simulator yolo_simulator_node
 # 终端 2: 启动 KFS 管理器
 ros2 run kfs_detection_nav kfs_detection_node
 
-# 终端 3: 查看决策消息
+# 终端 3: 查看决策消息（决策结果）
 ros2 topic echo /kfs_decision
+
+# 终端 4: 查看台阶匹配结果（详细信息）
+ros2 topic echo /stair_match_result
 ```
 
 ### 日志输出示例
@@ -160,7 +159,89 @@ ros2 topic echo /kfs_decision
     target.distance = msg.real_kfs_distances[idx];
   }
   ```
+---
 
+## 话题2：台阶匹配结果详情 (`/stair_match_result`)
+
+该话题用于描述**当前场景中 12 个台阶上分别放置了什么物体**，是系统对环境状态的整体感知结果快照，供后续决策、调度或调试使用。
+
+### 基础信息
+| 属性 | 值 |
+|------|-----|
+| **话题名称** | `/stair_match_result` |
+| **消息类型** | `yolov8_ros2_msgs/msg/StairMatchResult` |
+| **发布频率** | 1 Hz (每秒一次，与 `/kfs_decision` 同步) |
+| **发布者** | `kfs_detection_nav` 包中的 `KfsManager` 节点 |
+| **目的** | 发布每个检测到的 KFS 的**详细台阶匹配信息** |
+
+### 用途说明
+
+- 每个 KFS 匹配到的**具体台阶 ID 和名称**
+- 每个 KFS 在**全局地图坐标系中的 3D 位置**
+- 机器人与每个 KFS 的**实际距离和类别**
+
+### 消息字段详解
+
+
+---
+
+### 🔢 常量定义（Object Type）
+
+| 常量名 | 数值 | 含义 |
+|------|------|------|
+| `OBJECT_NONE` | 0 | 该台阶为空 |
+| `OBJECT_R1` | 1 | 该台阶上存在 R1 |
+| `OBJECT_R2` | 2 | 该台阶上存在 R2 |
+| `OBJECT_FAKE` | 3 | 该台阶上存在假 KFS |
+| `OBJECT_UNKNOWN` | 4 | 该台阶上状态未知 |
+
+---
+
+### 🧱 基本信息字段
+
+| 字段名 | 类型 | 说明 |
+|------|------|------|
+| `total_stairs` | `int32` | 台阶总数，固定为 **12** |
+
+---
+
+### 📦 每个台阶的内容描述（数组字段）
+
+以下数组字段长度均为 **12**，数组索引 `i` 对应 **第 `i+1` 个台阶**。
+
+| 字段名 | 类型 | 说明 |
+|------|------|------|
+| `stair_object_type` | `int32[]` | 每个台阶上的物体类型，取值为上述 **Object Type 常量** |
+| `stair_confidences` | `float64[]` | 对应台阶物体的识别置信度；当 `stair_object_type[i] == OBJECT_NONE` 时，该值为 **0.0** |
+| `stair_names` | `string[]` | 台阶名称，用于调试和日志输出（如 `"Stair_Deep_Green_1"`） |
+
+---
+
+### 📊 场景统计信息字段
+
+这些字段对整个 12 台阶场景进行统计汇总，便于快速判断当前状态。
+
+| 字段名 | 类型 | 说明 |
+|------|------|------|
+| `total_r1_count` | `int32` | 当前场景中 R1 的总数量 |
+| `total_r2_count` | `int32` | 当前场景中 R2 的总数量 |
+| `total_fake_count` | `int32` | 当前场景中假 KFS 的总数量（通常为 0 或 1） |
+| `total_empty_count` | `int32` | 当前为空的台阶数量 |
+
+---
+
+### ⏱️ 时序与坐标信息
+
+| 字段名 | 类型 | 说明 |
+|------|------|------|
+| `timestamp` | `builtin_interfaces/Time` | 该快照生成时的时间戳 |
+| `frame_id` | `string` | 所属坐标系标识（如 `"map"` 或 `"world"`） |
+
+---
+
+
+---
 
 **版本历史**：
 - v1.0 (2026-01-20): 初始文档，包含完整的字段解释和使用指南
+- v2.0 (2026-01-21): 新增 `/stair_match_result` 话题文档，完善两个话题的对比说明

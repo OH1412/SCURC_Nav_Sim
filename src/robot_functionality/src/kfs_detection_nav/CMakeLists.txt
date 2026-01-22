@@ -8,6 +8,7 @@ endif()
 
 # 查找依赖包
 find_package(ament_cmake REQUIRED)
+find_package(rosidl_default_generators REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
@@ -16,16 +17,19 @@ find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(yolov8_ros2_msgs REQUIRED)
-
+find_package(builtin_interfaces REQUIRED)
 
 include_directories(
   include  # 声明include目录是头文件搜索路径
 )
 
+# 【重要】生成消息接口必须在add_executable之前
+
 # 生成可执行文件（对应你的kfs_manager.cpp）
 add_executable(kfs_detection_node 
   src/kfs_manager.cpp
-)
+  src/stair_boundaries.cpp
+  )
 
 # 链接依赖库
 ament_target_dependencies(kfs_detection_node
@@ -39,6 +43,7 @@ ament_target_dependencies(kfs_detection_node
   yolov8_ros2_msgs
 )
 
+
 # 安装可执行文件（核心：必须安装到lib/${PROJECT_NAME}目录）
 install(TARGETS
   kfs_detection_node
@@ -48,6 +53,11 @@ install(TARGETS
 # 安装 launch 文件
 install(
   DIRECTORY launch
+  DESTINATION share/${PROJECT_NAME}
+)
+
+install(
+  DIRECTORY msg
   DESTINATION share/${PROJECT_NAME}
 )
 

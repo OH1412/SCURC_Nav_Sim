@@ -222,7 +222,7 @@ def generate_launch_description():
  
 
     ld.add_action(sim_launch)          # 先起仿真
-    ld.add_action(kfs_launch)          # 起KFS检测
+    # ld.add_action(kfs_launch)          # 起KFS检测
     ld.add_action(delayed_nav)         # 等一会再起导航或建图
     ld.add_action(delayed_mapping)
 
