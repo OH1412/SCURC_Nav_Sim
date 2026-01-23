@@ -6,14 +6,16 @@ _source_if_exists() {
 	if [ -f "$1" ]; then
 		# shellcheck disable=SC1090
 		source "$1"
+		SOURCED+=("$1")
 		echo "sourced: $1"
 	else
+		MISSING+=("$1")
 		echo "not found: \"$1\""
 	fi
 }
 
 # 优先尝试整体 workspace 的 setup（如果你有在根目录构建过）
-_source_if_exists "$HOME/SCURC_Nav_Sim/install/setup.bash"
+# _source_if_exists "$HOME/SCURC_Nav_Sim/install/setup.bash"
 
 _source_if_exists "$HOME/SCURC_Nav_Sim/src/core_navigation/navigation2/install/setup.bash"
 _source_if_exists "$HOME/SCURC_Nav_Sim/src/dependencies_and_tools/BehaviorTree.CPP/install/setup.sh"
@@ -29,8 +31,20 @@ _source_if_exists "$HOME/SCURC_Nav_Sim/src/robot_functionality/rc_decision/fly_s
 _source_if_exists "$HOME/SCURC_Nav_Sim/src/robot_functionality/kfs_detection_nav/install/setup.sh"
 _source_if_exists "$HOME/SCURC_Nav_Sim/src/robot_functionality/yolo_simulator/install/setup.sh"
 _source_if_exists "$HOME/SCURC_Nav_Sim/src/robot_functionality/rc_interfaces/yolov8_ros2_msgs/install/setup.sh"
+_source_if_exists "$HOME/SCURC_Nav_Sim/src/robot_functionality/rc_interfaces/fly_step_msgs/install/setup.sh"
 _source_if_exists "$HOME/SCURC_Nav_Sim/src/simulation_environment/rc_robot_simulation/livox_laser_simulation_RO2/install/setup.sh"
 _source_if_exists "$HOME/SCURC_Nav_Sim/src/simulation_environment/rc_robot_simulation/pangolin_simulation/install/setup.sh"
 _source_if_exists "$HOME/SCURC_Nav_Sim/src/yolo_ros2_ws/yolov8_ros2/install/setup.sh"
+
+# Summary: print which files were sourced and which were missing
+echo
+if [ ${#MISSING[@]} -gt 0 ]; then
+	echo "Missing setup files (${#MISSING[@]}):"
+	for f in "${MISSING[@]}"; do
+		echo "  - $f"
+	done
+else
+	echo "No missing setup files detected."
+fi
 
 echo "所有模块环境已尝试加载"

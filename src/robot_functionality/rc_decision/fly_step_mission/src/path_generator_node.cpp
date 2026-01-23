@@ -155,8 +155,8 @@ bool PathGeneratorNode::parseAllWaypointsFromYaml()
             }
 
             all_wp_map_[wp_id_str] = wp;
-            RCLCPP_INFO(node_->get_logger(), "解析航点：%s → (X:%.3f, Y:%.3f)", 
-                wp_id_str.c_str(), wp.pose.position.x, wp.pose.position.y);
+            // RCLCPP_INFO(node_->get_logger(), "解析航点：%s → (X:%.3f, Y:%.3f)", 
+            //     wp_id_str.c_str(), wp.pose.position.x, wp.pose.position.y);
         } catch (const YAML::Exception& e) {
             RCLCPP_ERROR(node_->get_logger(), "解析航点%s失败：%s", wp_id_str.c_str(), e.what());
             return false;
@@ -174,8 +174,8 @@ bool PathGeneratorNode::parseAllWaypointsFromYaml()
             return false;
         }
 
-        RCLCPP_INFO(node_->get_logger(), "添加主航点：ID%d → (X:%.2f, Y:%.2f)", 
-            wp_id, all_wp_map_[wp_id_str].pose.position.x, all_wp_map_[wp_id_str].pose.position.y);
+        // RCLCPP_INFO(node_->get_logger(), "添加主航点：ID%d → (X:%.2f, Y:%.2f)", 
+        //     wp_id, all_wp_map_[wp_id_str].pose.position.x, all_wp_map_[wp_id_str].pose.position.y);
     }
 
     if (waypoints_.empty()) {
@@ -323,12 +323,12 @@ bool PathGeneratorNode::buildFullWaypath() {
     // 打印完整路径信息
     RCLCPP_INFO(node_->get_logger(), "完整路径构建完成：共%d个航点", (int)full_waypoints_.size());
     for (size_t i = 0; i < full_waypoints_.size(); ++i) {
-        RCLCPP_INFO(node_->get_logger(), "  航点%d：(X:%.2f, Y:%.2f, 帧ID:%s)",
-            (int)i,
-            full_waypoints_[i].pose.position.x,
-            full_waypoints_[i].pose.position.y,
-            full_waypoints_[i].header.frame_id.c_str()
-        );
+        // RCLCPP_INFO(node_->get_logger(), "  航点%d：(X:%.2f, Y:%.2f, 帧ID:%s)",
+        //     (int)i,
+        //     full_waypoints_[i].pose.position.x,
+        //     full_waypoints_[i].pose.position.y,
+        //     full_waypoints_[i].header.frame_id.c_str()
+        // );
     }
     return true;
 }

@@ -30,6 +30,18 @@ endif()
 install(DIRECTORY launch maps params behavior_tree rviz
   DESTINATION share/${PROJECT_NAME})
 
+# Install python node script so it can be launched as a ROS2 Node (executable)
+install(PROGRAMS
+  nodes/kfs_planner_node.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+# Install test/debug scripts into share/<package>/scripts so launch files can call them
+install(PROGRAMS
+  scripts/publish_kfs.py
+  DESTINATION share/${PROJECT_NAME}/scripts
+)
+
 
 # 4 include 
 

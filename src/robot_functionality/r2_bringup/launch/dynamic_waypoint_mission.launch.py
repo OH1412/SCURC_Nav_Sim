@@ -11,7 +11,7 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, TimerAction, LogInfo
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, TimerAction, LogInfo, ExecuteProcess
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PythonExpression
@@ -22,6 +22,7 @@ def generate_launch_description():
     # ----- Arguments -----
     delay_after_sim = LaunchConfiguration('delay_after_sim')
     delay_bt = LaunchConfiguration('delay_bt')
+    delay_planner = LaunchConfiguration('delay_planner')
     use_rviz = LaunchConfiguration('use_rviz')
     auto_start_bt = LaunchConfiguration('auto_start_bt')
 
@@ -30,8 +31,12 @@ def generate_launch_description():
         description='Seconds to wait after simulation starts before launching navigation'
     )
     declare_delay_bt = DeclareLaunchArgument(
-        'delay_bt', default_value='90.0',
+        'delay_bt', default_value='20.0',
         description='Seconds to wait after simulation starts before launching behavior tree (only used if auto_start_bt is true)'
+    )
+    declare_delay_planner = DeclareLaunchArgument(
+        'delay_planner', default_value='14.0',
+        description='Seconds to wait after simulation starts before launching kfs_planner (before BT starts)'
     )
     declare_use_rviz = DeclareLaunchArgument(
         'use_rviz', default_value='true',
@@ -40,6 +45,10 @@ def generate_launch_description():
     declare_auto_start_bt = DeclareLaunchArgument(
         'auto_start_bt', default_value='true',
         description='Whether to automatically start the behavior tree (default: true, start manually)'
+    )
+    declare_publish_offset = DeclareLaunchArgument(
+        'publish_offset_before_bt', default_value='5.0',
+        description='Seconds before BT start to run the KFSDecision publisher (default: 5.0)'
     )
 
     # ----- Package Paths -----
@@ -72,7 +81,7 @@ def generate_launch_description():
         actions=[nav_launch]
     )
 
-    # ===== 3) 启动 fly_step_mission 行为树节点 =====
+    # ===== 3) 启动 fly_step_mission 行为树节点（先启动BT以确保service可用） =====
     fly_step_bt_node = Node(
         package='fly_step_mission',
         executable='fly_step_bt_node',
@@ -91,6 +100,41 @@ def generate_launch_description():
         period=delay_bt,
         actions=[fly_step_bt_node],
         condition=IfCondition(auto_start_bt)  # 只有当 auto_start_bt=true 时才延迟启动
+    )
+    # ===== 3.5) 启动 kfs_planner（在 BT 之后，确保BT service已可用） =====
+    # 这里使用一个最小的 start_planner.launch.py 来包含实际的 kfs_planner 启动脚本
+    start_planner = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(bringup_share, 'launch', 'start_planner.launch.py')
+        )
+    )
+
+    delayed_planner = TimerAction(
+        period=delay_planner,
+        actions=[start_planner]
+    )
+    # ===== 4) (测试) 将发布器安排在 BT 启动之前的一段偏移时间触发，保证消息在路径生成之前到达
+    # 这个脚本期望位于 r2_bringup/scripts/publish_kfs.py；优先使用安装路径，否则回退源码路径
+    launch_dir = os.path.dirname(__file__)
+    publish_script_src = os.path.abspath(os.path.join(launch_dir, '..', 'scripts', 'publish_kfs.py'))
+    publish_script_installed = os.path.join(bringup_share, 'scripts', 'publish_kfs.py')
+    if os.path.exists(publish_script_installed):
+        publish_script = publish_script_installed
+    else:
+        publish_script = publish_script_src
+
+    # 在 BT 启动前 publish_offset_before_bt 秒运行发布脚本
+    pre_publish_period = PythonExpression([delay_bt, ' - ', LaunchConfiguration('publish_offset_before_bt')])
+
+    pre_publish = TimerAction(
+        period=pre_publish_period,
+        actions=[
+            ExecuteProcess(
+                cmd=['python3', publish_script, '--timeout', '30', '--interval', '1.0'],
+                output='screen'
+            )
+        ],
+        condition=IfCondition(auto_start_bt)
     )
 
     # 提示用户手动启动行为树（仅当 auto_start_bt=false 时显示）
@@ -113,13 +157,18 @@ def generate_launch_description():
     # Declare arguments
     ld.add_action(declare_delay_sim)
     ld.add_action(declare_delay_bt)
+    ld.add_action(declare_delay_planner)
     ld.add_action(declare_use_rviz)
     ld.add_action(declare_auto_start_bt)
+    ld.add_action(declare_publish_offset)
 
     # Launch actions
     ld.add_action(sim_launch)           # 1. 先启动仿真
     ld.add_action(delayed_nav)          # 2. 等待后启动导航
-    ld.add_action(delayed_bt)           # 3. 可选：自动启动行为树
-    ld.add_action(log_manual_start)     # 4. 提示手动启动
+    ld.add_action(pre_publish)          # 3. 可选：在 BT 启动前若干秒发布 KFSDecision（测试)
+    ld.add_action(delayed_bt)           # 4. 可选：自动启动行为树
+    ld.add_action(delayed_planner)      # 5. 启动 planner（应在 BT 之后）
+
+    ld.add_action(log_manual_start)     # 6. 提示手动启动
 
     return ld

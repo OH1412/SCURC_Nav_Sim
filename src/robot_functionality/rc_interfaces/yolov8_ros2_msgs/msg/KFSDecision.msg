@@ -1,28 +1,24 @@
-# 是否存在可抓取的真 KFS
-bool real_kfs_available
+# 台阶内容快照 - 描述所有12个台阶上有什么物体
 
-# 【所有可抓取真 KFS 的列表】- 按距离排序
-uint32 real_kfs_count
-string[] real_kfs_class_names
-float64[] real_kfs_distances
-float64[] real_kfs_confidences
-string[] real_kfs_colors
-float64[] real_kfs_bbox_xmin
-float64[] real_kfs_bbox_ymin
-float64[] real_kfs_bbox_xmax
-float64[] real_kfs_bbox_ymax
-uint32 primary_target_index
+# 常量定义
+int32 OBJECT_NONE = 0           # 台阶为空
+int32 OBJECT_R1 = 1             # 台阶上有r1
+int32 OBJECT_R2 = 2             # 台阶上有r2
+int32 OBJECT_FAKE = 3           # 台阶上有假KFS
+int32 OBJECT_UNK = 4            # 台阶上未知物体
 
-# 【假 KFS 危险区】
-uint32 fake_kfs_count
-float64[] fake_kfs_distances
-float64[] fake_kfs_confidences
-string[] fake_kfs_colors
-float64 closest_fake_kfs_distance
+int32 total_stairs              # 总台阶数（固定=12）
 
-# 【安全状态】
-string safety_status
-string priority_level
+# 每个台阶的内容（数组长度=12，索引i对应台阶i+1）
+int32[] stair_object_type       # 台阶上的物体类型（使用上面的常量）
+float64[] stair_confidences     # 该物体的置信度（若为OBJECT_NONE则为0.0）
+string[] stair_names            # 台阶名称（方便调试）
+
+# 统计信息
+int32 total_r1_count            # 全场景r1总数
+int32 total_r2_count            # 全场景r2总数  
+int32 total_fake_count          # 全场景假KFS总数（0或1）
+int32 total_empty_count         # 空台阶数量
+
 builtin_interfaces/Time timestamp
 string frame_id
-float64 decision_confidence

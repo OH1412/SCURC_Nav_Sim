@@ -15,6 +15,9 @@ find_package(behaviortree_cpp_v3 REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(yaml-cpp REQUIRED)
+find_package(fly_step_msgs REQUIRED)
+
+# Service interfaces are provided by the separate interface package 'fly_step_msgs'
 
 # 可执行文件：一个 cpp 里同时写 BT 节点 + tick 主函数
 add_executable(fly_step_bt_node
@@ -34,6 +37,7 @@ ament_target_dependencies(fly_step_bt_node
   tf2
   tf2_geometry_msgs
   tf2_ros
+  fly_step_msgs
 )
 target_link_libraries(fly_step_bt_node yaml-cpp)
 install(TARGETS
@@ -48,6 +52,9 @@ install(DIRECTORY
   include
   DESTINATION share/${PROJECT_NAME}
 )
+
+# Generate service interfaces
+
 
 target_include_directories(fly_step_bt_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
