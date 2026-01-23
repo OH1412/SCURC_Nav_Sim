@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root BTCPP_format="4">
+  <BehaviorTree ID="dynamic_waypoint_mission_original">
+    <Sequence name="DynamicWaypointMission">
+
+      <!-- 使用固定的航点序列，不受KFS规划器影响 -->
+      <SetBlackboard output_key="MainWPs" value="[-1, 2, 5, 4, 7, 10]" />
+
+      <PathGeneratorNode
+        main_waypoints="{MainWPs}"
+        waypoints_file="{waypoints_file}" />
+
+      <DynamicPathTaskExecutor
+        waypoint_path="{generated_path}"
+        main_waypoints="{MainWPs}"
+        waypoints_file="{waypoints_file}"
+        ascend_margin_mm="200" />
+
+    </Sequence>
+  </BehaviorTree>
+</root>

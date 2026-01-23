@@ -1,11 +1,15 @@
 # r2_bringup/launch/dynamic_waypoint_mission.launch.py
-# 启动仿真环境 + 导航系统，行为树需要手动启动
-# 
+# 启动仿真环境 + 导航系统，支持可选的KFS规划器XML控制
+#
 # 使用方法：
-# 1. 启动仿真和导航：ros2 launch r2_bringup dynamic_waypoint_mission.py
+# 1. 启动仿真和导航：ros2 launch r2_bringup dynamic_waypoint_mission.launch.py
 # 2. 等待 ICP 定位完成（看到 "ICP converged!!!"）和 Nav2 激活（看到 "Managed nodes are active"）
 # 3. 手动启动行为树：ros2 launch r2_bringup start_waypoint_bt.launch.py
 #    或者设置 auto_start_bt:=true 自动启动（需要较长延迟）
+#
+# 可选参数：
+# - use_planner_xml:=true  # 使用KFS规划器修改的XML文件（默认）
+# - use_planner_xml:=false # 使用原始的XML文件，不受规划器影响
 
 import os
 
@@ -25,6 +29,7 @@ def generate_launch_description():
     delay_planner = LaunchConfiguration('delay_planner')
     use_rviz = LaunchConfiguration('use_rviz')
     auto_start_bt = LaunchConfiguration('auto_start_bt')
+    use_planner_xml = LaunchConfiguration('use_planner_xml')
 
     declare_delay_sim = DeclareLaunchArgument(
         'delay_after_sim', default_value='10.0',
@@ -50,6 +55,10 @@ def generate_launch_description():
         'publish_offset_before_bt', default_value='5.0',
         description='Seconds before BT start to run the KFSDecision publisher (default: 5.0)'
     )
+    declare_use_planner_xml = DeclareLaunchArgument(
+        'use_planner_xml', default_value='true',
+        description='Whether to use the XML file modified by kfs_planner (true) or the original XML file (false)'
+    )
 
     # ----- Package Paths -----
     sim_share = get_package_share_directory('pangolin_simulation')
@@ -57,7 +66,12 @@ def generate_launch_description():
     fly_step_share = get_package_share_directory('fly_step_mission')
 
     # ----- Behavior Tree XML Path -----
-    bt_xml_file = os.path.join(fly_step_share, 'behavior_trees', 'dynamic_waypoint_mission.xml')
+    # 根据 use_planner_xml 参数选择XML文件
+    # true: 使用可能被kfs_planner修改的XML文件
+    # false: 使用原始的XML文件
+    bt_xml_planner_modified = os.path.join(fly_step_share, 'behavior_trees', 'dynamic_waypoint_mission.xml')
+    bt_xml_original = os.path.join(fly_step_share, 'behavior_trees', 'dynamic_waypoint_mission_original.xml')
+
     # 默认的 waypoints 文件（来自 fly_step_mission 包）
     waypoints_file = os.path.join(fly_step_share, 'config', 'waypoints.yaml')
 
@@ -82,6 +96,11 @@ def generate_launch_description():
     )
 
     # ===== 3) 启动 fly_step_mission 行为树节点（先启动BT以确保service可用） =====
+    # 根据 use_planner_xml 参数选择XML文件路径
+    bt_xml_file = PythonExpression([
+        "'", bt_xml_planner_modified, "' if '", use_planner_xml, "' == 'true' else '", bt_xml_original, "'"
+    ])
+
     fly_step_bt_node = Node(
         package='fly_step_mission',
         executable='fly_step_bt_node',
@@ -161,6 +180,7 @@ def generate_launch_description():
     ld.add_action(declare_use_rviz)
     ld.add_action(declare_auto_start_bt)
     ld.add_action(declare_publish_offset)
+    ld.add_action(declare_use_planner_xml)
 
     # Launch actions
     ld.add_action(sim_launch)           # 1. 先启动仿真
