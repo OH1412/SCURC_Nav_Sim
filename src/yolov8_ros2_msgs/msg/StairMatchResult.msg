@@ -7,6 +7,7 @@ int32 OBJECT_R2 = 2             # 台阶上有r2
 int32 OBJECT_FAKE = 3           # 台阶上有假KFS
 int32 OBJECT_UNK = 4           # 台阶上未知物体
 
+
 int32 total_stairs              # 总台阶数（固定=12）
 
 # 每个台阶的内容（数组长度=12，索引i对应台阶i+1）
@@ -19,6 +20,7 @@ int32 total_r1_count            # 全场景r1总数
 int32 total_r2_count            # 全场景r2总数  
 int32 total_fake_count          # 全场景假KFS总数（0或1）
 int32 total_empty_count         # 空台阶数量
+int32 total_unknown_count
 
 builtin_interfaces/Time timestamp
 string frame_id

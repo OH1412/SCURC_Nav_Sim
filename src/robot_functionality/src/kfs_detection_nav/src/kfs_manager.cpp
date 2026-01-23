@@ -12,7 +12,8 @@ KfsManager::KfsManager() : Node("kfs_manager")
     );
 
     odometry_subscription_ = this->create_subscription<nav_msgs::msg::Odometry>(
-        "/state_estimation", 10,
+        "/state_estimation", 
+        10,
         std::bind(&KfsManager::odometry_callback, this, std::placeholders::_1));
   
   // ===== 新增：地形点云订阅 =====
@@ -245,15 +246,47 @@ void KfsManager::timer_callback()
         decision.real_kfs_count,
         decision.fake_kfs_count,
         decision.closest_fake_kfs_distance);
+
+        // ===== 新增：判断每个台阶的可见性和遮挡情况 =====
+// 这一步的目的：在初始化之前，标记哪些台阶是"可以看清的"
+// 然后在后续逻辑中，如果这些可看清的台阶没有检测到KFS，就标记为"空"
+
+std::array<bool, 12> stair_is_observable;  // 记录每个台阶是否可观察
+std::array<StairState, 12> stairs_state;   // 初始化所有台阶状态
+
+// 遍历所有12个台阶，判断每个是否可以被机器人观察到
+for (int stair_id = 1; stair_id <= 12; ++stair_id) {
+    int idx = stair_id - 1;
+    
+    // 【条件1】检查距离
+    bool in_range = is_stair_in_detection_range(stair_id, robot_x, robot_y);
+    
+    // 【条件2】检查视角
+    bool in_view = is_stair_in_view_angle(stair_id, robot_x, robot_y, yaw);
+    
+    // 【条件3】检查是否被前方台阶遮挡
+    bool occluded = is_stair_occluded_by_front_stairs(stair_id);
+    
+    // 【综合判断】台阶可观察的条件：在距离范围内 AND 在视野内 AND 没被遮挡
+    stair_is_observable[idx] = (in_range && in_view && !occluded);
+    
+    // 调试日志：打印不可观察的台阶信息
+    if (!stair_is_observable[idx]) {
+        if (!in_range) {
+            RCLCPP_DEBUG(this->get_logger(),
+                "Stair %d: Not observable - OUT OF RANGE", stair_id);
+        } else if (!in_view) {
+            RCLCPP_DEBUG(this->get_logger(),
+                "Stair %d: Not observable - OUT OF VIEW", stair_id);
+        } else if (occluded) {
+            RCLCPP_DEBUG(this->get_logger(),
+                "Stair %d: Not observable - OCCLUDED by front stairs", stair_id);
+        }
+    }
+    }
     
     // ===== 新增：构建台阶内容快照 =====
-    // 第1步：为每个台阶初始化状态
-    struct StairState {
-        int object_type = 0;        // 0=空, 1=r1, 2=r2, 3=假KFS
-        double confidence = 0.0;
-    };
-    
-    std::array<StairState, 12> stairs_state;  // 索引0-11对应台阶1-12
+    // 第1步：为每个台阶初始化状态-->已在前面声明，直接使用
     
     // 第2步：填充真KFS到对应台阶
     for (size_t i = 0; i < real_kfs_list_.size(); ++i) {
@@ -307,6 +340,36 @@ void KfsManager::timer_callback()
             }
         }
     }
+
+    // ===== 新增：判断可观察的台阶是否为空 =====
+// 对于那些既可以被完全观察到、又没有检测到KFS的台阶，标记为"空"
+for (int stair_id = 1; stair_id <= 12; ++stair_id) {
+    int idx = stair_id - 1;
+    
+    // 只对可观察的台阶处理
+    if (!stair_is_observable[idx]) {
+        // 不可观察的台阶，保持"未知"状态，不做改动
+        continue;
+    }
+    
+    // 如果可观察，但当前没有任何物体
+    if (stairs_state[idx].object_type == 4) {  // 4 = 未知
+        stairs_state[idx].frames_without_detection++;
+        
+        // 多帧确认：连续 3 帧都没有检测到，才确认为"空"
+        if (stairs_state[idx].frames_without_detection >= FRAMES_TO_CONFIRM_EMPTY) {
+            stairs_state[idx].object_type = 0;  // 0 = 空
+            stairs_state[idx].frames_without_detection = 0;  // 重置计数
+            
+            RCLCPP_INFO(this->get_logger(),
+                "Stair %d confirmed as EMPTY after %d frames",
+                stair_id, FRAMES_TO_CONFIRM_EMPTY);
+        }
+    } else {
+        // 检测到了物体，重置"未检测帧数"
+        stairs_state[idx].frames_without_detection = 0;
+    }
+    }
     
     // 第4步：构建并发布消息
     auto stair_match = yolov8_ros2_msgs::msg::StairMatchResult();
@@ -314,7 +377,7 @@ void KfsManager::timer_callback()
     stair_match.frame_id = "map";
     stair_match.total_stairs = 12;
     
-    int r1_count = 0, r2_count = 0, fake_count = 0, empty_count = 0;
+    int r1_count = 0, r2_count = 0, fake_count = 0, empty_count = 0, unknown_count = 0;
     
     for (int i = 0; i < 12; ++i) {
         stair_match.stair_object_type.push_back(stairs_state[i].object_type);
@@ -326,6 +389,7 @@ void KfsManager::timer_callback()
             case 1: r1_count++; break;
             case 2: r2_count++; break;
             case 3: fake_count++; break;
+            case 4: unknown_count++; break;
             case 0: empty_count++; break;
         }
     }
@@ -334,12 +398,13 @@ void KfsManager::timer_callback()
     stair_match.total_r2_count = r2_count;
     stair_match.total_fake_count = fake_count;
     stair_match.total_empty_count = empty_count;
+    stair_match.total_unknown_count = unknown_count;
     
     stair_match_publisher_->publish(stair_match);
     
     RCLCPP_INFO(this->get_logger(),
-        "Stairs Snapshot: R1=%d, R2=%d, Fake=%d, Empty=%d",
-        r1_count, r2_count, fake_count, empty_count);
+        "Stairs: Unknown=%d, R1=%d, R2=%d, Fake=%d, Empty=%d",
+        unknown_count, r1_count, r2_count, fake_count, empty_count);
 
 }
 
@@ -359,6 +424,118 @@ void KfsManager::yolo_callback(const yolov8_ros2_msgs::msg::BoundingBoxes::Share
     //         "Detection: class=%s, color=%s, distance=%.2f m",
     //         bbox.class_name.c_str(), bbox.color.c_str(), bbox.distance);
     // }
+}
+
+int KfsManager::get_stair_row(int stair_id) const
+{
+    // 台阶1-3 在行1，4-6 在行2，7-9 在行3，10-12 在行4
+    // 公式：行号 = (台阶ID - 1) / 3 + 1
+    return (stair_id - 1) / 3 + 1;
+}
+
+int KfsManager::get_stair_col(int stair_id) const
+{
+    // 台阶1,4,7,10 在列1，2,5,8,11 在列2，3,6,9,12 在列3
+    // 公式：列号 = (台阶ID - 1) % 3 + 1
+    return (stair_id - 1) % 3 + 1;
+}
+
+int KfsManager::get_stair_height_level(int stair_id) const
+{
+    // 根据你的定义：
+    // - 台阶 2, 4, 10, 12：高度 = h → 返回 1
+    // - 台阶 1, 3, 5, 7, 9, 11：高度 = 2h → 返回 2
+    // - 台阶 6, 8：高度 = 3h → 返回 3
+    
+    if (stair_id == 2 || stair_id == 4 || stair_id == 10 || stair_id == 12) {
+        return 1;
+    } else if (stair_id == 1 || stair_id == 3 || stair_id == 5 || 
+               stair_id == 7 || stair_id == 9 || stair_id == 11) {
+        return 2;
+    } else if (stair_id == 6 || stair_id == 8) {
+        return 3;
+    }
+    
+    return -1;  // 错误：台阶ID无效
+}
+
+bool KfsManager::is_stair_in_detection_range(int stair_id, double robot_x, double robot_y) const
+{
+    if (stair_id < 1 || stair_id > 12) return false;
+    
+    // 获取台阶的中心坐标
+    const auto& stair = STAIR_BOUNDARIES[stair_id - 1];
+    double stair_x = (stair.x_min + stair.x_max) / 2.0;
+    double stair_y = (stair.y_min + stair.y_max) / 2.0;
+    
+    // 计算机器人到台阶的欧几里得距离
+    double dx = stair_x - robot_x;
+    double dy = stair_y - robot_y;
+    double distance = std::sqrt(dx * dx + dy * dy);
+    
+    // 判断是否在有效范围内
+    return (distance >= MIN_STAIR_DETECTION_DISTANCE && 
+            distance <= MAX_STAIR_DETECTION_DISTANCE);
+}
+
+bool KfsManager::is_stair_in_view_angle(int stair_id, double robot_x, double robot_y, double robot_yaw) const
+{
+    if (stair_id < 1 || stair_id > 12) return false;
+    
+    // 获取台阶的中心坐标
+    const auto& stair = STAIR_BOUNDARIES[stair_id - 1];
+    double stair_x = (stair.x_min + stair.x_max) / 2.0;
+    double stair_y = (stair.y_min + stair.y_max) / 2.0;
+    
+    // 计算台阶相对于机器人的方向角（0° = 正东，逆时针为正）
+    double dx = stair_x - robot_x;
+    double dy = stair_y - robot_y;
+    double stair_angle = std::atan2(dy, dx);  // 返回 [-π, π]
+    
+    // 计算相对角度（台阶相对于机器人的朝向）
+    double relative_angle = stair_angle - robot_yaw;
+    
+    // 将角度标准化到 [-π, π]
+    while (relative_angle > M_PI) relative_angle -= 2 * M_PI;
+    while (relative_angle < -M_PI) relative_angle += 2 * M_PI;
+    
+    // RGB 视场角 69° = 1.204 弧度，所以左右各 34.5° = 0.602 弧度
+    double half_fov = RGB_HORIZONTAL_FOV / 2.0;
+    
+    // 判断是否在视野范围内
+    return (std::fabs(relative_angle) <= half_fov);
+}
+
+bool KfsManager::is_stair_occluded_by_front_stairs(int stair_id) const
+{
+    if (stair_id < 1 || stair_id > 12) return false;
+    
+    int target_row = get_stair_row(stair_id);
+    int target_col = get_stair_col(stair_id);
+    int target_height = get_stair_height_level(stair_id);
+    
+    // 如果在第1行，不可能被前面的遮挡
+    if (target_row == 1) return false;
+    
+    // 检查前面所有行的台阶
+    for (int front_row = 1; front_row < target_row; ++front_row) {
+        // 检查同列和左右邻列（考虑视场角 69°）
+        for (int col_offset = -1; col_offset <= 1; ++col_offset) {
+            int check_col = target_col + col_offset;
+            if (check_col < 1 || check_col > 3) continue;  // 超出范围
+            
+            // 计算前方台阶的ID
+            int front_stair_id = (front_row - 1) * 3 + check_col;
+            int front_height = get_stair_height_level(front_stair_id);
+            
+            // 如果前面的台阶高度 >= 目标台阶高度，被遮挡
+            if (front_height >= target_height) {
+                return true;
+            }
+        }
+    }
+    
+    return false;  // 未被遮挡
 }
 
 void KfsManager::odometry_callback(const nav_msgs::msg::Odometry::SharedPtr msg)

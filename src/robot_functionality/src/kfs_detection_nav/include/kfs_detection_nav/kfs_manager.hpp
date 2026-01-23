@@ -43,6 +43,33 @@ public:
     static const std::array<StairBoundary, 12> STAIR_BOUNDARIES;
     
 private:
+// ===== 传感器和判断逻辑常量 =====
+    static constexpr double MIN_STAIR_DETECTION_DISTANCE = 0.3;   // 最小检测距离（米）
+    static constexpr double MAX_STAIR_DETECTION_DISTANCE = 3.0;   // 最大检测距离（米）
+    static constexpr double RGB_HORIZONTAL_FOV = 69.0 * M_PI / 180.0;  // RGB水平视场角（转为弧度）
+    static constexpr int FRAMES_TO_CONFIRM_EMPTY = 3;  // 确认台阶为空需要的连续帧数
+    
+    // ===== 几何尺寸常量 =====
+    static constexpr double STAIR_WIDTH = 1.2;   // 台阶宽度（米）
+    static constexpr double STAIR_DEPTH = 1.2;   // 台阶深度（米）
+    static constexpr double HEIGHT_UNIT = 0.2;   // 高度单位（这里暂不用，作为参考）
+    
+    // ===== 台阶状态结构体扩展 =====
+    struct StairState {
+        int object_type = 4;        // 4=未知(默认), 1=r1, 2=r2, 3=假KFS, 0=空
+        double confidence = 0.0;
+        int frames_without_detection = 0;  // 新增：连续未检测的帧数
+    };
+    
+    // ===== 辅助函数声明 =====
+    int get_stair_height_level(int stair_id) const;
+    int get_stair_row(int stair_id) const;
+    int get_stair_col(int stair_id) const;
+    bool is_stair_in_detection_range(int stair_id, double robot_x, double robot_y) const;
+    bool is_stair_in_view_angle(int stair_id, double robot_x, double robot_y, double robot_yaw) const;
+    bool is_stair_occluded_by_front_stairs(int stair_id) const;
+    void update_stair_empty_status(std::array<StairState, 12>& stairs_state,
+                                    double robot_x, double robot_y, double robot_yaw);
     static constexpr double PROBABILITY_THRESHOLD = 0.80; //置信度阈值
     static constexpr double DANGER_ZONE_RADIUS = 0.2;
     static constexpr double CRITICAL_DANGER_RADIUS = 0.2;
