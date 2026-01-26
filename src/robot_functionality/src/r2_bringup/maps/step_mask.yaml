@@ -1,0 +1,7 @@
+image: step_mask.pgm
+mode: scale
+resolution: 0.1  # 必须与原始地图相同！
+origin: [-13.4, -6.2, 0] # 必须与原始地图相同！
+occupied_thresh: 0.65
+free_thresh: 0.25
+negate: 0
