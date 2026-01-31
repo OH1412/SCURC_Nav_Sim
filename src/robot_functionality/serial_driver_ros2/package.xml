@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>serial_driver</name>
+  <version>0.1.0</version>
+  <description>Serial driver ported from ROS 1 to ROS 2</description>
+
+  <maintainer email="your@email.com">Your Name</maintainer>
+  <license>BSD</license>
+
+  <!-- 构建系统依赖 -->
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <!-- 运行时依赖 -->
+  <depend>rclcpp</depend>
+  <depend>geometry_msgs</depend>
+
+  <!-- 如果你使用参数文件，rcl_interfaces可选 -->
+  <!-- <depend>rcl_interfaces</depend> -->
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

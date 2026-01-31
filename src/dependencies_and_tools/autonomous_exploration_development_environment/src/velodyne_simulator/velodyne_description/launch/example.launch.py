@@ -68,7 +68,7 @@ def generate_launch_description():
     name='robot_state_publisher',
     output='screen',
     parameters=[{
-      'use_sim_time': True,
+      'use_sim_time': False,
       'robot_description': robot_description
     }]
   )

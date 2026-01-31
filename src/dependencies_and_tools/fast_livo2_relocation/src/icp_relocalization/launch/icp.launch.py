@@ -18,7 +18,7 @@ def generate_launch_description():
                 {'initial_x':0.0},
                 {'initial_y':0.0},
                 {'initial_z':0.1},
-                {'initial_a':-2.2},
+                {'initial_a':-2.2}, 
                 # {'initial_roll':0.0},
                 # {'initial_pitch':0.0},
                 # {'initial_yaw':0.0},

@@ -35,6 +35,7 @@ def generate_launch_description():
     log_level = LaunchConfiguration('log_level')
     delay_after_sim = LaunchConfiguration('delay_after_sim')
     use_rviz = LaunchConfiguration('use_rviz')
+    start_sim = LaunchConfiguration('start_sim')
 
     # Declare Arguments
     declare_namespace_cmd = DeclareLaunchArgument(
@@ -42,7 +43,7 @@ def generate_launch_description():
         description='Top-level namespace')
 
     declare_use_sim_time_cmd = DeclareLaunchArgument(
-        'use_sim_time', default_value='false', # 仿真默认为 true
+        'use_sim_time', default_value='false',
         description='Use simulation (Gazebo) clock if true')
 
     declare_params_file_cmd = DeclareLaunchArgument(
@@ -78,6 +79,10 @@ def generate_launch_description():
     declare_use_rviz_cmd = DeclareLaunchArgument(
         'use_rviz', default_value='true',
         description='Whether to start RViz'
+    )
+    declare_start_sim_cmd = DeclareLaunchArgument(
+        'start_sim', default_value='false',
+        description='Whether to start simulation first (default: false)'
     )
 
     # Set env var for logging
@@ -164,7 +169,8 @@ def generate_launch_description():
     sim_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(sim_share, 'launch', 'pangolin_simulation.launch.py')
-        )
+        ),
+        condition=IfCondition(start_sim)
     )
 
     # 5.2 启动重定位
@@ -207,7 +213,15 @@ def generate_launch_description():
     # 逻辑：仿真启动后，等待 delay_after_sim 秒，再执行 bringup_logic
     overall_delayed_start = TimerAction(
         period=delay_after_sim,
-        actions=[bringup_logic]
+        actions=[bringup_logic],
+        condition=IfCondition(start_sim)
+    )
+
+    # 不启动仿真时，直接（轻微延迟）启动重定位 -> 感知 -> RViz
+    immediate_start_no_sim = TimerAction(
+        period=0.5,
+        actions=[bringup_logic],
+        condition=IfCondition(PythonExpression(["'", start_sim, "' == 'false'"]))
     )
 
     # ========================================================================
@@ -229,9 +243,11 @@ def generate_launch_description():
     ld.add_action(declare_log_level_cmd)
     ld.add_action(declare_delay_cmd)
     ld.add_action(declare_use_rviz_cmd)
+    ld.add_action(declare_start_sim_cmd)
 
     # Actions
-    ld.add_action(sim_launch)             # 1. 启动仿真
-    ld.add_action(overall_delayed_start)  # 2. 延时后启动重定位 -> 感知 -> RViz
+    ld.add_action(sim_launch)             # 1. 可选：启动仿真
+    ld.add_action(overall_delayed_start)  # 2a. 仿真启用：延时后启动重定位 -> 感知 -> RViz
+    ld.add_action(immediate_start_no_sim) # 2b. 仿真关闭：直接启动重定位 -> 感知 -> RViz
 
     return ld

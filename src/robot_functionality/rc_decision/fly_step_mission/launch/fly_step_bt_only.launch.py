@@ -57,7 +57,7 @@ def generate_launch_description():
         output='screen',
         parameters=[{
             'bt_xml_file': bt_xml_file,
-            'use_sim_time': True,
+            'use_sim_time': False,
             'wait_for_nav2_timeout': 60.0,
             'waypoints_file': waypoints_file
         }]

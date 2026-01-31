@@ -13,7 +13,7 @@ def generate_launch_description():
     # ========================================================================
     # 1. Launch 参数配置
     # ========================================================================
-    use_sim_time = LaunchConfiguration('use_sim_time', default='true')
+    use_sim_time = LaunchConfiguration('use_sim_time', default='false')
     use_fast_livo = LaunchConfiguration('use_fast_livo', default='true')
 
     # ========================================================================
@@ -50,7 +50,7 @@ def generate_launch_description():
         output='screen',
         remappings=[('icp_result', '/initialpose')],
         parameters=[
-            {'use_sim_time': True},
+            {'use_sim_time': False},
             {'initial_x': 0.0},
             {'initial_y': 0.0},
             {'initial_z': 0.0},
@@ -71,7 +71,7 @@ def generate_launch_description():
         parameters=[
             fast_livo_config,
             camera_config,
-            {'use_sim_time': True}
+            {'use_sim_time': False}
         ],
         output='screen',
         arguments=['--ros-args', '--log-level', 'warn'],
@@ -88,7 +88,7 @@ def generate_launch_description():
         respawn=True,
         respawn_delay=2.0,
         parameters=[{
-            'use_sim_time': True,
+            'use_sim_time': False,
             'yaml_filename': yaml_map_path
         }],
         arguments=['--ros-args', '--log-level', 'info'],
@@ -112,7 +112,7 @@ def generate_launch_description():
         name='lifecycle_manager_localization',
         output='screen',
         parameters=[{
-            'use_sim_time': True,
+            'use_sim_time': False,
             'autostart': True,
             'node_names': ['map_server', 'amcl']
         }]
@@ -122,7 +122,7 @@ def generate_launch_description():
     rviz_node = Node(
         package='rviz2',
         executable='rviz2',
-        arguments=['-d', rviz_config],
+        arguments=['-d', rviz_config, '--ros-args', '--log-level', 'rviz:=error'],
         output='screen'
     )
 
@@ -133,8 +133,8 @@ def generate_launch_description():
 
     # 声明参数
     ld.add_action(DeclareLaunchArgument(
-        'use_sim_time', default_value='true',
-        description='Use simulation (Gazebo) clock if true'))
+        'use_sim_time', default_value='false',
+        description='Use simulation (Gazebo) clock if false'))
     
     ld.add_action(DeclareLaunchArgument(
         'use_fast_livo', default_value='true',

@@ -60,9 +60,10 @@ def generate_launch_description():
     # https://github.com/ros/robot_state_publisher/pull/30
     # TODO(orduno) Substitute with `PushNodeRemapping`
     #              https://github.com/ros2/launch_ros/issues/56
-    remappings = [('/tf', 'tf'),
-                  ('/tf_static', 'tf_static')]
-
+    # remappings = [('/tf', 'tf'),
+    #               ('/tf_static', 'tf_static')]
+    # 实机模式：仅保留速度命令重映射
+    remappings = []
     # Create our own temporary YAML files that include substitutions
     param_substitutions = {
         'use_sim_time': use_sim_time,
@@ -86,7 +87,7 @@ def generate_launch_description():
 
     declare_use_sim_time_cmd = DeclareLaunchArgument(
         'use_sim_time',
-        default_value='true',  # 仿真环境默认使用仿真时间
+        default_value='false',  # 仿真环境默认使用仿真时间
         description='Use simulation (Gazebo) clock if true')
 
     declare_params_file_cmd = DeclareLaunchArgument(
@@ -142,8 +143,8 @@ def generate_launch_description():
                 executable='planner_server',
                 name='planner_server',
                 output='screen',
-                # respawn=use_respawn,
-                # respawn_delay=2.0,
+                respawn=use_respawn,
+                respawn_delay=2.0,
                 parameters=[configured_params],
                 arguments=['--ros-args', '--log-level', log_level],
                 remappings=remappings),
@@ -301,7 +302,7 @@ def generate_launch_description():
     start_rviz = Node(
         package='rviz2',
         executable='rviz2',
-        arguments=['-d', rviz_config_file],
+        arguments=['-d', rviz_config_file, '--ros-args', '--log-level', 'rviz:=error'],
         output='screen'
     )
 

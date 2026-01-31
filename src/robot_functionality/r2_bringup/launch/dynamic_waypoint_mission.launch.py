@@ -30,6 +30,7 @@ def generate_launch_description():
     use_rviz = LaunchConfiguration('use_rviz')
     auto_start_bt = LaunchConfiguration('auto_start_bt')
     use_planner_xml = LaunchConfiguration('use_planner_xml')
+    start_sim = LaunchConfiguration('start_sim')
 
     declare_delay_sim = DeclareLaunchArgument(
         'delay_after_sim', default_value='10.0',
@@ -59,6 +60,10 @@ def generate_launch_description():
         'use_planner_xml', default_value='true',
         description='Whether to use the XML file modified by kfs_planner (true) or the original XML file (false)'
     )
+    declare_start_sim = DeclareLaunchArgument(
+        'start_sim', default_value='false',
+        description='Whether to start simulation (default: false for real robot)'
+    )
 
     # ----- Package Paths -----
     sim_share = get_package_share_directory('pangolin_simulation')
@@ -79,20 +84,29 @@ def generate_launch_description():
     sim_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(sim_share, 'launch', 'pangolin_simulation.launch.py')
-        )
+        ),
+        condition=IfCondition(start_sim)
     )
 
     # ===== 2) 启动导航系统 (重定位 + Nav2) =====
     nav_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            os.path.join(bringup_share, 'launch', 'bringup_all_in_one.launch.py')
+            os.path.join(bringup_share, 'launch', 'bringup_in_real.launch.py')
         ),
         launch_arguments={'use_rviz': use_rviz}.items()
     )
 
-    delayed_nav = TimerAction(
+    delayed_nav_if_sim = TimerAction(
         period=delay_after_sim,
-        actions=[nav_launch]
+        actions=[nav_launch],
+        condition=IfCondition(start_sim)
+    )
+
+    # 如果不启动仿真，则尽快启动导航（略微延迟0.5s以保证依赖准备）
+    start_nav_if_no_sim = TimerAction(
+        period=0.5,
+        actions=[nav_launch],
+        condition=IfCondition(PythonExpression(["'", start_sim, "' == 'false'"]))
     )
 
     # ===== 3) 启动 fly_step_mission 行为树节点（先启动BT以确保service可用） =====
@@ -108,7 +122,7 @@ def generate_launch_description():
         output='screen',
         parameters=[{
             'bt_xml_file': bt_xml_file,
-            'use_sim_time': True,
+            'use_sim_time': False,
             'wait_for_nav2_timeout': 30.0,  # 等待 Nav2 action server 的超时时间
             'waypoints_file': waypoints_file
         }],
@@ -181,10 +195,12 @@ def generate_launch_description():
     ld.add_action(declare_auto_start_bt)
     ld.add_action(declare_publish_offset)
     ld.add_action(declare_use_planner_xml)
+    ld.add_action(declare_start_sim)
 
     # Launch actions
-    ld.add_action(sim_launch)           # 1. 先启动仿真
-    ld.add_action(delayed_nav)          # 2. 等待后启动导航
+    ld.add_action(sim_launch)           # 1. 可选：启动仿真（仅当 start_sim=true）
+    ld.add_action(delayed_nav_if_sim)   # 2a. 仿真启用：等待后启动导航
+    ld.add_action(start_nav_if_no_sim)  # 2b. 仿真关闭：立即启动导航
     ld.add_action(pre_publish)          # 3. 可选：在 BT 启动前若干秒发布 KFSDecision（测试)
     ld.add_action(delayed_bt)           # 4. 可选：自动启动行为树
     ld.add_action(delayed_planner)      # 5. 启动 planner（应在 BT 之后）

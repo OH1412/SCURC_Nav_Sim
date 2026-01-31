@@ -16,6 +16,7 @@ def generate_launch_description():
     delay_after_sim = LaunchConfiguration('delay_after_sim')  # seconds before starting YOLO
     delay_after_yolo = LaunchConfiguration('delay_after_yolo')  # seconds before starting KFS
     use_rviz = LaunchConfiguration('use_rviz')
+    start_sim = LaunchConfiguration('start_sim')
 
     declare_delay_sim = DeclareLaunchArgument(
         'delay_after_sim', default_value='8.0',
@@ -28,6 +29,10 @@ def generate_launch_description():
     declare_use_rviz = DeclareLaunchArgument(
         'use_rviz', default_value='false',
         description='Whether to enable RViz in downstream launches'
+    )
+    declare_start_sim = DeclareLaunchArgument(
+        'start_sim', default_value='false',
+        description='Whether to start simulation (default: false)'
     )
 
     # Package share dirs
@@ -44,7 +49,8 @@ def generate_launch_description():
     sim_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(r2_bringup_share, 'launch', 'simulation_bringup.launch.py')
-        )
+        ),
+        condition=IfCondition(start_sim)
     )
 
     # Include yolov8 launch after a delay (so simulation is up first)
@@ -54,7 +60,7 @@ def generate_launch_description():
         ),
         # pass log_level=error and node_output=log so when launched from this bringup
         # the YOLO nodes won't print their stdout to the parent terminal
-        launch_arguments={'use_sim_time': 'True', 'log_level': 'info', 'node_output': 'log'}.items()
+        launch_arguments={'use_sim_time': 'false', 'log_level': 'info', 'node_output': 'log'}.items()
     )
 
     delayed_yolo = TimerAction(
@@ -70,7 +76,7 @@ def generate_launch_description():
 
     kfs_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(kfs_launch_file),
-        launch_arguments={'use_sim_time': 'True'}.items()
+        launch_arguments={'use_sim_time': 'false'}.items()
     )
 
     delayed_kfs = TimerAction(
@@ -82,6 +88,7 @@ def generate_launch_description():
     ld.add_action(declare_delay_sim)
     ld.add_action(declare_delay_yolo)
     ld.add_action(declare_use_rviz)
+    ld.add_action(declare_start_sim)
 
     # order: start sim immediately, then yolov8 after delay_after_sim, then kfs after additional delay
     ld.add_action(sim_launch)

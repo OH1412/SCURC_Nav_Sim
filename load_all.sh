@@ -15,27 +15,7 @@ _source_if_exists() {
 }
 
 # 优先尝试整体 workspace 的 setup（如果你有在根目录构建过）
-# _source_if_exists "$HOME/SCURC_Nav_Sim/install/setup.bash"
-
-_source_if_exists "$HOME/SCURC_Nav_Sim/src/core_navigation/navigation2/install/setup.bash"
-_source_if_exists "$HOME/SCURC_Nav_Sim/src/dependencies_and_tools/BehaviorTree.CPP/install/setup.sh"
-_source_if_exists "$HOME/SCURC_Nav_Sim/src/dependencies_and_tools/fast_livo2_relocation/install/setup.sh"
-_source_if_exists "$HOME/SCURC_Nav_Sim/src/dependencies_and_tools/livox_ros_driver2/install/setup.sh"
-_source_if_exists "$HOME/SCURC_Nav_Sim/src/dependencies_and_tools/elevation_mapping_cupy_ros2/install/setup.sh"
-_source_if_exists "$HOME/SCURC_Nav_Sim/src/dependencies_and_tools/autonomous_exploration_development_environment/install/setup.sh"
-_source_if_exists "$HOME/SCURC_Nav_Sim/src/navigation_plugins/nav2_ext_plugins/costmap_intensity/install/setup.sh"
-_source_if_exists "$HOME/SCURC_Nav_Sim/src/navigation_plugins/nav2_ext_plugins/behavior_ext_plugins/install/setup.sh"
-_source_if_exists "$HOME/SCURC_Nav_Sim/src/navigation_plugins/nav2_ext_plugins/velocity_smoother_ext/install/setup.sh"
-_source_if_exists "$HOME/SCURC_Nav_Sim/src/navigation_plugins/nav2_ext_plugins/grid_map/install/setup.sh"
-_source_if_exists "$HOME/SCURC_Nav_Sim/src/robot_functionality/rc_decision/fly_step_mission/install/setup.sh"
-_source_if_exists "$HOME/SCURC_Nav_Sim/src/robot_functionality/kfs_detection_nav/install/setup.sh"
-_source_if_exists "$HOME/SCURC_Nav_Sim/src/robot_functionality/yolo_simulator/install/setup.sh"
-_source_if_exists "$HOME/SCURC_Nav_Sim/src/robot_functionality/rc_interfaces/yolov8_ros2_msgs/install/setup.sh"
-_source_if_exists "$HOME/SCURC_Nav_Sim/src/robot_functionality/rc_interfaces/fly_step_msgs/install/setup.sh"
-_source_if_exists "$HOME/SCURC_Nav_Sim/src/robot_functionality/serial_twist_bridge/install/setup.sh"
-_source_if_exists "$HOME/SCURC_Nav_Sim/src/simulation_environment/rc_robot_simulation/livox_laser_simulation_RO2/install/setup.sh"
-_source_if_exists "$HOME/SCURC_Nav_Sim/src/simulation_environment/rc_robot_simulation/pangolin_simulation/install/setup.sh"
-_source_if_exists "$HOME/SCURC_Nav_Sim/src/yolo_ros2_ws/yolov8_ros2/install/setup.sh"
+_source_if_exists "$HOME/SCURC_Nav_Sim/install/setup.bash"
 
 # Summary: print which files were sourced and which were missing
 echo
