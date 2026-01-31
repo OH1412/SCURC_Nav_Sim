@@ -23,8 +23,7 @@ Serial Twist Bridge 是 SCURC 机器人导航仿真系统中的串口通信桥�
 
 ```
 teleop_twist_keyboard ── Twist消息 ── Serial Bridge ── 串口协议 ── MCU
-        │                        │                        │
-        └─ 键盘输入              └─ ROS2节点              └─ 硬件控制
+        └─ 键盘输入           └─ ROS2节点                  └─ 硬件控制
 ```
 
 ### 数据格式详细说明

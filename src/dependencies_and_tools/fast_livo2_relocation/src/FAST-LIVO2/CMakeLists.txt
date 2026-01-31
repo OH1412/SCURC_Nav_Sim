@@ -151,11 +151,12 @@ ament_target_dependencies(imu_proc ${dependencies})
 ament_target_dependencies(laser_mapping ${dependencies})
 
 # linking libraries or executables to public dependencies
-target_link_libraries(laser_mapping 
-    ${CMAKE_SOURCE_DIR}/../../install/vikit_common/lib/libvikit_common.so 
-    ${CMAKE_SOURCE_DIR}/../../install/vikit_ros/lib/libvikit_ros.so
-    ${COMMON_DEPENDENCIES}
-)
+# 按照构建习惯加入，链接vikit库
+# target_link_libraries(laser_mapping 
+#     ${CMAKE_SOURCE_DIR}/../../install/vikit_common/lib/libvikit_common.so 
+#     ${CMAKE_SOURCE_DIR}/../../install/vikit_ros/lib/libvikit_ros.so
+#     ${COMMON_DEPENDENCIES}
+# )
 target_link_libraries(vio ${COMMON_DEPENDENCIES})
 target_link_libraries(lio utils ${COMMON_DEPENDENCIES})
 target_link_libraries(pre ${COMMON_DEPENDENCIES})

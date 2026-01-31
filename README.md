@@ -18,6 +18,15 @@
 2. **构建指南**: 项目构建步骤已在本文档中说明，如遇问题可优先参考各模块内的README.md。
 3. **版本兼容**: 当前文档基于ROS 2 Humble + Ubuntu 22.04环境编写。
 4. **技术支持**: 如遇问题，请查看[常见问题](#-常见问题-faq)部分或提交[GitHub Issue](https://github.com/OH1412/SCURC_Nav_Sim/issues)。
+5. **实车分支**: 用于真实机器人部署的代码和针对硬件的改动位于 Git 分支 `real_vehicle`。该分支包含对硬件驱动、串口/网络通信、传感器校准及安全限制的变更，可能与 `master` 分支存在不兼容处。仅在确认目标平台与依赖并完成充分测试后再切换并部署到真实机器人。切换示例：
+
+```bash
+# 获取最新远端分支并切换到实车分支
+git fetch origin
+git checkout real_vehicle
+```
+
+若该分支包含额外部署说明，请参阅仓库中 `real_vehicle/README.md`。
 
 ### 🔍 快速导航
 
@@ -61,7 +70,7 @@ graph TD
 
     %% 并行感知处理
     C --> E["🗺️ GPU高程建图<br/>Elevation Mapping CuPy<br/>2.5D地形重建"]
-    C --> F["🌍 高级地形分析<br/>Terrain Analysis<br/>3D障碍物检测"]
+    C --> F["🌍 地形分析<br/>Terrain Analysis<br/>3D障碍物检测"]
     C --> G["👁️ 目标检测<br/>YOLOv8 + KFS决策<br/>智能目标识别"]
 
     %% TF坐标变换系统
@@ -77,7 +86,7 @@ graph TD
     %% 决策与执行
     H --> J["🌳 行为树决策<br/>BT.CPP v4.0<br/>复杂任务逻辑"]
     I --> J
-    J --> K["🚀 FlyStep任务执行<br/>60航点支持<br/>高度控制"]
+    J --> K["🚀 FlyStep任务执行<br/>航点跟随<br/>高度控制"]
 
     %% 最终控制输出
     K --> L["⚡ 运动控制<br/>cmd_vel指令<br/>全向轮支持"]
@@ -208,30 +217,24 @@ SCURC_Nav_Sim/
 
 ### 技术栈
 
-| 类别 | 组件 | 版本 | 关键特性 | 用途 |
-|------|------|------|----------|------|
-| **操作系统** | Ubuntu | 22.04 LTS | Jammy Jellyfish | 开发和部署环境 |
-| **中间件** | ROS 2 | Humble Hawksbill | LTS版本，DDS通信 | 机器人软件框架 |
-| **编程语言** | C++17 | GCC 11+ | 标准模板库，智能指针 | 高性能核心算法 |
-| **编程语言** | Python | 3.10 | ROS 2推荐版本 | 配置、工具、接口开发 |
-| **GPU加速** | CUDA | 12.x | 并行计算，GPU编程 | 高程建图加速 |
-| **GPU加速** | CuPy | 12.x | NumPy兼容，GPU数组 | 实时地形处理 |
-| **深度学习** | PyTorch | 2.x | 动态图，TorchScript | YOLO目标检测推理 |
-| **深度学习** | YOLOv8 | Ultralytics | 实时检测，多类别支持 | KFS目标识别 |
-| **SLAM** | FAST-LIVO2 | 重定位版 | 激光-惯性融合，100Hz | 高精度实时定位 |
-| **导航框架** | Navigation2 | ROS 2原生 | 插件化架构，多层代价地图 | 完整导航解决方案 |
-| **决策框架** | BehaviorTree.CPP | v4.0+ | 可视化调试，异步执行 | 复杂任务规划 |
-| **仿真引擎** | Gazebo | 11.x | ODE物理引擎，传感器仿真 | 机器人仿真测试 |
-| **仿真环境** | Pangolin Simulation | RoboCon2026 | 竞赛专用场地，多场景 | 比赛策略验证 |
-| **传感器** | Livox Mid-360 | 激光雷达 | 非重复扫描，100m范围 | 3D环境感知 |
-| **地图框架** | GridMap | 多层网格 | elevation/variance/traversability | 地形表示和融合 |
-| **地图框架** | Elevation Mapping | GPU加速 | 实时2.5D重建 | 动态地形建图 |
+| 核心组件 | 技术栈 | 版本要求 | 关键特性 |
+|----------|--------|----------|----------|
+| **基础环境** | Ubuntu + ROS 2 | 22.04 LTS + Humble | Jammy + LTS版本 + DDS通信 |
+| **编程语言** | C++17 + Python | GCC 11+ + 3.10 | 智能指针+STL + ROS2推荐 + 类型注解 |
+| **GPU加速** | CUDA + CuPy | 12.x + 12.x | 并行计算 + NumPy兼容GPU数组 |
+| **深度学习** | PyTorch + YOLOv8 | 2.x + Ultralytics | 动态图推理 + 实时多类别检测 |
+| **定位建图** | FAST-LIVO2 + 多SLAM | 重定位版 + LOAM | 激光惯性融合100Hz + 算法切换支持 |
+| **导航控制** | Navigation2 + Nav2插件 | ROS2原生 + 扩展 | 插件化架构 + 代价地图层 + 智能后退 |
+| **决策规划** | BehaviorTree.CPP | v4.0+ | 可视化调试 + 异步执行 + XML配置 |
+| **感知处理** | GridMap + Elevation | 多层网格 + GPU加速 | 地形融合 + 实时2.5D重建 |
+| **传感器** | Livox Mid-360 | 激光雷达 | 非重复扫描 + 100m范围 + 3D感知 |
+| **仿真平台** | Gazebo + Pangolin | 11.x + RoboCon2026 | ODE物理引擎 + 竞赛专用场地 + 多场景 |
 
 ---
 
 ## 🚀 核心功能
 
-### 1. 🎯 竞赛级定位系统
+### 1. 🎯 高精度定位系统
 - **多SLAM算法支持**: FAST-LIVO2（推荐）+ LOAM等算法无缝切换
 - **高精度重定位**: ICP算法支持大范围环境快速重定位，回环检测
 - **Livox Mid-360优化**: 专门针对Livox激光雷达的性能优化，实时高频定位
@@ -274,7 +277,7 @@ SCURC_Nav_Sim/
 - **开发友好**: 详细的文档、示例代码和调试工具
 
 ### 8. 📈 性能基准
-- **定位精度**: FAST-LIVO2 < 5cm (室内环境)
+- **定位精度**: FAST-LIVO2 毫米级(室内环境)
 - **处理频率**: 100Hz SLAM输出，实时地形重建 < 5ms/帧
 - **导航响应**: 规划延迟 < 100ms，控制周期 50Hz
 - **内存占用**: GPU加速模式下 < 4GB RAM
@@ -290,8 +293,8 @@ SCURC_Nav_Sim/
 |------|----------|----------|------|
 | **CPU** | Intel i5 / AMD Ryzen 5 | Intel i7 / AMD Ryzen 7 | 编译和运行需要多核支持 |
 | **内存** | 16GB RAM | 32GB RAM | 高程建图和SLAM需要大量内存 |
-| **GPU** | NVIDIA GTX 1660 (6GB) | NVIDIA RTX 3060 (12GB+) | CUDA 12.x必须，显存影响地形重建质量 |
-| **存储** | 50GB SSD | 100GB SSD | 包含所有依赖和构建产物 |
+| **GPU** | (可选) | NVIDIA RTX 4050 (12GB+) | CUDA 12.x，仅高程地图需要 |
+| **存储** | 5GB SSD | 100GB SSD | 包含所有依赖和构建产物 |
 | **网络** | 千兆以太网 | 万兆以太网 | 大量传感器数据传输 |
 
 ### 传感器配置
@@ -321,10 +324,7 @@ cd SCURC_Nav_Sim
 source ./load_all.sh
 
 # 2. 启动完整仿真系统
-ros2 launch r2_bringup dynamic_waypoint_mission.launch.py
-
-# 3. 在另一个终端启动RViz可视化
-ros2 launch r2_bringup rviz.launch.py
+ros2 launch r2_bringup simulation_bringup.launch.launch.py
 ```
 
 **成功标志**: RViz中显示机器人模型、地图和导航路径，行为树开始执行航点任务。
