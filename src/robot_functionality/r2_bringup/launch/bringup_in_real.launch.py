@@ -39,16 +39,17 @@ def generate_launch_description():
         'RCUTILS_LOGGING_BUFFERED_STREAM', '1')
 
     # 0) Optional: start simulation
-    try:
-        sim_share = get_package_share_directory('pangolin_simulation')
-        sim_launch = IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(
-                os.path.join(sim_share, 'launch', 'pangolin_simulation.launch.py')
-            ),
-            condition=IfCondition(start_sim)
-        )
-    except Exception:
-        sim_launch = None
+    # try:
+    #     sim_share = get_package_share_directory('pangolin_simulation')
+    #     sim_launch = IncludeLaunchDescription(
+    #         PythonLaunchDescriptionSource(
+    #             os.path.join(sim_share, 'launch', 'pangolin_simulation.launch.py')
+    #         ),
+    #         condition=IfCondition(start_sim)
+    #     )
+    # except Exception:
+    #     sim_launch = None
+    sim_launch = None
 
     # 1) Livox driver (MID360) - try multiple likely locations
     livox_launch_path = None
@@ -94,15 +95,37 @@ def generate_launch_description():
     # 2) Our bringup (relocalization + navigation)
     r2_share = get_package_share_directory('r2_bringup')
     bringup_all_in_one_path = os.path.join(r2_share, 'launch', 'bringup_all_in_one.launch.py')
+    # start_bringup_all = IncludeLaunchDescription(
+    #     PythonLaunchDescriptionSource(bringup_all_in_one_path),
+    #     # Forward use_sim_time to downstream if they consume it
+    #     launch_arguments={'use_sim_time': use_sim_time}.items(),
+    # )
+
     start_bringup_all = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(bringup_all_in_one_path),
-        # Forward use_sim_time to downstream if they consume it
-        launch_arguments={'use_sim_time': use_sim_time}.items(),
-    )
+    PythonLaunchDescriptionSource(bringup_all_in_one_path),
+    # Forward use_sim_time and disable pointcloud->scan (no pangolin required)
+    launch_arguments={
+        'use_sim_time': use_sim_time,
+        'use_pointcloud_to_scan': 'false'
+    }.items(),
+)
 
     delayed_bringup = TimerAction(
         period=start_delay,
         actions=[start_bringup_all]
+    )
+
+    # 增加terrain pipeline，无需pangolin仿真环境也能使用（如果有激光雷达数据），但需要等Livox驱动启动后再启动以确保相关话题可用   
+
+    # Include octomap/terrain pipeline (only octomap_server_intensity.launch.py)
+    octomap_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(os.path.join(r2_share, 'launch', 'octomap_server_intensity.launch.py'))
+    )
+
+    # Start octomap/terrain pipeline shortly after Livox driver (before full bringup)
+    delayed_octomap = TimerAction(
+        period='2.0',
+        actions=[octomap_launch]
     )
 
     ld = LaunchDescription()
