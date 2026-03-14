@@ -17,7 +17,7 @@ import os
 from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, GroupAction, SetEnvironmentVariable
+from launch.actions import DeclareLaunchArgument, GroupAction, SetEnvironmentVariable, TimerAction
 from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import LoadComposableNodes
@@ -45,6 +45,7 @@ def generate_launch_description():
 
     lifecycle_nodes = [
                        # 'map_server',  # 已在 relocalization.launch.py 中启动
+                       'local_costmap',  # 本地代价地图
                        'controller_server',
                        'smoother_server',
                        'planner_server',
@@ -118,6 +119,28 @@ def generate_launch_description():
     load_nodes = GroupAction(
         condition=IfCondition(PythonExpression(['not ', use_composition])),
         actions=[
+            # Local Costmap Server - 必须启动用于发布 local_costmap/costmap_raw
+            Node(
+                package='nav2_costmap_2d',
+                executable='costmap_2d_ros',
+                name='local_costmap',
+                output='screen',
+                respawn=use_respawn,
+                respawn_delay=2.0,
+                parameters=[configured_params],
+                arguments=['--ros-args', '--log-level', log_level],
+                remappings=remappings),
+            # Global Costmap Server - 必须启动用于全局规划
+            Node(
+                package='nav2_costmap_2d',
+                executable='costmap_2d_ros',
+                name='global_costmap',
+                output='screen',
+                respawn=use_respawn,
+                respawn_delay=2.0,
+                parameters=[configured_params],
+                arguments=['--ros-args', '--log-level', log_level],
+                remappings=remappings),
             # map_server 已在 relocalization.launch.py 中启动，此处不再重复
             Node(
                 package='nav2_controller',
@@ -205,6 +228,20 @@ def generate_launch_description():
         condition=IfCondition(use_composition),
         target_container=container_name_full,
         composable_node_descriptions=[
+            # Local Costmap Server - 必须启动用于发布 local_costmap/costmap_raw
+            ComposableNode(
+                package='nav2_costmap_2d',
+                plugin='nav2_costmap_2d::Costmap2DRos',
+                name='local_costmap',
+                parameters=[configured_params],
+                remappings=remappings),
+            # Global Costmap Server - 必须启动用于全局规划
+            ComposableNode(
+                package='nav2_costmap_2d',
+                plugin='nav2_costmap_2d::Costmap2DRos',
+                name='global_costmap',
+                parameters=[configured_params],
+                remappings=remappings),
             # map_server 已在 relocalization.launch.py 中启动，此处不再重复
             ComposableNode(
                 package='nav2_controller',
@@ -259,28 +296,26 @@ def generate_launch_description():
         ],
     )
     
+    # 延迟启动 terrain_analysis 以确保 fast_livo 已产生点云数据
+    # fast_livo 启动延迟: 1s, navigation 启动延迟: 8s,
+    # 所以 terrain_analysis 应该在 navigation 启动后再延迟 3s
     start_terrain_analysis = IncludeLaunchDescription(
         FrontendLaunchDescriptionSource(os.path.join(
         get_package_share_directory('terrain_analysis'), 'launch', 'terrain_analysis.launch')
         )
     )
     
-    # start_terrain_analysis_t = Node(
-    #     package='sensor_scan_generation',
-    #     executable='sensorScanGeneration',
-    #     output='screen',
-    #     remappings=[('/registered_scan', '/terrain_map'),
-    #                     ('/sensor_scan', '/terrain_map_at_scan')]
-    # )
-
-    start_terrain_analysis_ext = IncludeLaunchDescription(
-        FrontendLaunchDescriptionSource(os.path.join(
-        get_package_share_directory('terrain_analysis_ext'), 'launch', 'terrain_analysis_ext.launch')
-        ),
-        # launch_arguments={
-        # 'checkTerrainConn': checkTerrainConn,
-        # }.items()
+    delayed_start_terrain_analysis = TimerAction(
+        period=3.0,  # 相对于 navigation 启动，再延迟 3 秒
+        actions=[start_terrain_analysis]
     )
+    
+    # terrain_analysis_ext 相关代码暂不启用（可根据需要启用）
+    # start_terrain_analysis_ext = IncludeLaunchDescription(
+    #     FrontendLaunchDescriptionSource(os.path.join(
+    #     get_package_share_directory('terrain_analysis_ext'), 'launch', 'terrain_analysis_ext.launch')
+    #     )
+    # )
     
     # start_terrain_analysis_ext_t = Node(
     #     package='sensor_scan_generation',
@@ -321,8 +356,8 @@ def generate_launch_description():
     ld.add_action(declare_container_name_cmd)
     ld.add_action(declare_use_respawn_cmd)
     ld.add_action(declare_log_level_cmd)
-    # add terrain analysis
-    ld.add_action(start_terrain_analysis)
+    # add terrain analysis with delay
+    ld.add_action(delayed_start_terrain_analysis)
     # ld.add_action(start_terrain_analysis_ext)
     # ld.add_action(ground_segmentation_node)
     # Add the actions to launch all of the navigation nodes

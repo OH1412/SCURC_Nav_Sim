@@ -118,13 +118,13 @@ def generate_launch_description():
         }]
     )
 
-    # RViz
-    rviz_node = Node(
-        package='rviz2',
-        executable='rviz2',
-        arguments=['-d', rviz_config, '--ros-args', '--log-level', 'rviz:=error'],
-        output='screen'
-    )
+    # RViz 在 navigation.launch.py 中启动，此处注释以避免重复启动
+    # rviz_node = Node(
+    #     package='rviz2',
+    #     executable='rviz2',
+    #     arguments=['-d', rviz_config, '--ros-args', '--log-level', 'rviz:=error'],
+    #     output='screen'
+    # )
 
     # ========================================================================
     # 4. 启动逻辑
@@ -151,7 +151,6 @@ def generate_launch_description():
     # 3. 延迟启动 ICP
     ld.add_action(TimerAction(period=2.0, actions=[icp_node]))
 
-    # 4. RViz
-    ld.add_action(rviz_node)
+    # RViz 在 navigation.launch.py 中启动，此处不再启动
 
     return ld

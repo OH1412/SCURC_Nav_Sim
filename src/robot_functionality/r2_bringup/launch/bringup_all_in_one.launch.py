@@ -81,8 +81,15 @@ def generate_launch_description():
         ]
     )
 
+    # 延迟启动 navigation 以确保所有依赖服务就绪
+    # pointcloud_to_scan 启动延迟: 0s
+    # relocalization 启动延迟: 1s
+    # fast_livo 启动延迟: 1s (相对 relocalization, 实际 2s)
+    # terrain_analysis 需要 fast_livo 的点云，通常需要 3-5 秒才能产生有效数据
+    # 综合考虑：navigation 启动延迟改为 8 秒（相对 bringup_all_in_one），
+    # 这样 terrain_analysis 在 navigation 启动后还能再延迟 3 秒以确保数据流就绪
     delayed_start_navigation = TimerAction(
-        period=15.0,
+        period=8.0,
         actions=[
             start_navigation
         ]
