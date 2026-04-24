@@ -1,0 +1,445 @@
+# amcl:
+#   ros__parameters:
+#     use_sim_time: False 
+
+#     base_frame_id: "base_link"
+#     odom_frame_id: "odom"
+#     global_frame_id: "map"
+    
+#     # 启用 TF 发布
+#     tf_broadcast: true
+
+#     # 话题设置 (对接 pointcloud_to_laserscan)
+#     scan_topic: "scan"
+
+#     # 开启后，AMCL 启动时会自动把机器人“瞬移”到这个坐标
+#     set_initial_pose: true
+#     initial_pose:
+#       x: 0.0      # 根据你的地图原点填写 (比如你原来的静态TF里写的数值)
+#       y: 0.0
+#       z: 0.0
+#       yaw: 0.0    # 初始朝向 (弧度)
+
+#     # 运动模型 (全向轮/麦克纳姆轮)
+#     robot_model_type: "nav2_amcl::OmniMotionModel"
+#     # 运动噪声：FastLivo 精度很高，这些值可以适当设小一点 (0.1~0.2)
+#     alpha1: 0.2
+#     alpha2: 0.2
+#     alpha3: 0.2
+#     alpha4: 0.2
+#     alpha5: 0.2 
+
+#     # 粒子滤波与性能
+#     min_particles: 500
+#     max_particles: 3000     #稍微调大一点上限，鲁棒性更好
+#     update_min_d: 0.20      # 动 0.2米 更新一次
+#     update_min_a: 0.20      # 转 0.2弧度 更新一次
+#     resample_interval: 1
+#     transform_tolerance: 0.1 # 建议设宽一点，防止 FastLivo 延迟导致报错
+#     recovery_alpha_fast: 0.1 # 开启自动恢复 (防迷路)
+#     recovery_alpha_slow: 0.001
+
+#     # 激光模型 (Livox 建议配置)
+#     laser_max_range: 30.0    # 不需要 100米，室内 30米足够
+#     laser_min_range: -1.0
+#     max_beams: 100           # 增加参与计算的光束数量，利用 Livox 的高密度
+#     laser_model_type: "likelihood_field"
+#     z_hit: 0.5
+#     z_rand: 0.5
+#     sigma_hit: 0.2
+#     laser_likelihood_max_dist: 2.0
+#     do_beamskip: false
+
+bt_navigator:
+  ros__parameters:
+    use_sim_time: False
+    global_frame: map
+    robot_base_frame: base
+    odom_topic: state_estimation
+    bt_loop_duration: 10
+    default_server_timeout: 20
+    # TF缓存设置，增加缓存时间以避免时间戳错误
+    transform_tolerance: 0.5
+    # 'default_nav_through_poses_bt_xml' and 'default_nav_to_pose_bt_xml' are use defaults:
+    # nav2_bt_navigator/navigate_to_pose_w_replanning_and_recovery.xml
+    default_nav_through_poses_bt_xml: $(find-pkg-share leg_bringup)/behavior_tree/navigate_through_pose_w_replanning_and_recovery.xml
+    default_nav_to_pose_bt_xml: $(find-pkg-share leg_bringup)/behavior_tree/navigate_to_pose_w_replanning_and_recovery.xml
+    # They can be set here or via a RewrittenYaml remap from a parent launch file to Nav2.
+    plugin_lib_names:
+      - nav2_compute_path_to_pose_action_bt_node
+      - nav2_compute_path_through_poses_action_bt_node
+      - nav2_smooth_path_action_bt_node
+      - nav2_follow_path_action_bt_node
+      - nav2_spin_action_bt_node
+      - nav2_wait_action_bt_node
+      - nav2_assisted_teleop_action_bt_node
+      - nav2_back_up_action_bt_node
+      - nav2_drive_on_heading_bt_node
+      - nav2_clear_costmap_service_bt_node
+      - nav2_is_stuck_condition_bt_node
+      - nav2_goal_reached_condition_bt_node
+      - nav2_goal_updated_condition_bt_node
+      - nav2_globally_updated_goal_condition_bt_node
+      - nav2_is_path_valid_condition_bt_node
+      - nav2_initial_pose_received_condition_bt_node
+      - nav2_reinitialize_global_localization_service_bt_node
+      - nav2_rate_controller_bt_node
+      - nav2_distance_controller_bt_node
+      - nav2_speed_controller_bt_node
+      - nav2_truncate_path_action_bt_node
+      - nav2_truncate_path_local_action_bt_node
+      - nav2_goal_updater_node_bt_node
+      - nav2_recovery_node_bt_node
+      - nav2_pipeline_sequence_bt_node
+      - nav2_round_robin_node_bt_node
+      - nav2_transform_available_condition_bt_node
+      - nav2_time_expired_condition_bt_node
+      - nav2_path_expiring_timer_condition
+      - nav2_distance_traveled_condition_bt_node
+      - nav2_single_trigger_bt_node
+      - nav2_goal_updated_controller_bt_node
+      - nav2_is_battery_low_condition_bt_node
+      - nav2_navigate_through_poses_action_bt_node
+      - nav2_navigate_to_pose_action_bt_node
+      - nav2_remove_passed_goals_action_bt_node
+      - nav2_planner_selector_bt_node
+      - nav2_controller_selector_bt_node
+      - nav2_goal_checker_selector_bt_node
+      - nav2_controller_cancel_bt_node
+      - nav2_path_longer_on_approach_bt_node
+      - nav2_wait_cancel_bt_node
+      - nav2_spin_cancel_bt_node
+      - nav2_back_up_cancel_bt_node
+      - nav2_assisted_teleop_cancel_bt_node
+      - nav2_drive_on_heading_cancel_bt_node
+      - nav2_is_battery_charging_condition_bt_node
+
+bt_navigator_navigate_through_poses_rclcpp_node:
+  ros__parameters:
+    use_sim_time: False
+
+bt_navigator_navigate_to_pose_rclcpp_node:
+  ros__parameters:
+    use_sim_time: False
+
+controller_server:
+  ros__parameters:
+    use_sim_time: False
+    controller_frequency: 10.0
+    min_x_velocity_threshold: 0.05
+    min_y_velocity_threshold: 0.05
+    min_theta_velocity_threshold: 0.1
+    failure_tolerance: 2.0
+    odom_topic: "state_estimation"
+    transform_tolerance: 0.5
+    progress_checker_plugin: "progress_checker"
+    goal_checker_plugins: ["general_goal_checker"]
+    controller_plugins: ["FollowPath"]
+    # Progress checker parameters
+    progress_checker:
+      plugin: "nav2_controller::SimpleProgressChecker"
+      required_movement_radius: 0.08
+      movement_time_allowance: 12.0
+    # Goal checker parameters
+    general_goal_checker:
+      stateful: False
+      plugin: "nav2_controller::SimpleGoalChecker"
+      xy_goal_tolerance: 0.15
+      yaw_goal_tolerance: 3.14
+    FollowPath:           
+      #plugin: "dwb_core::DWBLocalPlanner"
+      plugin: "dog_nav/DogDiscreteController"
+      lookahead_dist: 0.15
+      yaw_tolerance: 0.35
+      forward_check_dist: 0.15
+      safety_threshold: 128
+      # debug_trajectory_details: False
+      # min_vel_x: -1.0
+      # min_vel_y: -1.0
+      # max_vel_x: 1.0
+      # max_vel_y: 1.0
+      # max_vel_theta: 5.0
+      # min_speed_xy: -5.0
+      # max_speed_xy: 3.0
+      # min_speed_theta: -5.0
+      # acc_lim_x: 3.0
+      # acc_lim_y: 3.0
+      # acc_lim_theta: 10.0
+      # decel_lim_x: -3.0
+      # decel_lim_y: -3.0
+      # decel_lim_theta: -10.0
+      # vx_samples: 20
+      # vy_samples: 20
+      # vtheta_samples: 20
+      # sim_time: 0.51
+      # linear_granularity: 0.05
+      # angular_granularity: 0.025
+      # transform_tolerance: 0.2
+      # xy_goal_tolerance: 0.25
+      # trans_stopped_velocity: 0.25
+      # short_circuit_trajectory_evaluation: True
+      # stateful: True
+      # critics:
+      #   - RotateToGoal
+      #   - Oscillation
+      #   - BaseObstacle
+      #   - GoalAlign
+      #   - PathAlign
+      #   - PathDist
+      #   - GoalDist
+      # BaseObstacle:
+      #   scale: 0.02
+      # PathAlign:
+      #   scale: 32.0
+      #   forward_point_distance: 0.1
+      # GoalAlign:
+      #   scale: 24.0
+      #   forward_point_distance: 0.1
+      # PathDist:
+      #   scale: 32.0
+      # GoalDist:
+      #   scale: 24.0
+      # RotateToGoal:
+      #   scale: 32.0
+      #   slowing_factor: 5.0
+      #   lookahead_time: -1.0
+      
+
+local_costmap:
+  local_costmap:
+    ros__parameters:
+      update_frequency: 10.0
+      publish_frequency: 10.0
+      global_frame: odom
+      robot_base_frame: base
+      use_sim_time: False
+      rolling_window: true
+      width: 10
+      height: 10
+      resolution: 0.05
+      footprint: '[ [0.35, 0.225], [-0.35, 0.225], [-0.35, -0.225], [0.35, -0.225] ]'
+      #robot_radius: 0.15
+      plugins: ["local_obstacle_layer", "local_inflation_layer"]
+      # 这里可以加入traversability_grid_map_layer来处理地形代价地图
+      # plugins: ["local_obstacle_layer", "local_inflation_layer", "traversability_grid_map_layer"] # 添加你的层
+      
+      # traversability_grid_map_layer:
+      #   plugin: "grid_map_costmap_2d::GridMapCostmap2D"
+      #   grid_map_topic: "/elevation_mapping/elevation_map_raw" 
+      #   map_layer_name: "traversability"
+      #   # 原始数据范围（0.0 到 1.0）
+      #   data_min: 0.0
+      #   data_max: 1.0
+      #   # 成本值映射：将 traversability 值 (1.0=安全) 映射到 Costmap (0=安全)
+      #   cost_map_mode: "INVERTED_COST_TO_OCCUPANCY" # 使用反转模式
+        
+      #   # 阈值设置：确保低可通行度区域被视为致命障碍 (254)
+      #   fatal_cost_threshold: 0.2 # 可通行度低于 0.2 的区域被视为致命障碍
+      #   unknown_cost_value: 255
+      local_inflation_layer:
+        # This layer places an exponential decay functions around obstacles to 
+        # increase cost to traverse near collision. It also places a lethal cost 
+        # around obstacles within the robot’s fully inscribed radius - even if a 
+        # robot is non-circular for optimized first-order collision checking.
+        plugin: "nav2_costmap_2d::InflationLayer"
+        cost_scaling_factor: 3.0
+        inflation_radius: 0.2
+      local_obstacle_layer:
+        plugin: "costmap_intensity::ObstacleLayerIntensity"
+        enabled: True
+        footprint_clearing_enabled: True
+        max_obstacle_intensity: 2.0
+        min_obstacle_intensity: 0.2
+        observation_sources: pointcloud
+        pointcloud:  # no frame set, uses frame from message
+          topic: /terrain_map
+          max_obstacle_height: 0.5
+          min_obstacle_height: 0.2
+          obstacle_max_range: 4.5
+          obstacle_min_range: 0.8
+          raytrace_max_range: 4.5
+          raytrace_min_range: 0.8
+          clearing: True
+          marking: True
+          data_type: "PointCloud2"
+      static_layer:
+        plugin: "nav2_costmap_2d::StaticLayer"
+        map_subscribe_transient_local: True
+      always_send_full_costmap: True
+
+global_costmap:
+  global_costmap:
+    ros__parameters:
+      update_frequency: 1.0
+      publish_frequency: 1.0
+      global_frame: map
+      robot_base_frame: base
+      use_sim_time: False
+      footprint: '[ [0.35, 0.225], [-0.35, 0.225], [-0.35, -0.225], [0.35, -0.225] ]'
+      #footprint: [ [0.1, 0.1], [0.1, -0.1], [-0.1, -0.1], [-0.1, 0.1] ]
+      #robot_radius: 0.15
+      resolution: 0.1
+      track_unknown_space: true
+      plugins: ["static_layer", "global_inflation_layer"] # "global_obstacle_layer", 
+      static_layer:
+        plugin: "nav2_costmap_2d::StaticLayer"
+        map_subscribe_transient_local: True
+      global_inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        cost_scaling_factor: 5.0
+        inflation_radius: 0.2
+      always_send_full_costmap: True
+      # global_obstacle_layer:
+      #   plugin: "costmap_intensity::ObstacleLayerIntensity"
+      #   enabled: True
+      #   footprint_clearing_enabled: True
+      #   max_obstacle_intensity: 2.0
+      #   min_obstacle_intensity: 0.2
+      #   observation_sources: pointcloud
+      #   pointcloud:
+      #     topic: /terrain_map_ext
+      #     max_obstacle_height: 2.0
+      #     min_obstacle_height: -2.0
+      #     obstacle_max_range: 2.5
+      #     obstacle_min_range: 0.0
+      #     raytrace_max_range: 3.0
+      #     raytrace_min_range: 0.0
+      #     clearing: True
+      #     marking: True
+      #     data_type: "PointCloud2"
+      #     inf_is_valid: false
+
+
+map_server:
+  ros__parameters:
+    use_sim_time: False
+    # Overridden in launch by the "map" launch configuration or provided default value.
+    # To use in yaml, remove the default "map" value in the tb3_simulation_launch.py file & provide full path to map below.
+    yaml_filename: "$(find-pkg-share leg_bringup)/maps/test_map.yaml"
+
+map_saver:
+  ros__parameters:
+    use_sim_time: False
+    save_map_timeout: 5.0
+    free_thresh_default: 0.25
+    occupied_thresh_default: 0.65
+    map_subscribe_transient_local: True
+
+planner_server:
+  ros__parameters:
+    expected_planner_frequency: 10.0
+    use_sim_time: False
+    planner_plugins: ["GridBased"]
+    GridBased:
+      # Dijkstra or A*
+      # plugin: "nav2_navfn_planner/NavfnPlanner"
+      # tolerance: 0.5
+      # use_astar: false
+      # allow_unknown: true
+
+      # 2D A*
+      # plugin: "nav2_smac_planner/SmacPlanner2D"
+      # tolerance: 0.125                      # tolerance for planning if unable to reach exact pose, in meters
+      # downsample_costmap: false             # whether or not to downsample the map
+      # downsampling_factor: 1                # multiplier for the resolution of the costmap layer (e.g. 2 on a 5cm costmap would be 10cm)
+      # allow_unknown: true                   # allow traveling in unknown space
+      # max_iterations: 1000000               # maximum total iterations to search for before failing (in case unreachable), set to -1 to disable
+      # max_on_approach_iterations: 1000      # maximum number of iterations to attempt to reach goal once in tolerance
+      # max_planning_time: 2.0                # max time in s for planner to plan, smooth
+      # cost_travel_multiplier: 2.0           # Cost multiplier to apply to search to steer away from high cost areas. Larger values will place in the center of aisles more exactly (if non-`FREE` cost potential field exists) but take slightly longer to compute. To optimize for speed, a value of 1.0 is reasonable. A reasonable tradeoff value is 2.0. A value of 0.0 effective disables steering away from obstacles and acts like a naive binary search A*.
+      # use_final_approach_orientation: false # Whether to set the final path pose at the goal's orientation to the requested orientation (false) or in line with the approach angle so the robot doesn't rotate to heading (true)
+      # smoother:
+      #   max_iterations: 1000
+      #   w_smooth: 0.3
+      #   w_data: 0.2
+      #   tolerance: 1.0e-10
+
+      # Theta*
+      plugin: "nav2_theta_star_planner/ThetaStarPlanner"
+      how_many_corners: 8
+      w_euc_cost: 1.0
+      w_traversal_cost: 2.0
+      w_heuristic_cost: 1.0
+
+# smoother_server:
+#   ros__parameters:
+#     use_sim_time: True
+#     robot_base_frame: base_link
+#     smoother_plugins: ["simple_smoother"]
+#     simple_smoother:
+#       plugin: "nav2_smoother::SimpleSmoother"
+#       tolerance: 1.0e-10
+#       max_its: 1000
+#       do_refinement: True
+
+behavior_server:
+  ros__parameters:
+    costmap_topic: local_costmap/costmap_raw
+    footprint_topic: local_costmap/published_footprint
+    cycle_frequency: 10.0
+    behavior_plugins: ["spin", "backup", "drive_on_heading", "assisted_teleop", "wait"]
+    spin:
+      plugin: "nav2_behaviors/Spin"
+    backup:
+      plugin: "nav2_behaviors/BackUpTwzFree"
+    drive_on_heading:
+      plugin: "nav2_behaviors/DriveOnHeading"
+    wait:
+      plugin: "nav2_behaviors/Wait"
+    assisted_teleop:
+      plugin: "nav2_behaviors/AssistedTeleop"
+    global_frame: map
+    robot_base_frame: base
+    transform_tolerance: 0.5
+    use_sim_time: False
+    simulate_ahead_time: 2.0
+    max_rotational_vel: 1.0
+    min_rotational_vel: 0.4
+    rotational_acc_lim: 3.2
+    # param for BackUpTwzFree
+    robot_radius: 0.42
+    max_radius: 3.5
+    service_name: "local_costmap/get_costmap"
+    free_threshold: 3
+    visualization: True
+
+robot_state_publisher:
+  ros__parameters:
+    use_sim_time: False
+
+# waypoint_follower:
+#   ros__parameters:
+#     use_sim_time: True
+#     loop_rate: 20
+#     stop_on_failure: true
+#     plugin_description: "/home/sentry_ws/install/sentry_waypoint_loader_cpp/share/sentry_waypoint_loader_cpp/plugin_description/sentry_waypoint_task_plugin.xml"
+#     waypoint_task_executor_plugin: "sentry_waypoint_loader_cpp/SentryWaypointTask"
+#     sentry_waypoint_loader_cpp/SentryWaypointTask:
+#       plugin: "sentry_waypoint_loader_cpp::SentryWaypointTask"
+#       enabled: True  # 启用插件
+
+waypoint_follower:
+  ros__parameters:
+    use_sim_time: False
+    loop_rate: 20          # 反馈发布频率（20Hz，与原配置一致）
+    stop_on_failure: true
+    waypoint_task_executor_plugin: "wait_at_waypoint"
+    wait_at_waypoint:
+      plugin: "nav2_waypoint_follower::WaitAtWaypoint"
+      enabled: True
+      waypoint_pause_duration: 8
+
+velocity_smoother:
+  ros__parameters:
+    use_sim_time: False
+    smoothing_frequency: 15.0
+    scale_velocities: False
+    feedback: "CLOSED_LOOP"
+    max_velocity: [2.5, 2.5, 12.0]
+    min_velocity: [-2.5, -2.5, -12.0]
+    max_accel: [5.0, 5.0, 15.0]
+    max_decel: [-5.0, -5.0, -15.0]
+    odom_topic: "state_estimation"
+    odom_duration: 0.1
+    deadband_velocity: [0.0, 0.0, 0.0]
+    velocity_timeout: 1.0

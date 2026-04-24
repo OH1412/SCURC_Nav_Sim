@@ -1,0 +1,126 @@
+<!--
+  This Behavior Tree replans the global path once every 15 seconds or if the path becomes invalid. It also has
+  recovery actions specific to planning / control as well as general system issues.
+  This will be continuous if a kinematically valid planner is selected.
+-->
+<root main_tree_to_execute="MainTree">
+  <!-- 节点模型定义（Groot 识别所需） -->
+  <TreeNodesModel>
+    <!-- 控制节点 -->
+    <RecoveryNode>
+      <Parameter name="number_of_retries" type="int"/>
+      <Parameter name="name" type="string"/>
+    </RecoveryNode>
+    <PipelineSequence>
+      <Parameter name="name" type="string"/>
+    </PipelineSequence>
+    <RateController>
+      <Parameter name="hz" type="double"/>
+    </RateController>
+    <Fallback>
+      <Parameter name="name" type="string"/>
+    </Fallback>
+    <ReactiveSequence>
+      <Parameter name="name" type="string"/>
+    </ReactiveSequence>
+    <Inverter>
+      <Parameter name="name" type="string"/>
+    </Inverter>
+    <Sequence>
+      <Parameter name="name" type="string"/>
+    </Sequence>
+    <ReactiveFallback>
+      <Parameter name="name" type="string"/>
+    </ReactiveFallback>
+    <RoundRobin>
+      <Parameter name="name" type="string"/>
+    </RoundRobin>
+
+    <!-- 条件节点 -->
+    <PathExpiringTimer>
+      <Parameter name="seconds" type="double"/>
+      <InputPort name="path" type="Path"/>
+    </PathExpiringTimer>
+    <IsPathValid>
+      <InputPort name="path" type="Path"/>
+    </IsPathValid>
+    <GoalReached>
+      <InputPort name="goal" type="PoseStamped"/>
+      <Parameter name="global_frame" type="string"/>
+      <Parameter name="robot_base_frame" type="string"/>
+    </GoalReached>
+    <GoalUpdated>
+      <OutputPort name="new_goal" type="PoseStamped"/>
+    </GoalUpdated>
+
+    <!-- 动作节点 -->
+    <ComputePathToPose>
+      <InputPort name="goal" type="PoseStamped"/>
+      <OutputPort name="path" type="Path"/>
+      <Parameter name="planner_id" type="string"/>
+    </ComputePathToPose>
+    <FollowPath>
+      <InputPort name="path" type="Path"/>
+      <Parameter name="controller_id" type="string"/>
+    </FollowPath>
+    <ClearEntireCostmap>
+      <Parameter name="name" type="string"/>
+      <Parameter name="service_name" type="string"/>
+    </ClearEntireCostmap>
+    <Spin>
+      <Parameter name="spin_dist" type="double"/> <!-- 旋转角度（弧度） -->
+    </Spin>
+    <BackUp>
+      <Parameter name="backup_dist" type="double"/> <!-- 后退距离（米） -->
+      <Parameter name="backup_speed" type="double"/> <!-- 后退速度（米/秒） -->
+    </BackUp>
+    <Wait>
+      <Parameter name="wait_duration" type="double"/> <!-- 等待时间（秒） -->
+    </Wait>
+  </TreeNodesModel>
+
+  <!-- 行为树逻辑（保持原有功能不变） -->
+  <BehaviorTree ID="MainTree">
+    <RecoveryNode number_of_retries="12" name="NavigateRecovery">
+      <PipelineSequence name="NavigateWithReplanning">
+        <RateController hz="2.0">
+          <RecoveryNode number_of_retries="1" name="ComputePathToPose">
+            <Fallback>
+              <ReactiveSequence>
+                <!-- 注释的 GoalReached 节点（需要时可启用） -->
+                <!-- <GoalReached goal="{goal}" global_frame="map" robot_base_frame="vehicle" /> -->
+                <Inverter>
+                  <PathExpiringTimer seconds="1" path="{path}"/>
+                </Inverter>
+                <IsPathValid path="{path}"/>
+              </ReactiveSequence>
+              <ComputePathToPose goal="{goal}" path="{path}" planner_id="GridBased"/>
+            </Fallback>
+            <Sequence name="ClearingActions">
+              <ClearEntireCostmap name="ClearLocalCostmap-Subtree" service_name="local_costmap/clear_entirely_local_costmap"/>
+              <ClearEntireCostmap name="ClearGlobalCostmap-Subtree" service_name="global_costmap/clear_entirely_global_costmap"/>
+            </Sequence>
+          </RecoveryNode>
+        </RateController>
+        <RecoveryNode number_of_retries="1" name="FollowPath">
+          <FollowPath path="{path}" controller_id="FollowPath"/>
+          <Sequence name="ClearingActions">
+            <ClearEntireCostmap name="ClearLocalCostmap-Subtree" service_name="local_costmap/clear_entirely_local_costmap"/>
+            <ClearEntireCostmap name="ClearGlobalCostmap-Subtree" service_name="global_costmap/clear_entirely_global_costmap"/>
+          </Sequence>
+        </RecoveryNode>
+      </PipelineSequence>
+      <ReactiveFallback name="RecoveryFallback">
+        <GoalUpdated/>
+        <RoundRobin name="RecoveryActions">
+          <Sequence name="ClearingActions">
+            <ClearEntireCostmap name="ClearLocalCostmap-Subtree" service_name="local_costmap/clear_entirely_local_costmap"/>
+            <ClearEntireCostmap name="ClearGlobalCostmap-Subtree" service_name="global_costmap/clear_entirely_global_costmap"/>
+          </Sequence>
+          <Spin spin_dist="0.785"/> <!-- 约 45 度 -->
+          <Wait wait_duration="1"/>
+        </RoundRobin>
+      </ReactiveFallback>
+    </RecoveryNode>
+  </BehaviorTree>
+</root>

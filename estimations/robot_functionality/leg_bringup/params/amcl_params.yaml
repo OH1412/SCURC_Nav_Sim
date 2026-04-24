@@ -1,0 +1,69 @@
+# AMCL 参数配置 (用于 ICP 初始化 + AMCL 持续定位)
+# 配合 pointcloud_to_laserscan 和 fast_livo 使用
+
+amcl:
+  ros__parameters:
+    use_sim_time: False  # 仿真环境使用仿真时间
+
+    # 坐标系设置
+    base_frame_id: "base"
+    odom_frame_id: "odom"
+    global_frame_id: "map"
+    
+    # ⚡ 关键：启用 TF 发布 (map -> odom)
+    tf_broadcast: true
+
+    # 话题设置 (对接 pointcloud_to_laserscan)
+    scan_topic: "scan"
+
+    # 初始位姿设置
+    # 注意：ICP 会通过 /initialpose 话题覆盖这个值
+    set_initial_pose: false  # 禁用自动初始位姿，等待 ICP 提供
+    initial_pose:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      yaw: 0.0
+
+    # 运动模型 (全向轮/麦克纳姆轮)
+    robot_model_type: "nav2_amcl::OmniMotionModel"
+    # 运动噪声：设为 0，粒子不会因运动而扩散
+    alpha1: 0.0
+    alpha2: 0.0
+    alpha3: 0.0
+    alpha4: 0.0
+    alpha5: 0.0
+
+    # 粒子滤波参数
+    # 禁用里程计预测：alpha=0 + 正常粒子数
+    # 保留激光匹配：正常的激光参数
+    min_particles: 500
+    max_particles: 2000
+    update_min_d: 0.1         # 移动 0.1m 触发更新
+    update_min_a: 0.1         # 转动 0.1rad 触发更新
+    resample_interval: 1      # 每次更新都重采样
+    transform_tolerance: 0.5
+    recovery_alpha_fast: 0.0  # 禁用快速恢复
+    recovery_alpha_slow: 0.0  # 禁用慢速恢复
+
+    # 激光模型参数 - 保留激光匹配功能
+    laser_max_range: 25.0
+    laser_min_range: 0.5
+    max_beams: 720             # 使用 720 条激光束
+    laser_model_type: "likelihood_field"
+    z_hit: 1.00               # 激光匹配权重高
+    z_rand: 0.00              # 随机噪声权重低
+    sigma_hit: 0.2            # 正常标准差，允许 ±20cm 误差
+    laser_likelihood_max_dist: 2.0  # 似然场最大匹配距离
+    do_beamskip: false
+
+map_server:
+  ros__parameters:
+    use_sim_time: False  # 仿真环境使用仿真时间
+    yaml_filename: ""  # 在 launch 文件中覆盖
+
+lifecycle_manager:
+  ros__parameters:
+    use_sim_time: False  # 仿真环境使用仿真时间
+    autostart: true
+    node_names: ['map_server', 'amcl']

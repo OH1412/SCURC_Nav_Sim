@@ -1,0 +1,47 @@
+<?xml version="1.0"?>
+<robot name="flying_car" xmlns:xacro="http://ros.org/wiki/xacro">
+
+  <!-- 底盘 -->
+  <link name="base_link">
+    <inertial>
+      <mass value="1.0"/>
+      <origin xyz="0 0 0"/>
+      <inertia ixx="0.01" iyy="0.01" izz="0.01"/>
+    </inertial>
+
+    <visual>
+      <geometry>
+        <box size="0.5 0.3 0.1"/>
+      </geometry>
+      <material name="blue">
+        <color rgba="0 0 1 1"/>
+      </material>
+    </visual>
+
+    <collision>
+      <geometry>
+        <box size="0.5 0.3 0.1"/>
+      </geometry>
+    </collision>
+
+    <!-- 关闭重力，使其能自由上下 -->
+    <gravity>0</gravity>
+  </link>
+
+  <!-- 你可以继续加轮子等结构，但它们也要 gravity=0 -->
+
+  <!-- Gazebo 控制插件 -->
+  <gazebo>
+    <plugin name="cmd_vel_3d_controller" filename="libgazebo_ros_force_system.so">
+      <ros>
+        <namespace>/</namespace>
+        <remapping>cmd_vel:=/cmd_vel</remapping>
+      </ros>
+      <!-- 施加力控制的 topic -->
+      <topic>cmd_vel</topic>
+      <!-- 控制灵敏度（可以调大或调小） -->
+      <force_scaling>10.0</force_scaling>
+    </plugin>
+  </gazebo>
+
+</robot>

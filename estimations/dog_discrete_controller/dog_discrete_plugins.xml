@@ -1,0 +1,9 @@
+<library path="dog_discrete_controller_core">
+  <class name="dog_nav/DogDiscreteController" 
+         type="dog_nav::DogDiscreteController" 
+         base_class_type="nav2_core::Controller">
+    <description>
+      A custom discrete step controller for 8-DOF quadruped robot.
+    </description>
+  </class>
+</library>
