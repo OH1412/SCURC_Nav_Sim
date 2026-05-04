@@ -29,6 +29,7 @@ git checkout real_vehicle
 ### 🔍 快速导航
 
 #### 📋 基础信息
+
 - [📖 项目简介](#-项目简介)
 - [🏗️ 系统架构](#️-系统架构)
 - [🚀 核心功能](#-核心功能)
@@ -36,17 +37,20 @@ git checkout real_vehicle
 - [📋 系统要求](#-系统要求)
 
 #### 🛠️ 部署指南
+
 - [🛠️ 安装指南](#️-安装指南)
 - [🎯 使用指南](#-使用指南)
 - [📊 核心配置](#-核心配置)
 
 #### 🔧 开发与维护
+
 - [📚 关键组件详解](#-关键组件详解)
 - [🔧 开发与调试](#-开发与调试)
 - [❓ 常见问题 (FAQ)](#-常见问题-faq)
 - [🤝 贡献指南](#-贡献指南)
 
 #### 📞 联系与支持
+
 - [📄 许可证](#-许可证)
 - [📞 联系方式](#-联系方式)
 
@@ -215,66 +219,82 @@ SCURC_Nav_Sim/
 
 ### 技术栈
 
-| 核心组件 | 技术栈 | 版本要求 | 关键特性 |
-|----------|--------|----------|----------|
-| **基础环境** | Ubuntu + ROS 2 | 22.04 LTS + Humble | Jammy + LTS版本 + DDS通信 |
-| **编程语言** | C++17 + Python | GCC 11+ + 3.10 | 智能指针+STL + ROS2推荐 + 类型注解 |
-| **GPU加速** | CUDA + CuPy | 12.x + 12.x | 并行计算 + NumPy兼容GPU数组 |
-| **深度学习** | PyTorch + YOLOv8 | 2.x + Ultralytics | 动态图推理 + 实时多类别检测 |
-| **定位建图** | FAST-LIVO2 + 多SLAM | 重定位版 + LOAM | 激光惯性融合100Hz + 算法切换支持 |
-| **导航控制** | Navigation2 + Nav2插件 | ROS2原生 + 扩展 | 插件化架构 + 代价地图层 + 智能后退 |
-| **决策规划** | BehaviorTree.CPP | v4.0+ | 可视化调试 + 异步执行 + XML配置 |
-| **感知处理** | GridMap + Elevation | 多层网格 + GPU加速 | 地形融合 + 实时2.5D重建 |
-| **传感器** | Livox Mid-360 | 激光雷达 | 非重复扫描 + 100m范围 + 3D感知 |
-| **仿真平台** | Gazebo + Pangolin | 11.x + RoboCon2026 | ODE物理引擎 + 竞赛专用场地 + 多场景 |
+| 核心组件           | 技术栈                 | 版本要求           | 关键特性                            |
+| ------------------ | ---------------------- | ------------------ | ----------------------------------- |
+| **基础环境** | Ubuntu + ROS 2         | 22.04 LTS + Humble | Jammy + LTS版本 + DDS通信           |
+| **编程语言** | C++17 + Python         | GCC 11+ + 3.10     | 智能指针+STL + ROS2推荐 + 类型注解  |
+| **GPU加速**  | CUDA + CuPy            | 12.x + 12.x        | 并行计算 + NumPy兼容GPU数组         |
+| **深度学习** | PyTorch + YOLOv8       | 2.x + Ultralytics  | 动态图推理 + 实时多类别检测         |
+| **定位建图** | FAST-LIVO2 + 多SLAM    | 重定位版 + LOAM    | 激光惯性融合100Hz + 算法切换支持    |
+| **导航控制** | Navigation2 + Nav2插件 | ROS2原生 + 扩展    | 插件化架构 + 代价地图层 + 智能后退  |
+| **决策规划** | BehaviorTree.CPP       | v4.0+              | 可视化调试 + 异步执行 + XML配置     |
+| **感知处理** | GridMap + Elevation    | 多层网格 + GPU加速 | 地形融合 + 实时2.5D重建             |
+| **传感器**   | Livox Mid-360          | 激光雷达           | 非重复扫描 + 100m范围 + 3D感知      |
+| **仿真平台** | Gazebo + Pangolin      | 11.x + RoboCon2026 | ODE物理引擎 + 竞赛专用场地 + 多场景 |
 
 ---
 
 ## 🚀 核心功能
 
 ### 1. 🎯 高精度定位系统
+
 - **多SLAM算法支持**: FAST-LIVO2（推荐）+ LOAM等算法无缝切换
 - **高精度重定位**: ICP算法支持大范围环境快速重定位，回环检测
 - **Livox Mid-360优化**: 专门针对Livox激光雷达的性能优化，实时高频定位
 - **IMU紧耦合**: 激光-惯性融合，支持动态环境和高机动运动
 
 ### 2. 🗺️ GPU加速地形感知
+
 - **实时高程建图**: CuPy GPU加速，毫秒级2.5D地形重建
 - **多层地形数据**: elevation（高度）、variance（方差）、traversability（可通行度）
 - **高级地形分析**: 坡度分析、动态障碍物清除、3D可通行性评估
 - **GridMap集成**: 完整的GridMap生态系统，支持复杂地形导航
 
+#### 地形建图演示
+
+![高程地图演示](assert/terrain_height_map.jpg)
+
 ### 3. 🧭 智能导航控制系统
+
 - **Navigation2完整栈**: ROS2官方导航框架，全组件集成
 - **多层代价地图**: 静态层、障碍物层、强度感知层、膨胀层等
 - **全局/局部规划**: A*全局规划 + DWB局部控制，支持自定义插件
 - **3D地形导航**: 基于地形分析的复杂地形路径规划
 
+#### 导航演示
+
+![梅林台阶导航演示](assert/meilin_elevation_map.gif)
+
 ### 4. 🎮 行为树智能决策
+
 - **BT.CPP v4.0**: 工业级行为树框架，支持复杂任务逻辑
 - **错误恢复机制**: 自动重规划、重试、后备策略
 - **任务级决策**: 支持多目标任务规划和执行优先级
 - **实时调试**: Groot可视化工具集成
 
 ### 5. 👁️ 视觉智能感知
+
 - **YOLOv8目标检测**: PyTorch深度学习框架，实时多目标检测
 - **KFS智能决策**: 真假目标识别、安全状态评估、优先级决策
 - **多模态融合**: 视觉+激光雷达数据融合，提升检测可靠性
 - **KFSDecision消息**: 结构化决策信息，包含60个航点状态
 
 ### 6. 🏁 RoboCon竞赛解决方案
+
 - **Pangolin Simulation**: 2026 RoboCon专用仿真环境
 - **完整比赛场地**: 带墙/无墙赛道，12个KFS目标点
 - **全向轮机器人**: 专业的竞赛机器人模型和控制算法
 - **任务执行系统**: FlyStep航点任务，支持复杂比赛策略
 
 ### 7. 🔧 高级开发工具
+
 - **模块化架构**: 74个ROS2功能包，支持灵活配置和扩展
 - **多环境支持**: 仿真环境、测试环境、生产环境无缝切换
 - **性能监控**: 完整的系统状态监控和性能分析工具
 - **开发友好**: 详细的文档、示例代码和调试工具
 
 ### 8. 📈 性能基准
+
 - **定位精度**: FAST-LIVO2 毫米级(室内环境)
 - **处理频率**: 100Hz SLAM输出，实时地形重建 < 5ms/帧
 - **导航响应**: 规划延迟 < 100ms，控制周期 50Hz
@@ -287,13 +307,13 @@ SCURC_Nav_Sim/
 
 ### 硬件配置
 
-| 组件 | 最低配置 | 推荐配置 | 说明 |
-|------|----------|----------|------|
-| **CPU** | Intel i5 / AMD Ryzen 5 | Intel i7 / AMD Ryzen 7 | 编译和运行需要多核支持 |
-| **内存** | 16GB RAM | 32GB RAM | 高程建图和SLAM需要大量内存 |
-| **GPU** | (可选) | NVIDIA RTX 4050 (12GB+) | CUDA 12.x，仅高程地图需要 |
-| **存储** | 5GB SSD | 100GB SSD | 包含所有依赖和构建产物 |
-| **网络** | 千兆以太网 | 万兆以太网 | 大量传感器数据传输 |
+| 组件           | 最低配置               | 推荐配置                | 说明                       |
+| -------------- | ---------------------- | ----------------------- | -------------------------- |
+| **CPU**  | Intel i5 / AMD Ryzen 5 | Intel i7 / AMD Ryzen 7  | 编译和运行需要多核支持     |
+| **内存** | 16GB RAM               | 32GB RAM                | 高程建图和SLAM需要大量内存 |
+| **GPU**  | (可选)                 | NVIDIA RTX 4050 (12GB+) | CUDA 12.x，仅高程地图需要  |
+| **存储** | 5GB SSD                | 100GB SSD               | 包含所有依赖和构建产物     |
+| **网络** | 千兆以太网             | 万兆以太网              | 大量传感器数据传输         |
 
 ### 传感器配置
 
@@ -530,68 +550,68 @@ controller_server:
 
 ### 1. 启动节点时报错 `ModuleNotFoundError: No module named 'cupy'`？
 
-  * **原因**：ROS 节点运行的 Python 环境没有安装 CuPy，或者版本与 CUDA 不匹配。
-  * **解决**：确保在启动 `elevation_mapping` 的终端中激活了安装有 `cupy-cuda12x` 的 Conda 环境 (`conda activate sc_nav`)。
+* **原因**：ROS 节点运行的 Python 环境没有安装 CuPy，或者版本与 CUDA 不匹配。
+* **解决**：确保在启动 `elevation_mapping` 的终端中激活了安装有 `cupy-cuda12x` 的 Conda 环境 (`conda activate sc_nav`)。
 
 ### 2. Nav2 报错 `Computing map coords failed`？
 
-  * **原因**：TF 树断裂或时钟不同步。
-  * **解决**：
-    1. 检查 `fast_livo` 是否正常发布 `/odom` 到 `/map` 的变换。
-    2. 如果使用仿真，确保所有 Launch 文件中 `use_sim_time` 都设置为 `true`。
+* **原因**：TF 树断裂或时钟不同步。
+* **解决**：
+  1. 检查 `fast_livo` 是否正常发布 `/odom` 到 `/map` 的变换。
+  2. 如果使用仿真，确保所有 Launch 文件中 `use_sim_time` 都设置为 `true`。
 
 ### 3. 编译时提示找不到 `cv_bridge` 头文件？
 
-  * **原因**：ROS 2 Humble 中 `cv_bridge` 的头文件路径结构发生了变化。
-  * **解决**：按照[安装指南](#️-安装指南)中的提示，手动修改源码中的 `#include` 路径。
+* **原因**：ROS 2 Humble 中 `cv_bridge` 的头文件路径结构发生了变化。
+* **解决**：按照[安装指南](#️-安装指南)中的提示，手动修改源码中的 `#include` 路径。
 
 ### 4. Gazebo仿真启动失败？
 
-  * **原因**：Gazebo插件路径或模型路径配置错误。
-  * **解决**：
-    1. 确保正确执行了 `source ./load_all.sh`
-    2. 检查 `GAZEBO_PLUGIN_PATH` 和 `GAZEBO_MODEL_PATH` 环境变量
-    3. 验证Gazebo版本是否为11.x
+* **原因**：Gazebo插件路径或模型路径配置错误。
+* **解决**：
+  1. 确保正确执行了 `source ./load_all.sh`
+  2. 检查 `GAZEBO_PLUGIN_PATH` 和 `GAZEBO_MODEL_PATH` 环境变量
+  3. 验证Gazebo版本是否为11.x
 
 ### 5. 行为树执行异常或卡住？
 
-  * **原因**：Nav2导航服务未正确启动，或TF变换断裂。
-  * **解决**：
-    1. 检查Nav2生命周期状态：`ros2 lifecycle get /controller_server`
-    2. 验证TF链：`ros2 run tf2_ros tf2_echo map base_link`
-    3. 查看行为树日志：`ros2 topic echo /behavior_tree_log`
+* **原因**：Nav2导航服务未正确启动，或TF变换断裂。
+* **解决**：
+  1. 检查Nav2生命周期状态：`ros2 lifecycle get /controller_server`
+  2. 验证TF链：`ros2 run tf2_ros tf2_echo map base_link`
+  3. 查看行为树日志：`ros2 topic echo /behavior_tree_log`
 
 ### 6. KFS规划器无输出或路径规划失败？
 
-  * **原因**：KFSDecision消息未发布，或航点配置错误。
-  * **解决**：
-    1. 检查YOLO和KFS检测节点状态
-    2. 验证KFSDecision话题：`ros2 topic echo /kfs_decision`
-    3. 确认航点文件路径正确且格式有效
+* **原因**：KFSDecision消息未发布，或航点配置错误。
+* **解决**：
+  1. 检查YOLO和KFS检测节点状态
+  2. 验证KFSDecision话题：`ros2 topic echo /kfs_decision`
+  3. 确认航点文件路径正确且格式有效
 
 ### 7. 导航精度不佳或频繁重规划？
 
-  * **原因**：SLAM漂移、地图质量差，或代价地图参数不当。
-  * **解决**：
-    1. 检查FAST-LIVO2定位状态和回环检测
-    2. 调整代价地图参数（膨胀半径、安全距离）
-    3. 优化Nav2规划器参数（容差设置）
+* **原因**：SLAM漂移、地图质量差，或代价地图参数不当。
+* **解决**：
+  1. 检查FAST-LIVO2定位状态和回环检测
+  2. 调整代价地图参数（膨胀半径、安全距离）
+  3. 优化Nav2规划器参数（容差设置）
 
 ### 8. 系统资源占用过高？
 
-  * **原因**：未正确配置GPU加速，或多节点重复计算。
-  * **解决**：
-    1. 确保elevation_mapping使用GPU加速
-    2. 调整SLAM和建图的频率参数
-    3. 优化RViz显示设置，减少可视化开销
+* **原因**：未正确配置GPU加速，或多节点重复计算。
+* **解决**：
+  1. 确保elevation_mapping使用GPU加速
+  2. 调整SLAM和建图的频率参数
+  3. 优化RViz显示设置，减少可视化开销
 
 ### 9. 多机协作时通信异常？
 
-  * **原因**：ROS2 DDS配置或网络设置问题。
-  * **解决**：
-    1. 配置ROS_DOMAIN_ID环境变量
-    2. 检查网络连接和防火墙设置
-    3. 使用专用DDS配置优化通信性能
+* **原因**：ROS2 DDS配置或网络设置问题。
+* **解决**：
+  1. 配置ROS_DOMAIN_ID环境变量
+  2. 检查网络连接和防火墙设置
+  3. 使用专用DDS配置优化通信性能
 
 ---
 
@@ -638,6 +658,7 @@ ros2 run rqt_graph rqt_graph
 ### 1. 🎯 定位与建图核心
 
 #### FAST-LIVO2 SLAM系统 (`fast_livo2_relocation`)
+
 - **核心算法**: 激光-惯性紧耦合里程计，基于预积分和滑动窗口优化
 - **实时性能**: 支持100Hz高频定位输出，延迟<10ms
 - **重定位功能**: ICP算法支持大范围环境快速重定位
@@ -646,6 +667,7 @@ ros2 run rqt_graph rqt_graph
 - **关键特性**: 回环检测、动态环境适应、外参在线标定
 
 #### GPU加速高程建图 (`elevation_mapping_cupy_ros2`)
+
 - **并行计算**: CuPy GPU加速，单帧处理<5ms
 - **多层融合**: elevation/variance/traversability三层数据
 - **实时更新**: 卡尔曼滤波融合多帧数据，消除传感器噪声
@@ -654,6 +676,7 @@ ros2 run rqt_graph rqt_graph
 - **内存优化**: 自适应分辨率，平衡精度和性能
 
 #### 高级地形分析 (`autonomous_exploration_development_environment`)
+
 - **3D感知**: 基于注册点云的实时地形分析
 - **动态避障**: 滑动窗口动态障碍物检测和清除
 - **坡度计算**: 分位数法计算地形坡度，避免凹凸面干扰
@@ -663,18 +686,21 @@ ros2 run rqt_graph rqt_graph
 ### 2. 🧭 智能导航控制
 
 #### Navigation2完整栈 (`core_navigation/navigation2`)
+
 - **架构设计**: 全局规划器 + 局部控制器 + 代价地图 + 行为服务器
 - **插件系统**: 支持自定义规划器、控制器、行为插件
 - **多机器人**: 原生支持多机器人协作和冲突避免
 - **生命周期**: 完整的ROS2生命周期管理，确保系统稳定性
 
 #### Nav2扩展插件 (`navigation_plugins/nav2_ext_plugins`)
+
 - **强度感知层**: 基于激光强度信息的代价地图层
 - **智能后退行为**: BackUpTwzFree算法，寻找自由空间安全后退
 - **速度平滑器**: 高级速度平滑算法，减少电机磨损
 - **GridMap集成**: 完整的GridMap代价地图层支持
 
 #### FlyStep任务执行 (`robot_functionality/rc_decision/fly_step_mission`)
+
 - **航点系统**: 12主航点 + 48边界点，共60个预定义位置
 - **路径规划**: A*算法 + 外围跑道优化，最短路径计算
 - **高度控制**: 受控上升/下降，支持多层平台导航
@@ -684,6 +710,7 @@ ros2 run rqt_graph rqt_graph
 ### 3. 👁️ 智能感知决策
 
 #### KFS检测与决策 (`robot_functionality/kfs_detection_nav`)
+
 - **多模态融合**: YOLO视觉检测 + 激光雷达距离测量
 - **智能决策**: 真假KFS识别算法，基于置信度和几何特征
 - **安全评估**: 三级安全状态（SAFE/WARNING/DANGER）
@@ -691,6 +718,7 @@ ros2 run rqt_graph rqt_graph
 - **实时通信**: KFSDecision消息，包含完整的决策信息
 
 #### YOLO目标检测 (`yolo_ros2_ws/yolov8_ros2`)
+
 - **深度学习**: PyTorch + Ultralytics YOLOv8，实时推理
 - **多类别检测**: 支持KFS、机器人、人等多个目标类别
 - **性能优化**: GPU加速，张量RT优化，批处理推理
@@ -699,6 +727,7 @@ ros2 run rqt_graph rqt_graph
 ### 4. 🏁 竞赛级仿真平台
 
 #### Pangolin Simulation (`simulation_environment/rc_robot_simulation/pangolin_simulation`)
+
 - **竞赛专用**: 专门为RoboCon2026设计，包含完整比赛规则
 - **场地建模**: 精确的比赛场地几何模型和物理属性
 - **传感器仿真**: Livox激光雷达、IMU、相机的真实物理仿真
@@ -706,6 +735,7 @@ ros2 run rqt_graph rqt_graph
 - **多场景**: 带墙/无墙赛道，调试/比赛模式
 
 #### Gazebo通用环境 (`simulation_environment/gazebo_for_humble`)
+
 - **插件系统**: 自定义控制器插件，支持全向轮运动学
 - **多机器人**: 支持多机器人同时仿真
 - **传感器集成**: 完整的传感器数据生成和发布
@@ -714,18 +744,21 @@ ros2 run rqt_graph rqt_graph
 ### 5. 🔧 开发工具框架
 
 #### BehaviorTree.CPP (`dependencies_and_tools/BehaviorTree.CPP`)
+
 - **工业级框架**: v4.0，支持异步执行和并发
 - **可视化调试**: Groot工具集成，支持运行时监控
 - **插件系统**: 丰富的内置节点，自定义节点扩展
 - **XML配置**: 声明式任务定义，支持复杂逻辑表达
 
 #### ROS2接口定义 (`robot_functionality/rc_interfaces`)
+
 - **消息标准化**: 统一的接口定义，确保模块间兼容性
 - **服务接口**: SetMainWPs服务，支持动态航点设置
 - **类型安全**: 强类型消息定义，编译时类型检查
 - **扩展性**: 模块化设计，支持新消息类型添加
 
 #### Livox传感器驱动 (`dependencies_and_tools/livox_ros_driver2`)
+
 - **高性能通信**: 零拷贝数据传输，时间同步
 - **多型号支持**: 支持Mid-360、Avia、Horizon等系列
 - **CustomMsg格式**: ROS2优化格式，减少序列化开销
@@ -734,6 +767,7 @@ ros2 run rqt_graph rqt_graph
 ### 6. 📊 性能监控与调优
 
 #### 系统性能监控
+
 ```bash
 # CPU/GPU使用率监控
 ros2 run rqt_runtime_monitor rqt_runtime_monitor
@@ -751,13 +785,13 @@ ros2 run tf2_tools view_frames.py
 
 #### 关键性能指标
 
-| 组件 | 目标性能 | 监控方法 |
-|------|----------|----------|
-| **FAST-LIVO2** | 100Hz定位输出 | `ros2 topic hz /Odometry` |
-| **高程建图** | <5ms/帧处理 | GPU监控工具 |
-| **YOLO检测** | >10FPS推理 | `ros2 topic hz /yolov8/BoundingBoxes` |
-| **Nav2规划** | <100ms响应 | 行为树日志分析 |
-| **通信延迟** | <1ms DDS通信 | ROS2工具链监控 |
+| 组件                 | 目标性能      | 监控方法                                |
+| -------------------- | ------------- | --------------------------------------- |
+| **FAST-LIVO2** | 100Hz定位输出 | `ros2 topic hz /Odometry`             |
+| **高程建图**   | <5ms/帧处理   | GPU监控工具                             |
+| **YOLO检测**   | >10FPS推理    | `ros2 topic hz /yolov8/BoundingBoxes` |
+| **Nav2规划**   | <100ms响应    | 行为树日志分析                          |
+| **通信延迟**   | <1ms DDS通信  | ROS2工具链监控                          |
 
 #### 性能调优建议
 
@@ -773,16 +807,17 @@ ros2 run tf2_tools view_frames.py
 ### 开发流程
 
 1. **准备工作**
+
    - Fork 项目到个人仓库
    - 克隆到本地：`git clone https://github.com/YOUR_USERNAME/SCURC_Nav_Sim.git`
    - 创建功能分支：`git checkout -b feature/amazing-feature`
-
 2. **代码开发**
+
    - 遵循ROS2和C++/Python编码规范
    - 添加必要的单元测试和文档
    - 确保代码通过编译和运行测试
-
 3. **提交规范**
+
    ```bash
    # 提交信息格式
    git commit -m "feat: 添加新的导航算法优化
@@ -790,13 +825,13 @@ ros2 run tf2_tools view_frames.py
    - 添加地形代价函数
    - 更新相关配置文件"
    ```
-
 4. **测试验证**
+
    - 在仿真环境中测试新功能
    - 验证与现有模块的兼容性
    - 性能测试确保无性能退化
-
 5. **提交PR**
+
    - 推送到个人仓库：`git push origin feature/amazing-feature`
    - 在GitHub上创建Pull Request
    - 详细描述变更内容和测试结果
@@ -804,18 +839,21 @@ ros2 run tf2_tools view_frames.py
 ### 代码规范
 
 #### ROS2 包开发规范
+
 - **包命名**: 使用snake_case，清晰表达功能
 - **消息定义**: 在interface包中统一管理
 - **参数配置**: 使用YAML文件，支持运行时调整
 - **日志输出**: 使用ROS2日志系统，适当设置日志级别
 
 #### C++ 编码规范
+
 - **标准**: C++17, 使用智能指针和STL容器
 - **命名**: 类使用PascalCase，函数和变量使用snake_case
 - **注释**: Doxygen格式，函数接口要有完整说明
 - **异常处理**: 使用适当的异常处理，避免程序崩溃
 
 #### Python 编码规范
+
 - **标准**: PEP 8, 使用类型注解
 - **导入**: 分层导入，标准库→第三方库→本地模块
 - **文档**: 使用Google风格docstring
@@ -838,6 +876,7 @@ ros2 run tf2_tools view_frames.py
 ### 评审标准
 
 PR评审将检查：
+
 - ✅ 代码质量和规范性
 - ✅ 功能完整性和正确性
 - ✅ 文档完整性和准确性
@@ -847,20 +886,11 @@ PR评审将检查：
 
 ---
 
-## 📄 许可证
-
-本项目采用 [Apache 2.0 许可证](LICENSE) 开源。第三方依赖包遵循其原始协议。
-
----
-
-
----
-
 ## 📞 联系方式
 
 - **项目维护者**: [Pangolin战队](https://github.com/mose1s/RC_vision_2026) @[OH](https://github.com/OH1412)
 - **贡献者**: [Pangolin战队全体成员](https://github.com/mose1s/RC_vision_2026)
-- **技术支持**: [GitHub Issues](https://github.com/OH1412/SCURC_Nav_Sim/issues)  
+- **技术支持**: [GitHub Issues](https://github.com/OH1412/SCURC_Nav_Sim/issues)
 - **文档**: [项目Wiki](https://github.com/OH1412/SCURC_Nav_Sim/wiki)
 
 ---
@@ -868,23 +898,27 @@ PR评审将检查：
 ## 🗺️ 路线图 (Roadmap)
 
 ### 已完成 ✅
-- [x] RoboCon2026竞赛级导航系统
-- [x] FAST-LIVO2 + GPU高程建图核心
-- [x] 74个ROS2功能包集成
-- [x] Pangolin专用仿真环境
-- [x] KFS智能目标检测与决策
-- [x] BehaviorTree.CPP任务规划
-- [x] 60航点FlyStep任务执行
+
+- [X] RoboCon2026竞赛级导航系统
+- [X] FAST-LIVO2 + GPU高程建图核心
+- [X] 74个ROS2功能包集成
+- [X] Pangolin专用仿真环境
+- [X] KFS智能目标检测与决策
+- [X] BehaviorTree.CPP任务规划
+- [X] 60航点FlyStep任务执行
 
 ### 进行中 🚧
+
 - [ ] KFS自动摆放
 - [ ] 强化学习路径优化
 
 ### 计划中 📋
+
 - [ ] 边缘计算部署方案
 - [ ] 自动参数调优系统
 
 ### 长期愿景 🎯
+
 - [ ] 开源自动导航决策框架
 
 ---
