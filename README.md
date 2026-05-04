@@ -4,8 +4,6 @@
 
 [![Ubuntu 22.04](https://img.shields.io/badge/Ubuntu-22.04-E95420.svg)](https://releases.ubuntu.com/jammy/)
 
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
-
 - **版本**: 1.0.0
 - **状态**: 开发中 🚧
 - **ROS版本**: ROS 2 Humble Hawksbill
