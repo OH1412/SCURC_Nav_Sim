@@ -26,7 +26,7 @@ def generate_launch_description():
     fast_livo_dir = get_package_share_directory("fast_livo")
 
     # 地图文件路径
-    pcd_map_path = os.path.join(bringup_dir, 'maps', 'test.pcd')
+    pcd_map_path = os.path.join(bringup_dir, 'maps', 'test_indoor.pcd')
     yaml_map_path = os.path.join(bringup_dir, 'maps', 'test_map.yaml')
 
     # 配置文件路径
@@ -56,9 +56,8 @@ def generate_launch_description():
 
     teaser_gicp_node = Node(
         package='relocalization',
-        # 临时改成GICP，后续可以改回TEASER+GICP
-        executable='small_gicp_node',
-        name='small_gicp_node',
+        executable='teaser_gicp_node',
+        name='teaser_gicp_node',
         output='screen',
         parameters=[
             {'use_sim_time': False},
@@ -123,14 +122,14 @@ def generate_launch_description():
     )
 
     # Nav2 AMCL (概率定位) - 发布 map -> odom
-    amcl_node = Node(
-        package='nav2_amcl',
-        executable='amcl',
-        name='amcl',
-        output='screen',
-        parameters=[amcl_config_path],
-        remappings=tf_remappings
-    )
+    # amcl_node = Node(
+    #     package='nav2_amcl',
+    #     executable='amcl',
+    #     name='amcl',
+    #     output='screen',
+    #     parameters=[amcl_config_path],
+    #     remappings=tf_remappings
+    # )
 
     # Lifecycle Manager
     lifecycle_manager_node = Node(
@@ -141,7 +140,7 @@ def generate_launch_description():
         parameters=[{
             'use_sim_time': False,
             'autostart': True,
-            'node_names': ['map_server', 'amcl']
+            'node_names': ['map_server']  # amcl temporarily disabled
         }]
     )
 
@@ -175,9 +174,9 @@ def generate_launch_description():
         'log_level', default_value='WARN',
         description='Log level for fast_livo nodes'))
 
-    # 1. Nav2 定位栈 (Map Server + AMCL + Lifecycle Manager)
+    # 1. Nav2 定位栈 (Map Server + Lifecycle Manager)  # AMCL temporarily disabled
     ld.add_action(map_server_node)
-    ld.add_action(amcl_node)
+    # ld.add_action(amcl_node)
     ld.add_action(lifecycle_manager_node)
 
     # 2. 延迟启动 Fast-Livo

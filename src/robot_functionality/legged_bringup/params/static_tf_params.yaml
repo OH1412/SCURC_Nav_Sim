@@ -8,17 +8,17 @@
 static_tf_broadcaster:
   ros__parameters:
     transforms:
-      t0:
-        odom_frame_id: "map"
-        base_frame_id: "odom"
-        translation:
-          x: 0.0
-          y: 0.0
-          z: 0.0
-        rotation:
-          roll: 0.0
-          pitch: 0.0
-          yaw: 0.0
+      # t0:  # Disabled: map → odom (disabled because AMCL is commented out, we directly use map frame)
+      #   odom_frame_id: "map"
+      #   base_frame_id: "odom"
+      #   translation:
+      #     x: 0.0
+      #     y: 0.0
+      #     z: 0.0
+      #   rotation:
+      #     roll: 0.0
+      #     pitch: 0.0
+      #     yaw: 0.0
 
       t1:
         odom_frame_id: "aft_mapped"
