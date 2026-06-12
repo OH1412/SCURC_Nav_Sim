@@ -1,0 +1,15 @@
+# 忽略 workspace 根目录下的编译文件
+build/
+install/
+log/
+
+# 忽略所有子目录深处的编译文件
+**/build/
+**/install/
+**/log/
+
+# 忽略 IDE 配置文件
+.vscode/
+.idea/
+__pycache__/
+*.pyc

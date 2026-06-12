@@ -1,0 +1,4 @@
+serial_cmd_sender:
+  ros__parameters:
+    port: "/dev/ttyUSB0"
+    baudrate: 115200
