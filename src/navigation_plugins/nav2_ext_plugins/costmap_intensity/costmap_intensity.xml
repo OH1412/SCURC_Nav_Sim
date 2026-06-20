@@ -5,4 +5,7 @@
   <class name="costmap_intensity::VoxelLayerIntensity" type="costmap_intensity::VoxelLayerIntensity" base_class_type="nav2_costmap_2d::Layer">
     <description>Listens to laser scan and point cloud messages and marks and clears grid cells.</description>
   </class>
+  <class name="costmap_intensity::StaticLayerNonLethal" type="costmap_intensity::StaticLayerNonLethal" base_class_type="nav2_costmap_2d::Layer">
+    <description>Static map layer that marks occupied cells with a configurable cost (default 200) instead of LETHAL_OBSTACLE (254). Visible in RViz but does not trigger collision detection.</description>
+  </class>
 </library>

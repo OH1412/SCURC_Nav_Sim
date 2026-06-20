@@ -55,6 +55,7 @@ set(dependencies
 add_library(${lib_name} SHARED
   plugins/obstacle_layer.cpp
   plugins/voxel_layer.cpp
+  plugins/static_layer_non_lethal.cpp
 )
 
 include_directories(

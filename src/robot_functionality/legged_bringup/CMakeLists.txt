@@ -34,6 +34,7 @@ install(DIRECTORY launch maps params behavior_tree rviz
 install(PROGRAMS
   nodes/static_tf_broadcaster.py
   nodes/aft_to_pose_offset_node.py
+  nodes/position_based_param_switcher.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

@@ -1,0 +1,46 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>dwb_yaw_constraint</name>
+  <version>0.1.0</version>
+  <description>DWB Critic plugin that constrains the robot to maintain a fixed yaw angle,
+    designed for omnidirectional robots that should always face a specific direction
+    regardless of the path heading.</description>
+  <maintainer email="user@example.com">User</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <build_depend>angles</build_depend>
+  <build_depend>dwb_core</build_depend>
+  <build_depend>dwb_msgs</build_depend>
+  <build_depend>geometry_msgs</build_depend>
+  <build_depend>nav2_costmap_2d</build_depend>
+  <build_depend>nav2_util</build_depend>
+  <build_depend>nav_2d_msgs</build_depend>
+  <build_depend>pluginlib</build_depend>
+  <build_depend>rclcpp</build_depend>
+  <build_depend>rclcpp_lifecycle</build_depend>
+  <build_depend>tf2</build_depend>
+  <build_depend>tf2_geometry_msgs</build_depend>
+  <build_depend>tf2_ros</build_depend>
+
+  <exec_depend>angles</exec_depend>
+  <exec_depend>dwb_core</exec_depend>
+  <exec_depend>dwb_msgs</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>nav2_costmap_2d</exec_depend>
+  <exec_depend>nav2_util</exec_depend>
+  <exec_depend>nav_2d_msgs</exec_depend>
+  <exec_depend>pluginlib</exec_depend>
+  <exec_depend>rclcpp</exec_depend>
+  <exec_depend>rclcpp_lifecycle</exec_depend>
+  <exec_depend>tf2</exec_depend>
+  <exec_depend>tf2_geometry_msgs</exec_depend>
+  <exec_depend>tf2_ros</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+    <dwb_core plugin="${prefix}/dwb_yaw_constraint.xml" />
+  </export>
+</package>

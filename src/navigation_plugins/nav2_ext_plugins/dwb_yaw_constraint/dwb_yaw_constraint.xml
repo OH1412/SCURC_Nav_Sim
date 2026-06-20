@@ -1,0 +1,12 @@
+<class_libraries>
+  <library path="dwb_yaw_constraint_lib">
+    <class type="dwb_yaw_constraint::MaintainYawCritic"
+           base_class_type="dwb_core::TrajectoryCritic">
+      <description>
+        DWB critic that penalizes trajectories deviating from a fixed desired yaw.
+        Designed for omnidirectional robots that should maintain constant orientation
+        (e.g., always facing map's +x direction).
+      </description>
+    </class>
+  </library>
+</class_libraries>

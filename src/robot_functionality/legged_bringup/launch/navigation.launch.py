@@ -18,9 +18,11 @@ import yaml
 from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, GroupAction, OpaqueFunction, SetEnvironmentVariable
+from launch.actions import (DeclareLaunchArgument, GroupAction,
+                            OpaqueFunction, SetEnvironmentVariable)
 from launch.conditions import IfCondition
 from launch.substitutions import Command, LaunchConfiguration, PythonExpression
+from launch.actions import TimerAction
 from launch_ros.actions import LoadComposableNodes
 from launch_ros.actions import Node
 from launch_ros.descriptions import ComposableNode, ParameterFile
@@ -361,6 +363,28 @@ def generate_launch_description():
     # Add the actions to launch all of the navigation nodes
     ld.add_action(load_nodes)
     ld.add_action(load_composable_nodes)
+
+    # Position-based parameter switcher (Plan C): monitors robot x position
+    # and dynamically sets DWB critic scales + goal checker tolerance.
+    # Zero downtime — no lifecycle transitions, just param set.
+    # Delayed 5s to let controller_server finish activation first.
+    # TEMPORARILY DISABLED — all-middle-zone strategy
+    # position_switcher_node = Node(
+    #     package='legged_bringup',
+    #     executable='position_based_param_switcher.py',
+    #     name='position_based_param_switcher',
+    #     output='screen',
+    #     parameters=[{
+    #         'lower_boundary': 0.9,
+    #         'upper_boundary': 4.9,
+    #         'hysteresis_margin': 0.1,
+    #         'odom_topic': 'state_estimation',
+    #         'target_node': 'controller_server',
+    #     }],
+    #     arguments=['--ros-args', '--log-level', 'info'],
+    # )
+    # ld.add_action(TimerAction(period=5.0, actions=[position_switcher_node]))
+
     ld.add_action(start_rviz)
 
     # # ======================
