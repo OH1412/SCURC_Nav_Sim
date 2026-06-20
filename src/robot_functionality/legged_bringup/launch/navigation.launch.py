@@ -296,13 +296,13 @@ def generate_launch_description():
         )
     )
     
-    # start_terrain_analysis_t = Node(
-    #     package='sensor_scan_generation',
-    #     executable='sensorScanGeneration',
-    #     output='screen',
-    #     remappings=[('/registered_scan', '/terrain_map'),
-    #                     ('/sensor_scan', '/terrain_map_at_scan')]
-    # )
+    start_terrain_analysis_t = Node(
+        package='sensor_scan_generation',
+        executable='sensorScanGeneration',
+        output='screen',
+        remappings=[('/registered_scan', '/terrain_map'),
+                        ('/sensor_scan', '/terrain_map_at_scan')]
+    )
 
     start_terrain_analysis_ext = IncludeLaunchDescription(
         FrontendLaunchDescriptionSource(os.path.join(
@@ -355,6 +355,7 @@ def generate_launch_description():
     ld.add_action(declare_deploy_config_file_cmd)
     # add terrain analysis
     ld.add_action(start_terrain_analysis)
+    ld.add_action(start_terrain_analysis_t)
     # ld.add_action(start_terrain_analysis_ext)
     # ld.add_action(ground_segmentation_node)
     # Add the actions to launch all of the navigation nodes

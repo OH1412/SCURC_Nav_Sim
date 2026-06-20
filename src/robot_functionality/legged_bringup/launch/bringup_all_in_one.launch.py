@@ -91,6 +91,15 @@ def generate_launch_description():
         ]
     )
 
+    # Relay Fast-LIVO odometry to /state_estimation for terrain_analysis
+    relay_odom = Node(
+        package='topic_tools',
+        executable='relay',
+        name='relay_state_estimation',
+        output='screen',
+        arguments=['/aft_mapped_to_init', '/state_estimation'],
+    )
+
     delayed_start_navigation = TimerAction(
         period=15.0,
         actions=[
@@ -106,6 +115,7 @@ def generate_launch_description():
 
     # Start pointcloud->scan first so AMCL can consume /scan
     ld.add_action(start_pointcloud_to_scan)
+    ld.add_action(relay_odom)
     ld.add_action(delayed_start_relocalization)
     ld.add_action(delayed_start_navigation)
     return ld

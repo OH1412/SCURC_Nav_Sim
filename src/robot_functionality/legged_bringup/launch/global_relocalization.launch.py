@@ -26,7 +26,7 @@ def generate_launch_description():
     fast_livo_dir = get_package_share_directory("fast_livo")
 
     # 地图文件路径
-    pcd_map_path = os.path.join(bringup_dir, 'maps', 'test_indoor.pcd')
+    pcd_map_path = os.path.join(bringup_dir, 'maps', 'test.pcd')
     yaml_map_path = os.path.join(bringup_dir, 'maps', 'test_map.yaml')
 
     # 配置文件路径
