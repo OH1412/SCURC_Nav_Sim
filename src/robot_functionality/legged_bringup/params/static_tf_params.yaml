@@ -26,7 +26,7 @@ static_tf_broadcaster:
         translation:
           x: -0.2135
           y: 0.00
-          z: 0.00
+          z: -0.1269
         rotation:
           roll: 0.0
           pitch: 0.0

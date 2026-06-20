@@ -282,8 +282,8 @@ controller_server:
       trans_stopped_velocity: 0.25
       short_circuit_trajectory_evaluation: True
       stateful: True
-      critics: ["RotateToGoal", "Oscillation", "BaseObstacle", "GoalAlign", "PathAlign", "PathDist", "GoalDist"]
-      BaseObstacle.scale: 0.02
+      critics: ["RotateToGoal", "Oscillation", "ObstacleFootprint", "GoalAlign", "PathAlign", "PathDist", "GoalDist"]
+      ObstacleFootprint.scale: 10000.0
       PathAlign.scale: 32.0
       PathAlign.forward_point_distance: 0.1
       GoalAlign.scale: 24.0
@@ -306,7 +306,7 @@ local_costmap:
       width: 10
       height: 10
       resolution: 0.05
-      footprint: [[0.2971, 0.19185], [0.2971, -0.19185], [-0.44518, -0.19185], [-0.44518, 0.19185]]
+      footprint: "[[0.2971, 0.19185], [0.2971, -0.19185], [-0.44518, -0.19185], [-0.44518, 0.19185]]"
       # 这里有一个隐患就是绝对禁止通行是根据footprint的内切圆0.2971m来计算的，但是后腿是0.44518m，虽然我设置了膨胀体积是外切圆0.6m，但可能还是有危险。
       plugins: ["local_obstacle_layer", "local_inflation_layer"]
       # 这里可以加入traversability_grid_map_layer来处理地形代价地图
@@ -364,7 +364,7 @@ global_costmap:
       global_frame: map
       robot_base_frame: base_link
       use_sim_time: False
-      footprint: [[0.2971, 0.19185], [0.2971, -0.19185], [-0.44518, -0.19185], [-0.44518, 0.19185]]
+      footprint: "[[0.2971, 0.19185], [0.2971, -0.19185], [-0.44518, -0.19185], [-0.44518, 0.19185]]"
       resolution: 0.1
       track_unknown_space: true
       plugins: ["static_layer", "global_inflation_layer"] # "global_obstacle_layer", 
