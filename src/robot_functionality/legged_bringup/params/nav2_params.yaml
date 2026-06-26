@@ -258,14 +258,14 @@ controller_server:
       # max_robot_pose_search_dist: 10.0
       plugin: "dwb_core::DWBLocalPlanner"
       debug_trajectory_details: False
-      min_vel_x: -1.0
-      min_vel_y: -1.0
-      max_vel_x: 1.0
-      max_vel_y: 1.0
-      max_vel_theta: 5.0
+      min_vel_x: -2.0
+      min_vel_y: -1.4
+      max_vel_x: 2.0
+      max_vel_y: 1.4
+      max_vel_theta: 1.2
       min_speed_xy: 0.7
       max_speed_xy: 3.0
-      min_speed_theta: -5.0
+      min_speed_theta: -1.2
       acc_lim_x: 3.0
       acc_lim_y: 3.0
       acc_lim_theta: 20.0
@@ -288,13 +288,14 @@ controller_server:
       # 当前默认 = 中间区 (yaw锁0，禁止旋转)
       # 切边缘区 = 注释中间区值，取消边缘区值注释，重启 switcher
       # ═══════════════════════════════════════════════════════════════
-      critics: ["RotateToGoal", "Oscillation", "ObstacleFootprint", "GoalAlign", "PathAlign", "PathDist", "GoalDist", "dwb_yaw_constraint::MaintainYawCritic"]
+      critics: ["RotateToGoal", "Oscillation", "ObstacleFootprint", "GoalAlign", "PathAlign", "PathDist", "GoalDist", "dwb_yaw_constraint::MaintainYawCritic", "dwb_yaw_constraint::DecouplingCritic"]
       # --- 共有参数（两区相同）---
       ObstacleFootprint.scale: 50.0
       PathDist.scale: 32.0
       GoalDist.scale: 24.0
       # ═══════════════════════════════════════════════════════════════
-      # 默认中间区 (yaw锁0，禁止旋转)
+      # 默认中间区 (yaw锁0，禁止旋转) — 安全fallback
+      # 运行时由 position_based_param_switcher 动态切换
       # ═══════════════════════════════════════════════════════════════
       # --- 旋转 critic ---
       RotateToGoal.scale: 0.0           # 中间区=0.0 | 边缘区=32.0
@@ -308,8 +309,14 @@ controller_server:
       "dwb_yaw_constraint::MaintainYawCritic.scale": 5000.0   # 中间区=5000 | 边缘区=0.0
       "dwb_yaw_constraint::MaintainYawCritic.desired_yaw": 0.0
       "dwb_yaw_constraint::MaintainYawCritic.reference_frame": "map"
+      # --- 解耦 critic (中间区禁用) ---
+      "dwb_yaw_constraint::DecouplingCritic.scale": 0.0       # 中间区=0.0 | 边缘区=30.0
+      "dwb_yaw_constraint::DecouplingCritic.max_vx": 2.0
+      "dwb_yaw_constraint::DecouplingCritic.max_vy": 1.4
+      "dwb_yaw_constraint::DecouplingCritic.max_vtheta": 1.2
       # ═══════════════════════════════════════════════════════════════
-      # 默认边缘区 (解除yaw限制，允许旋转)
+      # 边缘区 (解除yaw限制，允许旋转)
+      # 由 position_based_param_switcher 动态设置
       # ═══════════════════════════════════════════════════════════════
       # # --- 旋转 critic ---
       # RotateToGoal.scale: 32.0           # 中间区=0.0 | 边缘区=32.0
@@ -323,6 +330,11 @@ controller_server:
       # "dwb_yaw_constraint::MaintainYawCritic.scale": 0.0   # 中间区=5000 | 边缘区=0.0
       # "dwb_yaw_constraint::MaintainYawCritic.desired_yaw": 0.0
       # "dwb_yaw_constraint::MaintainYawCritic.reference_frame": "map"
+      # # --- 解耦 critic (边缘区启用) ---
+      # "dwb_yaw_constraint::DecouplingCritic.scale": 30.0       # 中间区=0.0 | 边缘区=30.0
+      # "dwb_yaw_constraint::DecouplingCritic.max_vx": 2.0
+      # "dwb_yaw_constraint::DecouplingCritic.max_vy": 1.4
+      # "dwb_yaw_constraint::DecouplingCritic.max_vtheta": 1.2
 
 local_costmap:
   local_costmap:
@@ -404,7 +416,7 @@ global_costmap:
       global_inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 3.0
-        inflation_radius: 1.0
+        inflation_radius: 0.3
       always_send_full_costmap: True
       # global_obstacle_layer:
       #   plugin: "costmap_intensity::ObstacleLayerIntensity"
@@ -553,11 +565,11 @@ velocity_smoother:
     smoothing_frequency: 5.0
     scale_velocities: False
     feedback: "CLOSED_LOOP"
-    max_velocity: [2.5, 2.5, 12.0]
-    min_velocity: [-2.5, -2.5, -12.0]
+    max_velocity: [2.0, 1.4, 1.2]
+    min_velocity: [-2.0, -1.4, -1.2]
     max_accel: [5.0, 5.0, 15.0]
     max_decel: [-5.0, -5.0, -15.0]
-    odom_topic: "Odometry"
+    odom_topic: "state_estimation"
     odom_duration: 0.1
     deadband_velocity: [0.0, 0.0, 0.0]
     velocity_timeout: 1.0

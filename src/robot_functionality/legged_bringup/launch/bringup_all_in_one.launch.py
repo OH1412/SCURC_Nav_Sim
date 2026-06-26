@@ -15,7 +15,7 @@
 import os
 
 from ament_index_python.packages import get_package_share_directory
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, TimerAction, ExecuteProcess
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, TimerAction
 from launch import LaunchDescription
 from launch.actions import (DeclareLaunchArgument, GroupAction,
                             IncludeLaunchDescription, SetEnvironmentVariable)
@@ -23,8 +23,6 @@ from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource, FrontendLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
-from launch_ros.actions import PushRosNamespace
-from nav2_common.launch import RewrittenYaml
 
 
 def generate_launch_description():
@@ -32,7 +30,7 @@ def generate_launch_description():
     bringup_dir = get_package_share_directory('legged_bringup')
     use_sim_time = LaunchConfiguration('use_sim_time')
     use_pointcloud_to_scan = LaunchConfiguration('use_pointcloud_to_scan')
-    deploy_config_file = LaunchConfiguration('deploy_config_file')
+    enable_terrain_analysis = LaunchConfiguration('enable_terrain_analysis')
 
     # Accept use_sim_time from parent and pass it through
     declare_use_sim_time = DeclareLaunchArgument(
@@ -43,12 +41,12 @@ def generate_launch_description():
         'use_pointcloud_to_scan', default_value='true',
         description='Enable PointCloud2->LaserScan converter if the package is installed'
     )
-
-    declare_deploy_config_file = DeclareLaunchArgument(
-        'deploy_config_file', default_value='/home/dog12/HIMLocoWithDeploy/deploy_cpp/config/robots/mybot_v2_real.yaml',
-        description='Path to deploy_cpp robot YAML used for velocity limits'
+    declare_enable_terrain_analysis = DeclareLaunchArgument(
+        'enable_terrain_analysis',
+        default_value='false',
+        description='Enable terrain analysis (local obstacle detection). Default off.'
     )
-    
+
     start_relocalization = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(
             bringup_dir,'launch','global_relocalization.launch.py'
@@ -62,8 +60,8 @@ def generate_launch_description():
             )
         ),
         launch_arguments={
-            'deploy_config_file': deploy_config_file,
             'use_sim_time': use_sim_time,
+            'enable_terrain_analysis': enable_terrain_analysis,
         }.items()
     )
 
@@ -101,7 +99,7 @@ def generate_launch_description():
     )
 
     delayed_start_navigation = TimerAction(
-        period=15.0,
+        period=8.0,
         actions=[
             start_navigation
         ]
@@ -111,7 +109,7 @@ def generate_launch_description():
 
     ld.add_action(declare_use_sim_time)
     ld.add_action(declare_use_pc2scan)
-    ld.add_action(declare_deploy_config_file)
+    ld.add_action(declare_enable_terrain_analysis)
 
     # Start pointcloud->scan first so AMCL can consume /scan
     ld.add_action(start_pointcloud_to_scan)

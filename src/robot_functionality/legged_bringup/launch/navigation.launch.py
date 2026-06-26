@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-import yaml
 
 from ament_index_python.packages import get_package_share_directory
 
@@ -21,7 +20,7 @@ from launch import LaunchDescription
 from launch.actions import (DeclareLaunchArgument, GroupAction,
                             OpaqueFunction, SetEnvironmentVariable)
 from launch.conditions import IfCondition
-from launch.substitutions import Command, LaunchConfiguration, PythonExpression
+from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch.actions import TimerAction
 from launch_ros.actions import LoadComposableNodes
 from launch_ros.actions import Node
@@ -32,16 +31,13 @@ from launch.actions import (DeclareLaunchArgument, GroupAction,
                             IncludeLaunchDescription, SetEnvironmentVariable)
 
 
-def _load_velocity_smoother_overrides(deploy_config_path):
-    return {}
-
-
 def generate_launch_description():
     # Get the launch directory
     bringup_dir = get_package_share_directory('legged_bringup')
 
     namespace = LaunchConfiguration('namespace')
     use_sim_time = LaunchConfiguration('use_sim_time')
+    enable_terrain_analysis = LaunchConfiguration('enable_terrain_analysis')
     autostart = LaunchConfiguration('autostart')
     params_file = LaunchConfiguration('params_file')
     use_composition = LaunchConfiguration('use_composition')
@@ -49,8 +45,6 @@ def generate_launch_description():
     container_name_full = (namespace, '/', container_name)
     use_respawn = LaunchConfiguration('use_respawn')
     log_level = LaunchConfiguration('log_level')
-    deploy_config_file = LaunchConfiguration('deploy_config_file')
-
     lifecycle_nodes = [
                        # 'map_server',  # 已在 relocalization.launch.py 中启动
                        'controller_server',
@@ -77,16 +71,6 @@ def generate_launch_description():
         'use_sim_time': use_sim_time,
         'autostart': autostart}
 
-    yaml_value_script = os.path.join(bringup_dir, 'scripts', 'read_yaml_value.py')
-    param_substitutions.update({
-        'min_vel_x': Command(['python3 ', yaml_value_script, ' ', deploy_config_file, ' ', 'cmd_vx_min']),
-        'max_vel_x': Command(['python3 ', yaml_value_script, ' ', deploy_config_file, ' ', 'cmd_vx_max']),
-        'min_vel_y': Command(['python3 ', yaml_value_script, ' ', deploy_config_file, ' ', 'cmd_vy_min']),
-        'max_vel_y': Command(['python3 ', yaml_value_script, ' ', deploy_config_file, ' ', 'cmd_vy_max']),
-        'max_vel_theta': Command(['python3 ', yaml_value_script, ' ', deploy_config_file, ' ', 'cmd_yaw_max']),
-        'min_speed_theta': Command(['python3 ', yaml_value_script, ' ', deploy_config_file, ' ', 'cmd_yaw_min']),
-    })
-
     configured_params = ParameterFile(
         RewrittenYaml(
             source_file=params_file,
@@ -107,6 +91,11 @@ def generate_launch_description():
         'use_sim_time',
         default_value='false',  # 仿真环境默认使用仿真时间
         description='Use simulation (Gazebo) clock if true')
+
+    declare_enable_terrain_analysis_cmd = DeclareLaunchArgument(
+        'enable_terrain_analysis',
+        default_value='false',
+        description='Enable terrain analysis (local obstacle detection). Default off.')
 
     declare_params_file_cmd = DeclareLaunchArgument(
         'params_file',
@@ -132,11 +121,6 @@ def generate_launch_description():
     declare_log_level_cmd = DeclareLaunchArgument(
         'log_level', default_value='warn',
         description='log level')
-
-    declare_deploy_config_file_cmd = DeclareLaunchArgument(
-        'deploy_config_file',
-        default_value='/home/dog12/HIMLocoWithDeploy/deploy_cpp/config/robots/mybot_v2_real.yaml',
-        description='Path to deploy_cpp robot YAML used to source velocity limits')
 
     def _velocity_smoother_node(context):
         return [
@@ -295,7 +279,8 @@ def generate_launch_description():
     start_terrain_analysis = IncludeLaunchDescription(
         FrontendLaunchDescriptionSource(os.path.join(
         get_package_share_directory('terrain_analysis'), 'launch', 'terrain_analysis.launch')
-        )
+        ),
+        condition=IfCondition(enable_terrain_analysis)
     )
     
     start_terrain_analysis_t = Node(
@@ -303,13 +288,15 @@ def generate_launch_description():
         executable='sensorScanGeneration',
         output='screen',
         remappings=[('/registered_scan', '/terrain_map'),
-                        ('/sensor_scan', '/terrain_map_at_scan')]
+                        ('/sensor_scan', '/terrain_map_at_scan')],
+        condition=IfCondition(enable_terrain_analysis)
     )
 
     start_terrain_analysis_ext = IncludeLaunchDescription(
         FrontendLaunchDescriptionSource(os.path.join(
         get_package_share_directory('terrain_analysis_ext'), 'launch', 'terrain_analysis_ext.launch')
         ),
+        condition=IfCondition(enable_terrain_analysis),
         # launch_arguments={
         # 'checkTerrainConn': checkTerrainConn,
         # }.items()
@@ -354,7 +341,7 @@ def generate_launch_description():
     ld.add_action(declare_container_name_cmd)
     ld.add_action(declare_use_respawn_cmd)
     ld.add_action(declare_log_level_cmd)
-    ld.add_action(declare_deploy_config_file_cmd)
+    ld.add_action(declare_enable_terrain_analysis_cmd)
     # add terrain analysis
     ld.add_action(start_terrain_analysis)
     ld.add_action(start_terrain_analysis_t)
@@ -364,26 +351,43 @@ def generate_launch_description():
     ld.add_action(load_nodes)
     ld.add_action(load_composable_nodes)
 
-    # Position-based parameter switcher (Plan C): monitors robot x position
+    # Position-based parameter switcher: monitors robot x position
     # and dynamically sets DWB critic scales + goal checker tolerance.
-    # Zero downtime — no lifecycle transitions, just param set.
+    # Zones: 0-1.35m edge | 1.35-3.35m middle | 3.35-6.30m edge
     # Delayed 5s to let controller_server finish activation first.
-    # TEMPORARILY DISABLED — all-middle-zone strategy
-    # position_switcher_node = Node(
-    #     package='legged_bringup',
-    #     executable='position_based_param_switcher.py',
-    #     name='position_based_param_switcher',
-    #     output='screen',
-    #     parameters=[{
-    #         'lower_boundary': 0.9,
-    #         'upper_boundary': 4.9,
-    #         'hysteresis_margin': 0.1,
-    #         'odom_topic': 'state_estimation',
-    #         'target_node': 'controller_server',
-    #     }],
-    #     arguments=['--ros-args', '--log-level', 'info'],
-    # )
-    # ld.add_action(TimerAction(period=5.0, actions=[position_switcher_node]))
+    position_switcher_node = Node(
+        package='legged_bringup',
+        executable='position_based_param_switcher.py',
+        name='position_based_param_switcher',
+        output='screen',
+        parameters=[{
+            'lower_boundary': 1.35,
+            'upper_boundary': 3.35,
+            'hysteresis_margin': 0.1,
+            'odom_topic': 'state_estimation',
+            'target_node': 'controller_server',
+        }],
+        arguments=['--ros-args', '--log-level', 'info'],
+    )
+    ld.add_action(TimerAction(period=5.0, actions=[position_switcher_node]))
+
+    # Obstacle-aware scale controller: lowers ObstacleFootprint.scale to 1.0
+    # when lethal obstacles invade the robot footprint, restores to 50.0 when clear.
+    obstacle_scale_ctrl_node = Node(
+        package='legged_bringup',
+        executable='obstacle_scale_controller.py',
+        name='obstacle_scale_controller',
+        output='screen',
+        parameters=[{
+            'target_node': 'controller_server',
+            'costmap_topic': '/local_costmap/costmap',
+            'hysteresis_count': 5,
+            'normal_scale': 50.0,
+            'push_through_scale': 0.01,
+        }],
+        arguments=['--ros-args', '--log-level', 'info'],
+    )
+    ld.add_action(TimerAction(period=6.0, actions=[obstacle_scale_ctrl_node]))
 
     ld.add_action(start_rviz)
 

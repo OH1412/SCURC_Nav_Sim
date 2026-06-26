@@ -36,21 +36,27 @@ StaticLayerNonLethal::~StaticLayerNonLethal()
 }
 
 // ---------------------------------------------------------------------------
-// interpretValue — the key change vs standard StaticLayer
+// interpretValue — trinary classification with flat cost for occupied cells
+//
+// Map values (mode:trinary):
+//   100 (occupied, PNG 0-89)       → occupied_cost_value_ (200)
+//   -1 / 255 unsigned (unknown, PNG 90-190) → NO_INFORMATION or FREE_SPACE
+//   0   (free, PNG 191-255)        → FREE_SPACE
 // ---------------------------------------------------------------------------
 unsigned char StaticLayerNonLethal::interpretValue(unsigned char value)
 {
-  // Standard map values: 0=free, 100=occupied, -1=unknown (255 in unsigned)
-  if (track_unknown_space_ && static_cast<int>(value) == unknown_cost_value_) {
-    return NO_INFORMATION;
-  } else if (!track_unknown_space_ && static_cast<int>(value) == unknown_cost_value_) {
-    return FREE_SPACE;
-  } else if (static_cast<int>(value) >= lethal_threshold_) {
-    // ── KEY CHANGE: configurable cost instead of hardcoded 254 ──
-    return static_cast<unsigned char>(occupied_cost_value_);
-  } else {
-    return FREE_SPACE;
+  // ── handle unknown marker (-1 = 255 unsigned) ──
+  if (static_cast<int>(value) == unknown_cost_value_) {
+    return track_unknown_space_ ? NO_INFORMATION : FREE_SPACE;
   }
+
+  // ── occupied: flat cost ──
+  if (static_cast<int>(value) >= lethal_threshold_) {
+    return static_cast<unsigned char>(occupied_cost_value_);
+  }
+
+  // ── free ──
+  return FREE_SPACE;
 }
 
 // ---------------------------------------------------------------------------

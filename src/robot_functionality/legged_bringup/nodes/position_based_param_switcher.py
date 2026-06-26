@@ -6,9 +6,9 @@ Monitors the robot's x coordinate from odometry and dynamically switches
 DWB critic scales + goal checker tolerance via ros2 param set — zero downtime.
 
 Zones:
-  - x < 1.9m        → edge  zone (rotation allowed, yaw unlocked)
-  - 1.9m ≤ x ≤ 3.9m → middle zone (yaw locked to 0 via MaintainYawCritic)
-  - x > 3.9m        → edge  zone (rotation allowed, yaw unlocked)
+  - 0 ≤ x < 1.35m   → edge  zone (rotation allowed, yaw unlocked, single-axis preferred)
+  - 1.35m ≤ x ≤ 3.35m → middle zone (yaw locked to 0 via MaintainYawCritic)
+  - 3.35m < x ≤ 6.30m → edge  zone (rotation allowed, yaw unlocked, single-axis preferred)
 
 Hysteresis: ±0.1m around boundaries to prevent rapid oscillation.
 
@@ -38,6 +38,8 @@ MIDDLE_PARAMS = {
     'FollowPath.PathAlign.scale': 0.0,
     # Enable yaw-lock critic
     'FollowPath.dwb_yaw_constraint::MaintainYawCritic.scale': 5000.0,
+    # Disable decoupling critic (middle zone = yaw locked, no need)
+    'FollowPath.dwb_yaw_constraint::DecouplingCritic.scale': 0.0,
 }
 
 EDGE_PARAMS = {
@@ -49,6 +51,8 @@ EDGE_PARAMS = {
     'FollowPath.PathAlign.scale': 32.0,
     # Disable yaw-lock critic
     'FollowPath.dwb_yaw_constraint::MaintainYawCritic.scale': 0.0,
+    # Enable decoupling critic (edge zone = yaw free, prefer single-axis commands)
+    'FollowPath.dwb_yaw_constraint::DecouplingCritic.scale': 30.0,
 }
 
 # Convenience lookup
@@ -92,6 +96,9 @@ class PositionBasedParamSwitcher(Node):
         self.sub = self.create_subscription(
             Odometry, self.odom_topic, self.odom_callback, 10)
 
+        # Periodic status print so user can verify which zone is active
+        self.status_timer = self.create_timer(3.0, self._print_status)
+
         self.get_logger().info(
             '============================================================\n'
             f'  PositionBasedParamSwitcher (Plan C — dynamic param set)\n'
@@ -125,6 +132,30 @@ class PositionBasedParamSwitcher(Node):
             if self.lower_boundary <= x <= self.upper_boundary:
                 return 'middle'
             return 'edge'
+
+    # ------------------------------------------------------------------
+    # Periodic status dump
+    # ------------------------------------------------------------------
+
+    def _print_status(self):
+        """Log current zone + planner type so user can verify switching."""
+        if self.current_zone is None:
+            self.get_logger().info(
+                '⏳ WAITING: No odometry received yet, zone undetermined.')
+            return
+
+        if self.current_zone == 'middle':
+            self.get_logger().info(
+                '🟢 ZONE=MIDDLE | 规划器: 限制yaw (锁0°) | '
+                'RotateToGoal=0 GoalAlign=0 PathAlign=0 | '
+                'MaintainYawCritic=5000 DecouplingCritic=0 | '
+                f'范围: [{self.lower_boundary}, {self.upper_boundary}]m')
+        else:
+            self.get_logger().info(
+                '🟡 ZONE=EDGE   | 规划器: 不限制yaw (可旋转) | '
+                'RotateToGoal=32 GoalAlign=24 PathAlign=32 | '
+                'MaintainYawCritic=0 DecouplingCritic=30 | '
+                f'范围: x<{self.lower_boundary} 或 x>{self.upper_boundary}m')
 
     # ------------------------------------------------------------------
     # Odometry → zone check

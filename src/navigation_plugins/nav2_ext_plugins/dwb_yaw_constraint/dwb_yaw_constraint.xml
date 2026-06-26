@@ -8,5 +8,14 @@
         (e.g., always facing map's +x direction).
       </description>
     </class>
+    <class type="dwb_yaw_constraint::DecouplingCritic"
+           base_class_type="dwb_core::TrajectoryCritic">
+      <description>
+        DWB critic that penalizes trajectories mixing multiple velocity axes.
+        Gently steers the optimizer toward single-axis commands (pure translation
+        or pure rotation) without hard restrictions. Small amounts of mixing
+        are lightly penalized.
+      </description>
+    </class>
   </library>
 </class_libraries>

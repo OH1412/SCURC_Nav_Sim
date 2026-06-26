@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c ' *)",
+      "Bash(identify /home/dog12/SCURC_Nav_Sim/src/robot_functionality/legged_bringup/maps/test.png)",
+      "Bash(python3 -c \"from PIL import Image; img=Image.open\\('/home/dog12/SCURC_Nav_Sim/src/robot_functionality/legged_bringup/maps/test.png'\\); print\\(f'Size: {img.size}, Mode: {img.mode}'\\)\")",
+      "Bash(colcon build *)",
+      "Bash(cat /home/dog12/HIMLocoWithDeploy/deploy_cpp/config/robots/mybot_v2_real.yaml 2>/dev/null || echo \"FILE NOT FOUND\")",
+      "Read(//home/dog12/HIMLocoWithDeploy/deploy_cpp/config/robots/**)",
+      "Bash(python3 -c \"import ast; ast.parse\\(open\\('/home/dog12/SCURC_Nav_Sim/src/robot_functionality/legged_bringup/launch/navigation.launch.py'\\).read\\(\\)\\); print\\('OK'\\)\")",
+      "Bash(python3 -c \"import ast; ast.parse\\(open\\('/home/dog12/SCURC_Nav_Sim/src/robot_functionality/legged_bringup/launch/bringup_in_real.launch.py'\\).read\\(\\)\\); print\\('bringup_in_real: OK'\\)\")",
+      "Bash(python3 -c \"import ast; ast.parse\\(open\\('/home/dog12/SCURC_Nav_Sim/src/robot_functionality/legged_bringup/launch/bringup_all_in_one.launch.py'\\).read\\(\\)\\); print\\('bringup_all_in_one: OK'\\)\")",
+      "Bash(python3 -c \"import ast; ast.parse\\(open\\('/home/dog12/SCURC_Nav_Sim/src/robot_functionality/legged_bringup/launch/navigation.launch.py'\\).read\\(\\)\\); print\\('navigation: OK'\\)\")"
+    ]
+  }
+}

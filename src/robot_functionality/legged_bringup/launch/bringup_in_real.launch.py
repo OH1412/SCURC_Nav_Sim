@@ -20,7 +20,7 @@ def generate_launch_description():
     start_sim = LaunchConfiguration('start_sim')
     enable_udp_forwarding = LaunchConfiguration('enable_udp_forwarding')
     enable_serial_driver = LaunchConfiguration('enable_serial_driver')
-    deploy_config_file = LaunchConfiguration('deploy_config_file')
+    enable_terrain_analysis = LaunchConfiguration('enable_terrain_analysis')
     udp_ip = LaunchConfiguration('udp_ip')
     udp_port = LaunchConfiguration('udp_port')
     udp_mode = LaunchConfiguration('udp_mode')
@@ -56,10 +56,10 @@ def generate_launch_description():
         description='Enable serial_driver launch'
     )
 
-    declare_deploy_config_file = DeclareLaunchArgument(
-        'deploy_config_file',
-        default_value='/home/dog12/HIMLocoWithDeploy/deploy_cpp/config/robots/mybot_v2_real.yaml',
-        description='Path to deploy_cpp robot YAML used for velocity limits'
+    declare_enable_terrain_analysis = DeclareLaunchArgument(
+        'enable_terrain_analysis',
+        default_value='false',
+        description='Enable terrain analysis (local obstacle detection). Default off.'
     )
 
     declare_udp_ip = DeclareLaunchArgument(
@@ -171,7 +171,6 @@ def generate_launch_description():
             'cmd_vel_topic': udp_cmd_vel_topic,
             'use_twist_stamped': udp_use_twist_stamped,
             'estop_topic': udp_estop_topic,
-            'deploy_config_file': deploy_config_file,
         }],
     )
 
@@ -190,7 +189,7 @@ def generate_launch_description():
     launch_arguments={
         'use_sim_time': use_sim_time,
         'use_pointcloud_to_scan': 'false',
-        'deploy_config_file': deploy_config_file,
+        'enable_terrain_analysis': enable_terrain_analysis,
     }.items(),
 )
 
@@ -219,7 +218,7 @@ def generate_launch_description():
     ld.add_action(declare_start_sim)
     ld.add_action(declare_enable_udp_forwarding)
     ld.add_action(declare_enable_serial_driver)
-    ld.add_action(declare_deploy_config_file)
+    ld.add_action(declare_enable_terrain_analysis)
     ld.add_action(declare_udp_ip)
     ld.add_action(declare_udp_port)
     ld.add_action(declare_udp_mode)
