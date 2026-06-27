@@ -6,7 +6,8 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, TimerAction, SetEnvironmentVariable
+from launch.actions import (DeclareLaunchArgument, IncludeLaunchDescription,
+                            TimerAction, SetEnvironmentVariable)
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
@@ -21,12 +22,20 @@ def generate_launch_description():
     enable_udp_forwarding = LaunchConfiguration('enable_udp_forwarding')
     enable_serial_driver = LaunchConfiguration('enable_serial_driver')
     enable_terrain_analysis = LaunchConfiguration('enable_terrain_analysis')
+    enable_waypoint_mission = LaunchConfiguration('enable_waypoint_mission')
+    waypoint_file = LaunchConfiguration('waypoint_file')
+    waypoint_start_delay = LaunchConfiguration('waypoint_start_delay')
+    enable_stand_up = LaunchConfiguration('enable_stand_up')
+    stand_up_delay = LaunchConfiguration('stand_up_delay')
+    enable_arm_control = LaunchConfiguration('enable_arm_control')
+    arm_control_delay = LaunchConfiguration('arm_control_delay')
     udp_ip = LaunchConfiguration('udp_ip')
     udp_port = LaunchConfiguration('udp_port')
     udp_mode = LaunchConfiguration('udp_mode')
     udp_cmd_vel_topic = LaunchConfiguration('udp_cmd_vel_topic')
     udp_use_twist_stamped = LaunchConfiguration('udp_use_twist_stamped')
     udp_estop_topic = LaunchConfiguration('udp_estop_topic')
+    reloc_delay = LaunchConfiguration('reloc_delay')
 
     declare_use_sim_time = DeclareLaunchArgument(
         'use_sim_time',
@@ -52,7 +61,7 @@ def generate_launch_description():
 
     declare_enable_serial_driver = DeclareLaunchArgument(
         'enable_serial_driver',
-        default_value='false',
+        default_value='true',
         description='Enable serial_driver launch'
     )
 
@@ -60,6 +69,54 @@ def generate_launch_description():
         'enable_terrain_analysis',
         default_value='false',
         description='Enable terrain analysis (local obstacle detection). Default off.'
+    )
+
+    declare_enable_waypoint_mission = DeclareLaunchArgument(
+        'enable_waypoint_mission',
+        default_value='true',
+        description='Auto-start waypoint navigation mission on boot'
+    )
+
+    declare_waypoint_file = DeclareLaunchArgument(
+        'waypoint_file',
+        default_value=os.path.join(
+            get_package_share_directory('legged_bringup'), 'params', 'waypoints.yaml'),
+        description='Path to waypoints.yaml.'
+    )
+
+    declare_waypoint_start_delay = DeclareLaunchArgument(
+        'waypoint_start_delay',
+        default_value='25.0',
+        description='Delay (seconds) after bringup before sending arm mission trigger.'
+    )
+
+    declare_enable_stand_up = DeclareLaunchArgument(
+        'enable_stand_up',
+        default_value='true',
+        description='Send STAND_UP command to deploy_cpp before navigation.'
+    )
+
+    declare_stand_up_delay = DeclareLaunchArgument(
+        'stand_up_delay',
+        default_value='3.0',
+        description='Delay (seconds) before starting stand_up_sender (node internally waits for relocalization + reloc_delay).'
+    )
+    declare_reloc_delay = DeclareLaunchArgument(
+        'reloc_delay',
+        default_value='0.0',
+        description='Seconds to wait AFTER relocalization signal before sending stand_up.'
+    )
+
+    declare_enable_arm_control = DeclareLaunchArgument(
+        'enable_arm_control',
+        default_value='true',
+        description='Enable Arm Control Action Server for manipulator tasks'
+    )
+
+    declare_arm_control_delay = DeclareLaunchArgument(
+        'arm_control_delay',
+        default_value='12.0',
+        description='Delay (seconds) after bringup before starting arm control server (must start before bt_navigator)'
     )
 
     declare_udp_ip = DeclareLaunchArgument(
@@ -158,6 +215,7 @@ def generate_launch_description():
         start_serial_driver = None
 
     # 1.6) UDP forwarder for nav cmd_vel -> deploy_cpp
+    # 包含死区补偿：当速度非零但低于 deadzone 阈值时，自动提升到 min_effective
     cmd_vel_udp_bridge = Node(
         package='cmd_vel_udp_bridge',
         executable='cmd_vel_udp_bridge_node',
@@ -171,6 +229,14 @@ def generate_launch_description():
             'cmd_vel_topic': udp_cmd_vel_topic,
             'use_twist_stamped': udp_use_twist_stamped,
             'estop_topic': udp_estop_topic,
+            # 死区补偿配置：速度低于 deadzone 阈值但非零时，自动提升到 min_effective
+            # 依据实测：vx≈0.105, vy≈-0.221, wz≈0.063 时机器人完全不动
+            'deadzone_vx': 0.05,
+            'deadzone_vy': 0.05,
+            'deadzone_wz': 0.05,
+            'min_effective_vx': 0.4,
+            'min_effective_vy': 0.6,
+            'min_effective_wz': 0.2,
         }],
     )
 
@@ -210,6 +276,65 @@ def generate_launch_description():
         actions=[aft_to_pose_offset_node]
     )
 
+    # Stand-up command sender (UDP to deploy_cpp, before navigation)
+    stand_up_sender_node = Node(
+        package='legged_bringup',
+        executable='stand_up_sender.py',
+        name='stand_up_sender',
+        output='screen',
+        condition=IfCondition(enable_stand_up),
+        parameters=[{
+            'udp_ip': udp_ip,
+            'udp_port': udp_port,
+            'reloc_delay': reloc_delay,
+        }],
+    )
+
+    delayed_stand_up_sender = TimerAction(
+        period=stand_up_delay,
+        actions=[stand_up_sender_node],
+        condition=IfCondition(enable_stand_up)
+    )
+
+    # Arm Control Action Server (optional, controlled by enable_arm_control)
+    arm_control_server_node = Node(
+        package='legged_bringup',
+        executable='arm_control_server.py',
+        name='arm_control_server',
+        output='screen',
+        condition=IfCondition(enable_arm_control),
+        parameters=[{
+            'arm_timeout': 30.0,
+            'enable_serial_publish': True,
+            'arm_command_topic': '/arm_command',
+        }],
+    )
+
+    delayed_arm_control = TimerAction(
+        period=arm_control_delay,
+        actions=[arm_control_server_node],
+        condition=IfCondition(enable_arm_control)
+    )
+
+    # 机械臂抓取使命自动触发器 — Python Action Client
+    arm_mission_trigger = Node(
+        package='legged_bringup',
+        executable='arm_mission_trigger.py',
+        name='arm_mission_trigger',
+        output='screen',
+        condition=IfCondition(enable_waypoint_mission),
+        parameters=[{
+            'startup_delay': 0.0,   # TimerAction 已经做了延迟
+            'action_timeout': 30.0,
+        }],
+    )
+
+    delayed_arm_mission_trigger = TimerAction(
+        period=waypoint_start_delay,
+        actions=[arm_mission_trigger],
+        condition=IfCondition(enable_waypoint_mission)
+    )
+
     ld = LaunchDescription()
 
     ld.add_action(stdout_linebuf_envvar)
@@ -219,6 +344,14 @@ def generate_launch_description():
     ld.add_action(declare_enable_udp_forwarding)
     ld.add_action(declare_enable_serial_driver)
     ld.add_action(declare_enable_terrain_analysis)
+    ld.add_action(declare_enable_waypoint_mission)
+    ld.add_action(declare_waypoint_file)
+    ld.add_action(declare_waypoint_start_delay)
+    ld.add_action(declare_enable_stand_up)
+    ld.add_action(declare_stand_up_delay)
+    ld.add_action(declare_reloc_delay)
+    ld.add_action(declare_enable_arm_control)
+    ld.add_action(declare_arm_control_delay)
     ld.add_action(declare_udp_ip)
     ld.add_action(declare_udp_port)
     ld.add_action(declare_udp_mode)
@@ -240,5 +373,11 @@ def generate_launch_description():
     ld.add_action(delayed_bringup)
     # Start aft_mapped_in_map -> LIVO2/pose_offset relay after bringup delay
     ld.add_action(delayed_aft_pose_offset)
+    # Stand up before navigation (UDP to deploy_cpp)
+    ld.add_action(delayed_stand_up_sender)
+    # Arm Control Action Server for manipulator tasks
+    ld.add_action(delayed_arm_control)
+    # Start arm-grasp mission trigger (NavigateToPose → 自包含BT)
+    ld.add_action(delayed_arm_mission_trigger)
 
     return ld

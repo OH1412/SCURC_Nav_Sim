@@ -20,6 +20,7 @@ find_package(tf2_ros REQUIRED)
 find_package(nav2_costmap_2d REQUIRED)
 find_package(nav2_core REQUIRED)
 find_package(nav2_behaviors REQUIRED)
+find_package(nav2_behavior_tree REQUIRED)
 find_package(pluginlib REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 find_package(action_msgs REQUIRED)
@@ -45,14 +46,24 @@ set(dependencies
   tf2_ros
   nav2_costmap_2d
   nav2_core
+  nav2_behavior_tree
   pluginlib
   nav2_behaviors
   # OpenCV
 )
 
+# ============================================================================
+# 生成自定义 Action/Srv/Msg 接口
+# ============================================================================
+rosidl_generate_interfaces(${PROJECT_NAME}
+  "action/ArmControl.action"
+  DEPENDENCIES geometry_msgs action_msgs
+)
+
 
 add_library(${library_name} SHARED
   plugins/back_up_twz_free_action.cpp
+  plugins/arm_control_bt_node.cpp
 )
 
 target_compile_definitions(${library_name} PUBLIC "PLUGINLIB__DISABLE_BOOST_FUNCTIONS")
@@ -60,6 +71,11 @@ target_compile_definitions(${library_name} PUBLIC "PLUGINLIB__DISABLE_BOOST_FUNC
 ament_target_dependencies(${library_name}
   ${dependencies}
 )
+
+# 链接自定义 Action 生成的头文件与类型支持
+rosidl_get_typesupport_target(cpp_typesupport_target
+  ${PROJECT_NAME} "rosidl_typesupport_cpp")
+target_link_libraries(${library_name} ${cpp_typesupport_target})
 
 
 pluginlib_export_plugin_description_file(nav2_core behavior_ext_plugins.xml)
@@ -77,7 +93,10 @@ install(DIRECTORY include/
 
 install(FILES behavior_ext_plugins.xml
   DESTINATION share/${PROJECT_NAME}
-  
+)
+
+install(DIRECTORY action/
+  DESTINATION share/${PROJECT_NAME}/action
 )
 
 set_target_properties(behavior_ext_plugins_lib PROPERTIES

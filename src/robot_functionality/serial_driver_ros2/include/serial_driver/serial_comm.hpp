@@ -15,10 +15,15 @@ public:
     SerialComm(const std::string& port, unsigned long baudrate);
     ~SerialComm();
 
-    // send
+    // send (existing protocol)
     bool sendFloatArrayCommand(const std::vector<float>& values, uint8_t cmd_id);
     // receive
     std::vector<float> readFloatArrayResponse();
+
+    // arm control protocol (FD FD 06 X_L X_H Y_L Y_H Z_L Z_H CHECKSUM)
+    // checksum_offset: 调试验证用，默认 0。非零时校验和 = (累加和 + offset) & 0xFF
+    bool sendArmTargetCommand(int16_t x_mm, int16_t y_mm, int16_t z_mm,
+                              int checksum_offset = 0);
 
 
 private:
@@ -35,6 +40,8 @@ private:
     void reconnectLoop();
     bool attemptReconnect();
     std::vector<uint8_t> encodeFloatArray(const std::vector<float>& values, uint8_t cmd_id);
+    std::vector<uint8_t> encodeArmTarget(int16_t x_mm, int16_t y_mm, int16_t z_mm,
+                                        int checksum_offset = 0);
 };
 
 #endif

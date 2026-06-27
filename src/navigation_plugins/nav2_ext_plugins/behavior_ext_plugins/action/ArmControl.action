@@ -1,0 +1,13 @@
+# ArmControl.action
+# 机械臂控制动作 — 将map坐标系下的目标转换到base_link并执行抓取
+#
+# Goal: 用户在map坐标系下指定的目标位姿
+geometry_msgs/PoseStamped target_pose
+---
+# Result: 执行结果
+bool success
+geometry_msgs/PoseStamped base_link_pose  # 转换到base_link系下的坐标
+string message
+---
+# Feedback: 执行过程中的状态反馈
+string status

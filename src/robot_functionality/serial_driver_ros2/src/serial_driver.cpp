@@ -148,6 +148,76 @@ std::vector<uint8_t> SerialComm::encodeFloatArray(const std::vector<float>& valu
     return frame;
 }
 
+// ============================================================================
+// 机械臂坐标抓取控制协议 (FD FD 06 X_L X_H Y_L Y_H Z_L Z_H CHECKSUM)
+// 帧长固定 10 字节，X/Y/Z 为 int16 小端序，单位 mm
+// ============================================================================
+std::vector<uint8_t> SerialComm::encodeArmTarget(int16_t x_mm, int16_t y_mm, int16_t z_mm,
+                                                  int checksum_offset) {
+    std::vector<uint8_t> frame;
+
+    // 帧头 1, 2
+    frame.push_back(0xFD);
+    frame.push_back(0xFD);
+
+    // 数据区长度 (固定 6 字节: X_L X_H Y_L Y_H Z_L Z_H)
+    frame.push_back(0x06);
+
+    // X 坐标 (int16, 小端序: 低字节在前)
+    frame.push_back(static_cast<uint8_t>(x_mm & 0xFF));
+    frame.push_back(static_cast<uint8_t>((x_mm >> 8) & 0xFF));
+
+    // Y 坐标 (int16, 小端序)
+    frame.push_back(static_cast<uint8_t>(y_mm & 0xFF));
+    frame.push_back(static_cast<uint8_t>((y_mm >> 8) & 0xFF));
+
+    // Z 坐标 (int16, 小端序)
+    frame.push_back(static_cast<uint8_t>(z_mm & 0xFF));
+    frame.push_back(static_cast<uint8_t>((z_mm >> 8) & 0xFF));
+
+    // 校验和 = (前 9 字节累加和 + offset) 取低 8 位
+    // offset 默认 0；调试时可设为非零值来匹配不同下位机实现
+    uint8_t checksum = 0;
+    for (size_t i = 0; i < 9; i++) {
+        checksum += frame[i];
+    }
+    checksum = static_cast<uint8_t>((checksum + checksum_offset) & 0xFF);
+    frame.push_back(checksum);
+
+    return frame;
+}
+
+bool SerialComm::sendArmTargetCommand(int16_t x_mm, int16_t y_mm, int16_t z_mm,
+                                       int checksum_offset) {
+    std::lock_guard<std::mutex> lock(serial_mutex_);
+
+    if (!serial_port_.isOpen()) return false;
+
+    std::vector<uint8_t> frame = encodeArmTarget(x_mm, y_mm, z_mm, checksum_offset);
+
+    // Debug: 打印发送的帧数据
+    char buf[4];
+    std::string hex_str;
+    for (uint8_t b : frame) {
+        snprintf(buf, sizeof(buf), "%02X ", b);
+        hex_str += buf;
+    }
+    RCLCPP_INFO(rclcpp::get_logger("SerialComm"),
+        "[ARM] Sending target: (%d, %d, %d) mm | checksum_offset=%d | Raw: %s",
+        x_mm, y_mm, z_mm, checksum_offset, hex_str.c_str());
+
+    try {
+        size_t bytes_written = serial_port_.write(frame);
+        return bytes_written == frame.size();
+    } catch (const std::exception& e) {
+        RCLCPP_ERROR(rclcpp::get_logger("SerialComm"), "Arm send error: %s", e.what());
+        if (serial_port_.isOpen()) {
+            serial_port_.close();
+        }
+        return false;
+    }
+}
+
 std::vector<float> SerialComm::readFloatArrayResponse() {
     std::vector<float> result;
     

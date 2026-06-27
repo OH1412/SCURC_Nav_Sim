@@ -1,0 +1,50 @@
+<!--
+  定点导航 + 定点任务执行行为树
+  用于 waypoint_follower 模式：每个 waypoint 到达后执行任务，然后进入下一个。
+  对应 nav2_params.yaml 中的 default_nav_to_pose_bt_xml。
+-->
+<root main_tree_to_execute="MainTree">
+  <BehaviorTree ID="MainTree">
+
+    <RecoveryNode number_of_retries="6" name="NavigateToWaypointRecovery">
+
+      <PipelineSequence name="NavigateToWaypointAndExecuteTask">
+
+        <RateController hz="1.0">
+          <RecoveryNode number_of_retries="1" name="ComputePathToPose">
+            <Sequence name="ComputeAndSmoothPath">
+              <GoalUpdater input_goal="{goal}" output_goal="{updated_goal}">
+                <ComputePathToPose goal="{updated_goal}" path="{path}" planner_id="GridBased"/>
+              </GoalUpdater>
+              <SmoothPath unsmoothed_path="{path}" smoothed_path="{smoothed_path}"/>
+            </Sequence>
+            <ClearEntireCostmap name="ClearGlobalCostmap-Context"
+                                service_name="global_costmap/clear_entirely_global_costmap"/>
+          </RecoveryNode>
+        </RateController>
+
+        <RecoveryNode number_of_retries="1" name="FollowPath">
+          <FollowPath path="{smoothed_path}" controller_id="FollowPath"/>
+          <ClearEntireCostmap name="ClearLocalCostmap-Context"
+                              service_name="local_costmap/clear_entirely_local_costmap"/>
+        </RecoveryNode>
+
+        <!-- 机械臂抓取任务：通过 ArmControl BT 节点调用 arm_control Action Server -->
+        <ArmControl target_pose="{goal}"
+                    server_name="arm_control"
+                    server_timeout="30000"/>
+
+      </PipelineSequence>
+
+      <ReactiveFallback name="RecoveryFallback">
+        <GoalUpdated/>
+        <RoundRobin name="RecoveryActions">
+          <!-- <BackUp backup_dist="0.3" backup_speed="0.4"/> -->
+          <!-- <Spin spin_dist="0.523"/> -->
+        </RoundRobin>
+      </ReactiveFallback>
+
+    </RecoveryNode>
+
+  </BehaviorTree>
+</root>

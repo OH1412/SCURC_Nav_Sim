@@ -36,6 +36,10 @@ install(PROGRAMS
   nodes/aft_to_pose_offset_node.py
   nodes/position_based_param_switcher.py
   nodes/obstacle_scale_controller.py
+  nodes/waypoint_sender.py
+  nodes/stand_up_sender.py
+  nodes/arm_control_server.py
+  nodes/arm_mission_trigger.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

@@ -47,6 +47,15 @@ public:
     estop_topic_ = declare_parameter<std::string>("estop_topic", "");
     deploy_config_file_ = declare_parameter<std::string>("deploy_config_file", "");
 
+    // 死区补偿参数：当速度非零但低于死区阈值时，自动提升到最小有效速度
+    deadzone_vx_ = declare_parameter<double>("deadzone_vx", 0.25);
+    deadzone_vy_ = declare_parameter<double>("deadzone_vy", 0.25);
+    deadzone_wz_ = declare_parameter<double>("deadzone_wz", 0.08);
+    min_effective_vx_ = declare_parameter<double>("min_effective_vx", 0.4);
+    min_effective_vy_ = declare_parameter<double>("min_effective_vy", 0.4);
+    min_effective_wz_ = declare_parameter<double>("min_effective_wz", 0.2);
+    publish_compensated_ = declare_parameter<bool>("publish_compensated", true);
+
     if (!deploy_config_file_.empty()) {
       load_velocity_limits_from_yaml(deploy_config_file_);
     }
@@ -61,6 +70,11 @@ public:
                 "limits: vx[%.2f, %.2f] vy[%.2f, %.2f] yaw[%.2f, %.2f]",
                 cmd_vx_min_, cmd_vx_max_, cmd_vy_min_, cmd_vy_max_,
                 cmd_yaw_min_, cmd_yaw_max_);
+    RCLCPP_INFO(get_logger(),
+                "deadzone_compensation: vx(dz=%.3f min=%.3f) vy(dz=%.3f min=%.3f) wz(dz=%.3f min=%.3f)",
+                deadzone_vx_, min_effective_vx_,
+                deadzone_vy_, min_effective_vy_,
+                deadzone_wz_, min_effective_wz_);
   }
 
   ~CmdVelUdpBridgeNode() override {
@@ -100,6 +114,9 @@ private:
           });
     }
 
+    // 发布补偿后的速度，方便观测死区补偿是否生效
+    compensated_pub_ = create_publisher<geometry_msgs::msg::Twist>("cmd_vel_compensated", 10);
+
     if (!estop_topic_.empty()) {
       estop_sub_ = create_subscription<std_msgs::msg::Bool>(
           estop_topic_, rclcpp::QoS(10),
@@ -109,14 +126,46 @@ private:
     }
   }
 
+  // 死区补偿：将低于死区阈值的非零速度提升到最小有效速度
+  // 这样可以避免"控制器输出了小速度 → 机器人不动 → 误差不减小 → 控制器继续输出小速度"的死循环
+  double apply_deadzone_compensation(double value, double deadzone, double min_effective) {
+    if (value == 0.0) {
+      return 0.0;  // 保持零速度
+    }
+    double abs_v = std::fabs(value);
+    if (abs_v < deadzone) {
+      // 在死区内：提升到最小有效速度，保持方向
+      double boosted = std::copysign(min_effective, value);
+      RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 2000,
+                            "Deadzone compensation: %.4f -> %.4f (deadzone=%.3f, min_eff=%.3f)",
+                            value, boosted, deadzone, min_effective);
+      return boosted;
+    }
+    return value;  // 高于死区，保持不变
+  }
+
   void handle_twist(const geometry_msgs::msg::Twist &msg) {
     UdpCommand cmd;
     cmd.mode = mode_;
     cmd.e_stop = estop_latched_ ? 1 : 0;
 
-    cmd.vx = static_cast<float>(scale_ratio(msg.linear.x, cmd_vx_min_, cmd_vx_max_));
-    cmd.vy = static_cast<float>(scale_ratio(msg.linear.y, cmd_vy_min_, cmd_vy_max_));
-    cmd.yaw = static_cast<float>(scale_ratio(msg.angular.z, cmd_yaw_min_, cmd_yaw_max_));
+    // 先应用死区补偿，再转换为比例值
+    double vx_compensated = apply_deadzone_compensation(msg.linear.x, deadzone_vx_, min_effective_vx_);
+    double vy_compensated = apply_deadzone_compensation(msg.linear.y, deadzone_vy_, min_effective_vy_);
+    double wz_compensated = apply_deadzone_compensation(msg.angular.z, deadzone_wz_, min_effective_wz_);
+
+    // 发布补偿后的速度供观测
+    if (publish_compensated_) {
+      auto comp_msg = std::make_unique<geometry_msgs::msg::Twist>();
+      comp_msg->linear.x = vx_compensated;
+      comp_msg->linear.y = vy_compensated;
+      comp_msg->angular.z = wz_compensated;
+      compensated_pub_->publish(std::move(comp_msg));
+    }
+
+    cmd.vx = static_cast<float>(scale_ratio(vx_compensated, cmd_vx_min_, cmd_vx_max_));
+    cmd.vy = static_cast<float>(scale_ratio(vy_compensated, cmd_vy_min_, cmd_vy_max_));
+    cmd.yaw = static_cast<float>(scale_ratio(wz_compensated, cmd_yaw_min_, cmd_yaw_max_));
 
     send_packet(cmd);
   }
@@ -169,6 +218,18 @@ private:
   bool use_twist_stamped_ = false;
   std::string cmd_vel_topic_ = "/cmd_vel";
   std::string estop_topic_;
+
+  // 死区补偿参数
+  double deadzone_vx_ = 0.25;
+  double deadzone_vy_ = 0.25;
+  double deadzone_wz_ = 0.08;
+  double min_effective_vx_ = 0.4;
+  double min_effective_vy_ = 0.4;
+  double min_effective_wz_ = 0.2;
+  bool publish_compensated_ = true;
+
+  // 补偿后速度发布者
+  rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr compensated_pub_;
 
   int sock_fd_ = -1;
   struct sockaddr_in dest_addr_ {};

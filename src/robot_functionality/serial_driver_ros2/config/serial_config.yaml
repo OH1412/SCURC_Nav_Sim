@@ -1,4 +1,17 @@
 serial_cmd_sender:
   ros__parameters:
-    port: "/dev/ttyUSB0"
+    # 串口通信参数 (复用 /dev/ttyUSB0，与 suction_controller 共用)
+    port: "/dev/ttyUSB2"
     baudrate: 115200
+    # 机械臂协议校验和偏移 (调试验证用)
+    #   0 (默认): 标准算法 checksum = (前9字节累加和) & 0xFF
+    #   非零值:   checksum = (前9字节累加和 + offset) & 0xFF
+    #   若下位机与标准不一致，可调整此值尝试匹配
+    arm_checksum_offset: 0
+
+# 机械臂坐标抓取控制节点 (协议: FD FD 06 X_L X_H Y_L Y_H Z_L Z_H CHECKSUM)
+suction_controller:
+  ros__parameters:
+    port: "/dev/ttyUSB2"
+    baudrate: 115200
+    arm_checksum_offset: 0
