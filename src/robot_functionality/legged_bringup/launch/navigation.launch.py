@@ -360,13 +360,7 @@ def generate_launch_description():
         executable='position_based_param_switcher.py',
         name='position_based_param_switcher',
         output='screen',
-        parameters=[{
-            'lower_boundary': 1.35,
-            'upper_boundary': 3.35,
-            'hysteresis_margin': 0.1,
-            'odom_topic': 'state_estimation',
-            'target_node': 'controller_server',
-        }],
+        parameters=[configured_params],
         arguments=['--ros-args', '--log-level', 'info'],
     )
     ld.add_action(TimerAction(period=5.0, actions=[position_switcher_node]))
@@ -378,13 +372,7 @@ def generate_launch_description():
         executable='obstacle_scale_controller.py',
         name='obstacle_scale_controller',
         output='screen',
-        parameters=[{
-            'target_node': 'controller_server',
-            'costmap_topic': '/local_costmap/costmap',
-            'hysteresis_count': 5,
-            'normal_scale': 50.0,
-            'push_through_scale': 0.01,
-        }],
+        parameters=[configured_params],
         arguments=['--ros-args', '--log-level', 'info'],
     )
     ld.add_action(TimerAction(period=6.0, actions=[obstacle_scale_ctrl_node]))

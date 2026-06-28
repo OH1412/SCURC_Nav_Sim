@@ -73,7 +73,7 @@ def generate_launch_description():
 
     declare_enable_waypoint_mission = DeclareLaunchArgument(
         'enable_waypoint_mission',
-        default_value='true',
+        default_value='false',
         description='Auto-start waypoint navigation mission on boot'
     )
 
@@ -109,7 +109,7 @@ def generate_launch_description():
 
     declare_enable_arm_control = DeclareLaunchArgument(
         'enable_arm_control',
-        default_value='true',
+        default_value='false',
         description='Enable Arm Control Action Server for manipulator tasks'
     )
 
@@ -158,6 +158,10 @@ def generate_launch_description():
     # Buffer Python stdout for cleaner logs
     stdout_linebuf_envvar = SetEnvironmentVariable(
         'RCUTILS_LOGGING_BUFFERED_STREAM', '1')
+
+    # Path to centralized parameter file (shared with navigation.launch.py)
+    nav2_params_file = os.path.join(
+        get_package_share_directory('legged_bringup'), 'params', 'nav2_params.yaml')
 
     # 0) Optional: start simulation
     # try:
@@ -222,22 +226,16 @@ def generate_launch_description():
         name='cmd_vel_udp_bridge',
         output='screen',
         condition=IfCondition(enable_udp_forwarding),
-        parameters=[{
-            'udp_ip': udp_ip,
-            'udp_port': udp_port,
-            'mode': udp_mode,
-            'cmd_vel_topic': udp_cmd_vel_topic,
-            'use_twist_stamped': udp_use_twist_stamped,
-            'estop_topic': udp_estop_topic,
-            # 死区补偿配置：速度低于 deadzone 阈值但非零时，自动提升到 min_effective
-            # 依据实测：vx≈0.105, vy≈-0.221, wz≈0.063 时机器人完全不动
-            'deadzone_vx': 0.05,
-            'deadzone_vy': 0.05,
-            'deadzone_wz': 0.05,
-            'min_effective_vx': 0.4,
-            'min_effective_vy': 0.6,
-            'min_effective_wz': 0.2,
-        }],
+        parameters=[nav2_params_file,
+                    # Launch arg overrides (覆盖 YAML 默认值)
+                    {
+                        'udp_ip': udp_ip,
+                        'udp_port': udp_port,
+                        'mode': udp_mode,
+                        'cmd_vel_topic': udp_cmd_vel_topic,
+                        'use_twist_stamped': udp_use_twist_stamped,
+                        'estop_topic': udp_estop_topic,
+                    }],
     )
 
     # 2) Our bringup (relocalization + navigation)
@@ -283,11 +281,8 @@ def generate_launch_description():
         name='stand_up_sender',
         output='screen',
         condition=IfCondition(enable_stand_up),
-        parameters=[{
-            'udp_ip': udp_ip,
-            'udp_port': udp_port,
-            'reloc_delay': reloc_delay,
-        }],
+        parameters=[nav2_params_file,
+                    {'udp_ip': udp_ip, 'udp_port': udp_port, 'reloc_delay': reloc_delay}],
     )
 
     delayed_stand_up_sender = TimerAction(

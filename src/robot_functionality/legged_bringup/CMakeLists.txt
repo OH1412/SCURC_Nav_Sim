@@ -40,6 +40,7 @@ install(PROGRAMS
   nodes/stand_up_sender.py
   nodes/arm_control_server.py
   nodes/arm_mission_trigger.py
+  nodes/pointcloud_range_filter.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

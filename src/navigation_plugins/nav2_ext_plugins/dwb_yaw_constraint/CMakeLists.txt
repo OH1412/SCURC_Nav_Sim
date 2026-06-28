@@ -45,6 +45,7 @@ include_directories(
 add_library(${library_name} SHARED
   plugins/maintain_yaw_critic.cpp
   plugins/decoupling_critic.cpp
+  plugins/maintain_vy_critic.cpp
 )
 
 target_compile_definitions(${library_name} PUBLIC "PLUGINLIB__DISABLE_BOOST_FUNCTIONS")

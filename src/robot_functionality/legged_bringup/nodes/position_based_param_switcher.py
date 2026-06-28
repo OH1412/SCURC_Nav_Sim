@@ -6,9 +6,9 @@ Monitors the robot's x coordinate from odometry and dynamically switches
 DWB critic scales + goal checker tolerance via ros2 param set — zero downtime.
 
 Zones:
-  - 0 ≤ x < 1.35m   → edge  zone (rotation allowed, yaw unlocked, single-axis preferred)
-  - 1.35m ≤ x ≤ 3.35m → middle zone (yaw locked to 0 via MaintainYawCritic)
-  - 3.35m < x ≤ 6.30m → edge  zone (rotation allowed, yaw unlocked, single-axis preferred)
+  - 0 ≤ x < 1.0m   → edge  zone (rotation allowed, yaw unlocked, single-axis preferred)
+  - 1.0m ≤ x ≤ 4.0m → middle zone (yaw locked to 0 via MaintainYawCritic)
+  - 4.0m < x ≤ 6.30m → edge  zone (rotation allowed, yaw unlocked, single-axis preferred)
 
 Hysteresis: ±0.1m around boundaries to prevent rapid oscillation.
 
@@ -30,29 +30,30 @@ from rcl_interfaces.msg import Parameter, ParameterValue
 # ---------------------------------------------------------------------------
 
 MIDDLE_PARAMS = {
-    # Goal checker: lenient yaw (360° → "arrived" as long as xy is correct)
+    # 中间区：不检查朝向（只要 xy 到位即视为完成）
+    # MaintainYawCritic(5000) 锁定 yaw=0，vel_y=0 从采样器源头消除横向移动
+    # 只输出纯 X 方向速度
     'general_goal_checker.yaw_goal_tolerance': 6.28,
-    # Disable rotation critics
     'FollowPath.RotateToGoal.scale': 0.0,
     'FollowPath.GoalAlign.scale': 0.0,
     'FollowPath.PathAlign.scale': 0.0,
-    # Enable yaw-lock critic
     'FollowPath.dwb_yaw_constraint::MaintainYawCritic.scale': 5000.0,
-    # Disable decoupling critic (middle zone = yaw locked, no need)
     'FollowPath.dwb_yaw_constraint::DecouplingCritic.scale': 0.0,
+    'FollowPath.min_vel_y': 0.0,
+    'FollowPath.max_vel_y': 0.0,
 }
 
 EDGE_PARAMS = {
-    # Goal checker: precise yaw alignment (3°)
+    # 边缘区：允许旋转对齐朝向，允许横向移动
+    # yaw_goal_tolerance=0.05236 rad(3°)，精确对齐 yaw 确保中间区穿障碍物安全
     'general_goal_checker.yaw_goal_tolerance': 0.05236,
-    # Enable rotation critics
     'FollowPath.RotateToGoal.scale': 32.0,
     'FollowPath.GoalAlign.scale': 24.0,
     'FollowPath.PathAlign.scale': 32.0,
-    # Disable yaw-lock critic
     'FollowPath.dwb_yaw_constraint::MaintainYawCritic.scale': 0.0,
-    # Enable decoupling critic (edge zone = yaw free, prefer single-axis commands)
     'FollowPath.dwb_yaw_constraint::DecouplingCritic.scale': 30.0,
+    'FollowPath.min_vel_y': -1.4,
+    'FollowPath.max_vel_y': 1.4,
 }
 
 # Convenience lookup
@@ -146,15 +147,13 @@ class PositionBasedParamSwitcher(Node):
 
         if self.current_zone == 'middle':
             self.get_logger().info(
-                '🟢 ZONE=MIDDLE | 规划器: 限制yaw (锁0°) | '
+                'ZONE=MIDDLE | DWB: yaw锁0 vy禁0 (MaintainYaw=5000 vel_y=0) 只走X | '
                 'RotateToGoal=0 GoalAlign=0 PathAlign=0 | '
-                'MaintainYawCritic=5000 DecouplingCritic=0 | '
                 f'范围: [{self.lower_boundary}, {self.upper_boundary}]m')
         else:
             self.get_logger().info(
-                '🟡 ZONE=EDGE   | 规划器: 不限制yaw (可旋转) | '
-                'RotateToGoal=32 GoalAlign=24 PathAlign=32 | '
-                'MaintainYawCritic=0 DecouplingCritic=30 | '
+                'ZONE=EDGE   | DWB: yaw自由 vy自由(±1.4) yaw_tol=0.052rad(3°) | '
+                'RotateToGoal=32 GoalAlign=24 PathAlign=32 DecouplingCritic=30 | '
                 f'范围: x<{self.lower_boundary} 或 x>{self.upper_boundary}m')
 
     # ------------------------------------------------------------------
@@ -184,7 +183,7 @@ class PositionBasedParamSwitcher(Node):
         """
         Push the zone's parameter set to controller_server atomically.
 
-        All 5 parameters are set in one service call — the controller
+        All 8 parameters are set in one service call — the controller
         picks up new scale values on the very next control cycle (10 Hz).
         """
         self.switch_in_progress = True
@@ -232,7 +231,7 @@ class PositionBasedParamSwitcher(Node):
             )
         else:
             self.get_logger().info(
-                f'✓ Switched to {self.current_zone} zone params (5/5 OK)'
+                f'✓ Switched to {self.current_zone} zone params (8/8 OK)'
             )
 
 

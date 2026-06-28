@@ -17,5 +17,13 @@
         are lightly penalized.
       </description>
     </class>
+    <class type="dwb_yaw_constraint::MaintainVyCritic"
+           base_class_type="dwb_core::TrajectoryCritic">
+      <description>
+        DWB critic that penalizes lateral (Y) velocity in the commanded twist.
+        Designed to lock out lateral drift in narrow corridors — with scale=5000
+        the optimizer is forced toward pure forward (X-only) motion.
+      </description>
+    </class>
   </library>
 </class_libraries>

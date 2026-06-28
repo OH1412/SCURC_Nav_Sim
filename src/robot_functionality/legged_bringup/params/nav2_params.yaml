@@ -62,11 +62,10 @@ bt_navigator:
     transform_tolerance: 1.0
     # 'default_nav_through_poses_bt_xml' and 'default_nav_to_pose_bt_xml' are use defaults:
     # nav2_bt_navigator/navigate_to_pose_w_replanning_and_recovery.xml
-    # 单点导航 BT：waypoint_follower 对每个 waypoint 调用此 BT
-    # 机械臂抓取任务 BT（自包含 3 waypoints + 机械臂抓取）
-    default_nav_to_pose_bt_xml: $(find-pkg-share legged_bringup)/behavior_tree/navigate_with_arm_grasp.xml
-    # 原 waypoint_follower BT:
-    # default_nav_to_pose_bt_xml: $(find-pkg-share legged_bringup)/behavior_tree/navigate_waypoints_with_task.xml
+    # 单点导航 BT（简单重规划+跟随，无机械臂任务）
+    default_nav_to_pose_bt_xml: $(find-pkg-share legged_bringup)/behavior_tree/navigate_to_pose_w_replanning_and_recovery.xml
+    # 机械臂抓取任务 BT（自包含 3 waypoints + 机械臂抓取，调试时禁用）:
+    # default_nav_to_pose_bt_xml: $(find-pkg-share legged_bringup)/behavior_tree/navigate_with_arm_grasp.xml
     # 多点导航 BT（直接 NavigateThroughPoses 时使用）
     default_nav_through_poses_bt_xml: $(find-pkg-share legged_bringup)/behavior_tree/navigate_through_pose_w_replanning_and_recovery.xml
     # They can be set here or via a RewrittenYaml remap from a parent launch file to Nav2.
@@ -151,8 +150,8 @@ controller_server:
       stateful: False
       plugin: "nav2_controller::SimpleGoalChecker"
       xy_goal_tolerance: 0.10
-      yaw_goal_tolerance: 6.28             # 中间区=6.28(360°) | 边缘区=0.05236(3°)
-      # yaw_goal_tolerance: 0.05236             # 中间区=6.28(360°) | 边缘区=0.05236(3°)
+      # yaw_goal_tolerance: 6.28             # 中间区=6.28(360°) | 边缘区=0.05236(3°)
+      yaw_goal_tolerance: 0.05236             # 边缘区=0.05236(3°) | 中间区由 switcher 切为 6.28
     FollowPath:    
       # plugin: "nav2_mppi_controller::MPPIControllerExt"
       # #param 
@@ -338,9 +337,6 @@ controller_server:
       # "dwb_yaw_constraint::MaintainYawCritic.reference_frame": "map"
       # # --- 解耦 critic (边缘区启用) ---
       # "dwb_yaw_constraint::DecouplingCritic.scale": 30.0       # 中间区=0.0 | 边缘区=30.0
-      # "dwb_yaw_constraint::DecouplingCritic.max_vx": 2.0
-      # "dwb_yaw_constraint::DecouplingCritic.max_vy": 1.4
-      # "dwb_yaw_constraint::DecouplingCritic.max_vtheta": 1.2
 
 local_costmap:
   local_costmap:
@@ -579,3 +575,72 @@ velocity_smoother:
     odom_duration: 0.1
     deadband_velocity: [0.0, 0.0, 0.0]
     velocity_timeout: 1.0
+
+# ═══════════════════════════════════════════════════════════════
+# Custom node parameters (from bringup_in_real.launch.py / navigation.launch.py)
+# 这些不是 Nav2 原生节点，而是项目自定义节点。集中管理便于调参。
+# ═══════════════════════════════════════════════════════════════
+
+# 区域切换器：根据机器人 x 坐标动态切换 DWB critic 参数
+# 注意：代码默认值 lower=0.9, upper=4.9，但 launch 文件覆盖为 1.0/4.0
+position_based_param_switcher:
+  ros__parameters:
+    lower_boundary: 1.0          # 中间区下边界 (x<1.0 → 边缘区，允许旋转和横向移动)
+    upper_boundary: 4.0          # 中间区上边界 (x>4.0 → 边缘区，允许旋转和横向移动)
+    hysteresis_margin: 0.1       # 迟滞边界 (±0.1m)，防止在边界附近来回振荡
+    odom_topic: "state_estimation"
+    target_node: "controller_server"
+
+# 障碍物尺度控制器：当致命障碍物侵入机器人 footprint 时降低 ObstacleFootprint.scale
+obstacle_scale_controller:
+  ros__parameters:
+    target_node: "controller_server"
+    costmap_topic: "/local_costmap/costmap"
+    hysteresis_count: 5           # 连续 N 次检测到障碍物后才触发切换，防抖
+    normal_scale: 50.0            # 无障碍物时 ObstacleFootprint.scale 恢复正常值
+    push_through_scale: 0.01      # 障碍物侵入时降为 0.01，基本禁用 footprint 代价，硬挤过去
+
+# UDP 速度桥接：将 Nav2 的 /cmd_vel 通过 UDP 转发给 deploy_cpp（机器人底盘）
+cmd_vel_udp_bridge:
+  ros__parameters:
+    udp_ip: "127.0.0.1"
+    udp_port: 9870
+    mode: 2
+    cmd_vel_topic: "/cmd_vel"
+    use_twist_stamped: false
+    estop_topic: ""
+    # --- 死区补偿（实测死区：vx≈0.105, vy≈0.8, wz≈0.7 m/s·rad/s）---
+    # 当速度非零但低于 deadzone 阈值时，自动提升到 min_effective 值
+    # 防止小速度指令被底盘死区吞掉导致机器人不动
+    deadzone_vx: 0.05
+    deadzone_vy: 0.4
+    deadzone_wz: 0.2
+    min_effective_vx: 0.4
+    min_effective_vy: 0.5
+    min_effective_wz: 0.4
+
+# 机械臂控制服务器（可选，enable_arm_control=true 时启用）
+arm_control_server:
+  ros__parameters:
+    arm_timeout: 30.0             # 机械臂动作超时时间 (秒)
+    enable_serial_publish: true
+    arm_command_topic: "/arm_command"
+
+# 机械臂抓取使命触发器（可选，enable_waypoint_mission=true 时启用）
+arm_mission_trigger:
+  ros__parameters:
+    startup_delay: 0.0            # TimerAction 已做延迟，此处额外延迟为 0
+    action_timeout: 30.0          # 机械臂抓取动作超时 (秒)
+
+# 起立命令发送器
+stand_up_sender:
+  ros__parameters:
+    reloc_delay: 0.0              # 重定位完成后额外等待时间 (秒)，0=不等待
+
+# 启动时序参数（launch 文件中的 TimerAction delay 值汇总）
+bringup_timing:
+  ros__parameters:
+    start_delay: 5.0              # Livox 启动后等待多久启动 bringup (秒)
+    stand_up_delay: 3.0           # bringup 启动后等待多久发送起立命令 (秒)
+    waypoint_start_delay: 25.0    # bringup 启动后等待多久触发机械臂使命 (秒)
+    arm_control_delay: 12.0       # bringup 启动后等待多久启动机械臂控制服务器 (秒)
