@@ -3,8 +3,9 @@
 Obstacle-aware ObstacleFootprint.scale controller.
 
 Monitors the local costmap and dynamically adjusts ObstacleFootprint.scale:
-  - Footprint overlaps LETHAL obstacle → scale = 1.0 (push through)
-  - Footprint clear                       → scale = 50.0 (normal avoidance)
+  - Footprint overlaps obstacle (cost >= 200, inc. static map + live terrain)
+    → scale = 0.01 (push through)
+  - Footprint clear → scale = 50.0 (normal avoidance)
 
 Hysteresis: requires N consecutive clear readings before restoring normal scale,
 preventing rapid oscillation.
@@ -19,12 +20,14 @@ from rcl_interfaces.msg import Parameter, ParameterValue
 
 # Costmap internal values (unsigned char):
 #   FREE=0  LETHAL=254  INSCRIBED=253  NO_INFO=255
+#   StaticLayerNonLethal uses occupied_cost_value=200
 # The published OccupancyGrid copies raw unsigned char into int8 array,
 # so values >= 128 wrap to negative. Convert back before comparing.
 #   LETHAL (254u) → int8 -2
 #   INSCRIBED (253u) → int8 -3
-# Threshold: treat anything >= INSCRIBED (253u) as "fatal"
-FATAL_THRESHOLD = 253  # unsigned char value
+# Threshold: treat anything >= 200 as "fatal" — covers both static map
+#   obstacles (200) and live terrain obstacles (254)
+FATAL_THRESHOLD = 200  # unsigned char value
 
 # Normal and push-through scale values
 NORMAL_SCALE = 50.0
@@ -131,7 +134,7 @@ class ObstacleScaleController(Node):
             self.clear_counter = 0
             if self.current_scale != self.push_through_scale:
                 self.get_logger().info(
-                    f'⚠ LETHAL in footprint → setting scale to {self.push_through_scale}')
+                    f'⚠ Obstacle in footprint (cost>={FATAL_THRESHOLD}) → push-through scale={self.push_through_scale}')
                 self._set_scale(self.push_through_scale)
         else:
             self.clear_counter += 1

@@ -1,0 +1,3 @@
+# 机械臂串口绑定 — 固定在 /dev/arm_port
+# CH341 USB-UART, 匹配物理 USB 端口路径
+SUBSYSTEM=="tty", ENV{ID_PATH}=="pci-0000:00:14.0-usb-0:1.2:1.0", SYMLINK+="arm_port"

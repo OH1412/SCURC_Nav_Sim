@@ -6,8 +6,8 @@ Monitors the robot's x coordinate from odometry and dynamically switches
 DWB critic scales + goal checker tolerance via ros2 param set — zero downtime.
 
 Zones:
-  - 0 ≤ x < 1.0m   → edge  zone (rotation allowed, yaw unlocked, single-axis preferred)
-  - 1.0m ≤ x ≤ 4.0m → middle zone (yaw locked to 0 via MaintainYawCritic)
+  - 0 ≤ x < 1.35m   → edge  zone (rotation allowed, yaw unlocked, single-axis preferred)
+  - 1.35m ≤ x ≤ 4.0m → middle zone (yaw locked to 0, vy=0, pure X-only movement)
   - 4.0m < x ≤ 6.30m → edge  zone (rotation allowed, yaw unlocked, single-axis preferred)
 
 Hysteresis: ±0.1m around boundaries to prevent rapid oscillation.
@@ -31,8 +31,8 @@ from rcl_interfaces.msg import Parameter, ParameterValue
 
 MIDDLE_PARAMS = {
     # 中间区：不检查朝向（只要 xy 到位即视为完成）
-    # MaintainYawCritic(5000) 锁定 yaw=0，vel_y=0 从采样器源头消除横向移动
-    # 只输出纯 X 方向速度
+    # MaintainYawCritic(5000) 强锁 yaw=0，vy=0，纯X单轴运动
+    'general_goal_checker.xy_goal_tolerance': 0.08,
     'general_goal_checker.yaw_goal_tolerance': 6.28,
     'FollowPath.RotateToGoal.scale': 0.0,
     'FollowPath.GoalAlign.scale': 0.0,
@@ -46,14 +46,15 @@ MIDDLE_PARAMS = {
 EDGE_PARAMS = {
     # 边缘区：允许旋转对齐朝向，允许横向移动
     # yaw_goal_tolerance=0.05236 rad(3°)，精确对齐 yaw 确保中间区穿障碍物安全
+    'general_goal_checker.xy_goal_tolerance': 0.08,
     'general_goal_checker.yaw_goal_tolerance': 0.05236,
     'FollowPath.RotateToGoal.scale': 32.0,
     'FollowPath.GoalAlign.scale': 24.0,
     'FollowPath.PathAlign.scale': 32.0,
     'FollowPath.dwb_yaw_constraint::MaintainYawCritic.scale': 0.0,
     'FollowPath.dwb_yaw_constraint::DecouplingCritic.scale': 30.0,
-    'FollowPath.min_vel_y': -1.4,
-    'FollowPath.max_vel_y': 1.4,
+    'FollowPath.min_vel_y': -1.1,
+    'FollowPath.max_vel_y': 1.1,
 }
 
 # Convenience lookup
@@ -73,8 +74,8 @@ class PositionBasedParamSwitcher(Node):
         super().__init__('position_based_param_switcher')
 
         # Zone boundaries
-        self.declare_parameter('lower_boundary', 0.9)
-        self.declare_parameter('upper_boundary', 4.9)
+        self.declare_parameter('lower_boundary', 1.35)
+        self.declare_parameter('upper_boundary', 4.0)
         self.declare_parameter('hysteresis_margin', 0.1)
         self.declare_parameter('odom_topic', 'state_estimation')
         self.declare_parameter('target_node', 'controller_server')
@@ -147,8 +148,8 @@ class PositionBasedParamSwitcher(Node):
 
         if self.current_zone == 'middle':
             self.get_logger().info(
-                'ZONE=MIDDLE | DWB: yaw锁0 vy禁0 (MaintainYaw=5000 vel_y=0) 只走X | '
-                'RotateToGoal=0 GoalAlign=0 PathAlign=0 | '
+                'ZONE=MIDDLE | DWB: yaw锁0 vy=0 (MaintainYaw=5000) PathAlign=0 | '
+                'RotateToGoal=0 GoalAlign=0 DecouplingCritic=0 | '
                 f'范围: [{self.lower_boundary}, {self.upper_boundary}]m')
         else:
             self.get_logger().info(

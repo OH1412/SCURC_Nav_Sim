@@ -1,4 +1,4 @@
-# SCURC 四足机器人 Navigation2 中枢架构详解
+## SCURC 四足机器人 Navigation2 中枢架构详解
 
 > **ROS2 Humble | Ubuntu 22.04 | 最后更新: 2026-06-26**
 
@@ -27,14 +27,14 @@ SCURC_Nav_Sim 是面向 **ROS 2 Humble** 的四足机器人基础导航仓库。
 
 ### 核心模块
 
-| 模块                         | 路径                                                                                                                                                                                            | 功能                                                   |
-| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| 模块                         | 路径                                                                                                                                                                                              | 功能                                                   |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
 | **legged_bringup**     | [src/robot_functionality/legged_bringup/](src/robot_functionality/legged_bringup/)                                                                                                                 | 启动文件、参数配置、地图、行为树                       |
 | **serial_driver**      | [src/robot_functionality/serial_driver_ros2/](src/robot_functionality/serial_driver_ros2/)                                                                                                         | 串口驱动，将 cmd_vel 发送到下位机                      |
 | **cmd_vel_udp_bridge** | [src/robot_functionality/cmd_vel_udp_bridge/](src/robot_functionality/cmd_vel_udp_bridge/)                                                                                                         | UDP 桥接，将 cmd_vel 转发到 deploy_cpp                 |
 | **nav2_ext_plugins**   | [src/navigation_plugins/nav2_ext_plugins/](src/navigation_plugins/nav2_ext_plugins/)                                                                                                               | 自定义 Nav2 插件（代价地图层、DWB 评价器、行为树节点） |
 | **terrain_analysis**   | [src/dependencies_and_tools/autonomous_exploration_development_environment/src/terrain_analysis/](src/dependencies_and_tools/autonomous_exploration_development_environment/src/terrain_analysis/) | 地形可通行性分析                                       |
-| **FAST-LIVO** (外部)   | 独立工作空间                                                                                                                                                                                    | LiDAR-惯性-视觉里程计，提供定位和里程计                |
+| **FAST-LIVO** (外部)   | 独立工作空间                                                                                                                                                                                      | LiDAR-惯性-视觉里程计，提供定位和里程计                |
 
 ### 硬件配置
 
@@ -167,19 +167,19 @@ base_link                 ← 机器人本体坐标系（footprint 中心）
 
 ### 3.2 关键 TF 参数
 
-| 变换   | 父帧           | 子帧           | 类型    | 参数                                      | 参数文件                                                                                                |
-| ------ | -------------- | -------------- | ------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| 变换   | 父帧           | 子帧           | 类型    | 参数                                      | 参数文件                                                                                                  |
+| ------ | -------------- | -------------- | ------- | ----------------------------------------- | --------------------------------------------------------------------------------------------------------- |
 | t0     | `map`        | `odom`       | Static  | identity (0,0,0, yaw=0)                   | [static_tf_params.yaml:11-21](src/robot_functionality/legged_bringup/params/static_tf_params.yaml#L11-L21) |
 | t1     | `aft_mapped` | `base_link`  | Static  | (-0.21368, 0, -0.12978), yaw=0.05         | [static_tf_params.yaml:23-33](src/robot_functionality/legged_bringup/params/static_tf_params.yaml#L23-L33) |
 | 里程计 | `odom`       | `aft_mapped` | Dynamic | FAST-LIVO 实时发布`/aft_mapped_to_init` | [fast_livo_mapping_param.yaml](src/robot_functionality/legged_bringup/params/fast_livo_mapping_param.yaml) |
 
 ### 3.3 TF 发布节点
 
-| 节点                       | 文件                                                                                           | 功能                                                   |
-| -------------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| 节点                       | 文件                                                                                             | 功能                                                   |
+| -------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------ |
 | `static_tf_broadcaster`  | [static_tf_broadcaster.py](src/robot_functionality/legged_bringup/nodes/static_tf_broadcaster.py) | 发布`map→odom` 和 `aft_mapped→base_link` 静态 TF |
-| FAST-LIVO                  | (外部包)                                                                                       | 发布`odom→aft_mapped` 动态 TF                       |
-| `relay_state_estimation` | (topic_tools/relay)                                                                            | 将`/aft_mapped_to_init` 转发为 `/state_estimation` |
+| FAST-LIVO                  | (外部包)                                                                                         | 发布`odom→aft_mapped` 动态 TF                       |
+| `relay_state_estimation` | (topic_tools/relay)                                                                              | 将`/aft_mapped_to_init` 转发为 `/state_estimation` |
 
 > **重要**: 当前 AMCL 已**禁用**（在 nav2_params.yaml 和 global_relocalization.launch.py 中均被注释），定位完全由 FAST-LIVO + TEASER/GICP 重定位 + 静态 TF 提供。这意味着 `map→odom` 是固定的 identity transform，机器人的绝对位姿由重定位对准后直接使用 FAST-LIVO 里程计。
 
@@ -222,7 +222,7 @@ base_link                 ← 机器人本体坐标系（footprint 中心）
          - 使用 VGICP 进行精细配准
          - 将当前 LiDAR 扫描匹配到 test.pcd (先验地图)
          - 配准成功后退出
-       
+     
 步骤 5: teaser_gicp 退出后 → static_tf.launch.py 启动 (EventHandle)
          发布 map→odom 和 aft_mapped→base_link 静态 TF
 ```
@@ -269,9 +269,9 @@ Nav2 通过两种方式获取机器人位姿：
 
 ### 5.1 两种地图
 
-| 地图类型               | 文件                                                                                                                                                 | 用途                    | 使用者             |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- | ------------------ |
-| **PCD 点云地图** | [maps/test.pcd](src/robot_functionality/legged_bringup/maps/test.pcd)                                                                                   | 全局重定位先验地图      | TEASER/GICP 重定位 |
+| 地图类型               | 文件                                                                                                                                                     | 用途                    | 使用者             |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- | ------------------ |
+| **PCD 点云地图** | [maps/test.pcd](src/robot_functionality/legged_bringup/maps/test.pcd)                                                                                     | 全局重定位先验地图      | TEASER/GICP 重定位 |
 | **PGM 栅格地图** | [maps/test_map.pgm](src/robot_functionality/legged_bringup/maps/test_map.pgm) + [test_map.yaml](src/robot_functionality/legged_bringup/maps/test_map.yaml) | Nav2 全局代价地图静态层 | nav2_map_server    |
 
 ### 5.2 地图文件说明
@@ -498,8 +498,8 @@ bt_navigator:
 
 **行为树 XML 文件**:
 
-| 行为树               | 文件                                                                                                                                                         | 用途         |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------ |
+| 行为树               | 文件                                                                                                                                                           | 用途         |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
 | NavigateToPose       | [navigate_to_pose_w_replanning_and_recovery.xml](src/robot_functionality/legged_bringup/behavior_tree/navigate_to_pose_w_replanning_and_recovery.xml)           | 单目标点导航 |
 | NavigateThroughPoses | [navigate_through_pose_w_replanning_and_recovery.xml](src/robot_functionality/legged_bringup/behavior_tree/navigate_through_pose_w_replanning_and_recovery.xml) | 多航点导航   |
 
@@ -633,8 +633,8 @@ footprint: [[0.2971, 0.19185], [0.2971, -0.19185], [-0.44518, -0.19185], [-0.445
 
 ### 8.1 全局规划参数
 
-| 参数                 | 位置                                                                                     | 默认值 | 说明                 | 调参建议                             |
-| -------------------- | ---------------------------------------------------------------------------------------- | ------ | -------------------- | ------------------------------------ |
+| 参数                 | 位置                                                                                       | 默认值 | 说明                 | 调参建议                             |
+| -------------------- | ------------------------------------------------------------------------------------------ | ------ | -------------------- | ------------------------------------ |
 | `w_euc_cost`       | [nav2_params.yaml:477](src/robot_functionality/legged_bringup/params/nav2_params.yaml#L477) | 1.0    | 路径距离代价         | 增大=更短路径，减小=更安全但可能绕路 |
 | `w_traversal_cost` | [nav2_params.yaml:478](src/robot_functionality/legged_bringup/params/nav2_params.yaml#L478) | 2.0    | 穿越高代价区域代价   | 增大=更远离障碍物                    |
 | `w_heuristic_cost` | [nav2_params.yaml:479](src/robot_functionality/legged_bringup/params/nav2_params.yaml#L479) | 1.0    | 启发式权重           | 1.0=标准 A\* 启发式                  |
@@ -642,8 +642,8 @@ footprint: [[0.2971, 0.19185], [0.2971, -0.19185], [-0.44518, -0.19185], [-0.445
 
 ### 8.2 局部规划 (DWB) 参数
 
-| 参数                        | 位置                                                                                     | 默认值    | 说明               | 调参建议                            |
-| --------------------------- | ---------------------------------------------------------------------------------------- | --------- | ------------------ | ----------------------------------- |
+| 参数                        | 位置                                                                                       | 默认值    | 说明               | 调参建议                            |
+| --------------------------- | ------------------------------------------------------------------------------------------ | --------- | ------------------ | ----------------------------------- |
 | `controller_frequency`    | [nav2_params.yaml:128](src/robot_functionality/legged_bringup/params/nav2_params.yaml#L128) | 10.0 Hz   | 控制频率           | 更大的机器人可以用更低频率          |
 | `max_vel_x`               | [nav2_params.yaml:263](src/robot_functionality/legged_bringup/params/nav2_params.yaml#L263) | 1.0 m/s   | 最大前进速度       | **实机由 deploy_config 覆盖** |
 | `max_vel_theta`           | [nav2_params.yaml:265](src/robot_functionality/legged_bringup/params/nav2_params.yaml#L265) | 5.0 rad/s | 最大旋转速度       | **实机由 deploy_config 覆盖** |
@@ -654,8 +654,8 @@ footprint: [[0.2971, 0.19185], [0.2971, -0.19185], [-0.44518, -0.19185], [-0.445
 
 ### 8.3 代价地图参数
 
-| 参数                           | 位置                                                                                              | 默认值     | 说明                                        |
-| ------------------------------ | ------------------------------------------------------------------------------------------------- | ---------- | ------------------------------------------- |
+| 参数                           | 位置                                                                                                | 默认值     | 说明                                        |
+| ------------------------------ | --------------------------------------------------------------------------------------------------- | ---------- | ------------------------------------------- |
 | `local_costmap.width/height` | [nav2_params.yaml:336-337](src/robot_functionality/legged_bringup/params/nav2_params.yaml#L336-L337) | 10m × 10m | 局部代价地图尺寸                            |
 | `local_costmap.resolution`   | [nav2_params.yaml:338](src/robot_functionality/legged_bringup/params/nav2_params.yaml#L338)          | 0.05 m     | 局部代价地图分辨率                          |
 | `global_costmap.resolution`  | [nav2_params.yaml:398](src/robot_functionality/legged_bringup/params/nav2_params.yaml#L398)          | 0.1 m      | 全局代价地图分辨率                          |
@@ -664,8 +664,8 @@ footprint: [[0.2971, 0.19185], [0.2971, -0.19185], [-0.44518, -0.19185], [-0.445
 
 ### 8.4 恢复行为参数
 
-| 参数                    | 位置                                                                                     | 默认值 | 说明                     |
-| ----------------------- | ---------------------------------------------------------------------------------------- | ------ | ------------------------ |
+| 参数                    | 位置                                                                                       | 默认值 | 说明                     |
+| ----------------------- | ------------------------------------------------------------------------------------------ | ------ | ------------------------ |
 | `robot_radius`        | [nav2_params.yaml:517](src/robot_functionality/legged_bringup/params/nav2_params.yaml#L517) | 0.3 m  | 后退行为使用的机器人半径 |
 | `max_radius`          | [nav2_params.yaml:518](src/robot_functionality/legged_bringup/params/nav2_params.yaml#L518) | 3.5 m  | 后退搜索自由空间最大半径 |
 | `free_threshold`      | [nav2_params.yaml:520](src/robot_functionality/legged_bringup/params/nav2_params.yaml#L520) | 3      | 自由空间栅格阈值         |
@@ -673,8 +673,8 @@ footprint: [[0.2971, 0.19185], [0.2971, -0.19185], [-0.44518, -0.19185], [-0.445
 
 ### 8.5 速度平滑器参数
 
-| 参数                 | 位置                                                                                     | 默认值           | 说明             |
-| -------------------- | ---------------------------------------------------------------------------------------- | ---------------- | ---------------- |
+| 参数                 | 位置                                                                                       | 默认值           | 说明             |
+| -------------------- | ------------------------------------------------------------------------------------------ | ---------------- | ---------------- |
 | `max_velocity`     | [nav2_params.yaml:556](src/robot_functionality/legged_bringup/params/nav2_params.yaml#L556) | [2.5, 2.5, 12.0] | 最终速度上限     |
 | `max_accel`        | [nav2_params.yaml:558](src/robot_functionality/legged_bringup/params/nav2_params.yaml#L558) | [5.0, 5.0, 15.0] | 最大加速度限制   |
 | `velocity_timeout` | [nav2_params.yaml:563](src/robot_functionality/legged_bringup/params/nav2_params.yaml#L563) | 1.0 s            | 无指令超时后急停 |
@@ -847,8 +847,8 @@ lifecycle_manager_navigation
 
 ### 11.1 插件清单
 
-| 插件包                          | 路径                                                                                  | 类型              | 功能                              |
-| ------------------------------- | ------------------------------------------------------------------------------------- | ----------------- | --------------------------------- |
+| 插件包                          | 路径                                                                                    | 类型              | 功能                              |
+| ------------------------------- | --------------------------------------------------------------------------------------- | ----------------- | --------------------------------- |
 | **costmap_intensity**     | [costmap_intensity/](src/navigation_plugins/nav2_ext_plugins/costmap_intensity/)         | Costmap Layer ×3 | 强度过滤的障碍物层 + 非致命静态层 |
 | **dwb_yaw_constraint**    | [dwb_yaw_constraint/](src/navigation_plugins/nav2_ext_plugins/dwb_yaw_constraint/)       | DWB Critic        | 强制保持固定 yaw 角               |
 | **behavior_ext_plugins**  | [behavior_ext_plugins/](src/navigation_plugins/nav2_ext_plugins/behavior_ext_plugins/)   | Behavior Node     | 朝自由空间方向后退                |
@@ -864,8 +864,8 @@ lifecycle_manager_navigation
 
 **关键参数**:
 
-| 参数                    | 值  | 位置                                                                                     |
-| ----------------------- | --- | ---------------------------------------------------------------------------------------- |
+| 参数                    | 值  | 位置                                                                                       |
+| ----------------------- | --- | ------------------------------------------------------------------------------------------ |
 | `occupied_cost_value` | 200 | [nav2_params.yaml:384](src/robot_functionality/legged_bringup/params/nav2_params.yaml#L384) |
 
 ### 11.3 ObstacleLayerIntensity
@@ -876,8 +876,8 @@ lifecycle_manager_navigation
 
 **关键参数**:
 
-| 参数                       | 值  | 位置                                                                                     |
-| -------------------------- | --- | ---------------------------------------------------------------------------------------- |
+| 参数                       | 值  | 位置                                                                                       |
+| -------------------------- | --- | ------------------------------------------------------------------------------------------ |
 | `min_obstacle_intensity` | 0.2 | [nav2_params.yaml:370](src/robot_functionality/legged_bringup/params/nav2_params.yaml#L370) |
 | `max_obstacle_intensity` | 2.0 | [nav2_params.yaml:369](src/robot_functionality/legged_bringup/params/nav2_params.yaml#L369) |
 
@@ -889,8 +889,8 @@ lifecycle_manager_navigation
 
 **关键参数**:
 
-| 参数                | 值                             | 位置                                                                                     |
-| ------------------- | ------------------------------ | ---------------------------------------------------------------------------------------- |
+| 参数                | 值                             | 位置                                                                                       |
+| ------------------- | ------------------------------ | ------------------------------------------------------------------------------------------ |
 | `scale`           | 5000.0 (中间区) / 0.0 (边缘区) | [nav2_params.yaml:308](src/robot_functionality/legged_bringup/params/nav2_params.yaml#L308) |
 | `desired_yaw`     | 0.0                            | [nav2_params.yaml:309](src/robot_functionality/legged_bringup/params/nav2_params.yaml#L309) |
 | `reference_frame` | "map"                          | [nav2_params.yaml:310](src/robot_functionality/legged_bringup/params/nav2_params.yaml#L310) |
@@ -907,8 +907,8 @@ lifecycle_manager_navigation
 
 ### 12.1 启动文件
 
-| 文件                                                                                                          | 说明                           | 关键用途                         |
-| ------------------------------------------------------------------------------------------------------------- | ------------------------------ | -------------------------------- |
+| 文件                                                                                                            | 说明                           | 关键用途                         |
+| --------------------------------------------------------------------------------------------------------------- | ------------------------------ | -------------------------------- |
 | [bringup_in_real.launch.py](src/robot_functionality/legged_bringup/launch/bringup_in_real.launch.py)             | 🚀**实机全系统启动入口** | 一键启动所有模块                 |
 | [bringup_all_in_one.launch.py](src/robot_functionality/legged_bringup/launch/bringup_all_in_one.launch.py)       | 仿真全系统启动                 | 重定位+导航编排                  |
 | [navigation.launch.py](src/robot_functionality/legged_bringup/launch/navigation.launch.py)                       | Nav2 导航栈启动                | 启动所有 Nav2 节点               |
@@ -920,8 +920,8 @@ lifecycle_manager_navigation
 
 ### 12.2 参数配置文件
 
-| 文件                                                                                                                  | 说明                        | 关键调参项                        |
-| --------------------------------------------------------------------------------------------------------------------- | --------------------------- | --------------------------------- |
+| 文件                                                                                                                    | 说明                        | 关键调参项                        |
+| ----------------------------------------------------------------------------------------------------------------------- | --------------------------- | --------------------------------- |
 | [nav2_params.yaml](src/robot_functionality/legged_bringup/params/nav2_params.yaml)                                       | 🔧**Nav2 主参数文件** | 规划器/控制器/代价地图/速度平滑器 |
 | [amcl_params.yaml](src/robot_functionality/legged_bringup/params/amcl_params.yaml)                                       | AMCL 参数                   | 已禁用，备用                      |
 | [static_tf_params.yaml](src/robot_functionality/legged_bringup/params/static_tf_params.yaml)                             | 静态 TF 参数                | 坐标系变换                        |
@@ -933,15 +933,15 @@ lifecycle_manager_navigation
 
 ### 12.3 行为树 XML
 
-| 文件                                                                                                                                                         | 说明           |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------- |
+| 文件                                                                                                                                                           | 说明           |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
 | [navigate_to_pose_w_replanning_and_recovery.xml](src/robot_functionality/legged_bringup/behavior_tree/navigate_to_pose_w_replanning_and_recovery.xml)           | 单点导航行为树 |
 | [navigate_through_pose_w_replanning_and_recovery.xml](src/robot_functionality/legged_bringup/behavior_tree/navigate_through_pose_w_replanning_and_recovery.xml) | 多点导航行为树 |
 
 ### 12.4 串口驱动文件
 
-| 文件                                                                                                 | 说明                        |
-| ---------------------------------------------------------------------------------------------------- | --------------------------- |
+| 文件                                                                                                   | 说明                        |
+| ------------------------------------------------------------------------------------------------------ | --------------------------- |
 | [serial_main.cpp](src/robot_functionality/serial_driver_ros2/src/serial_main.cpp)                       | 串口节点入口 (3 个话题订阅) |
 | [serial_driver.cpp](src/robot_functionality/serial_driver_ros2/src/serial_driver.cpp)                   | 串口通信实现 (帧编码/解码)  |
 | [protocol_defs.hpp](src/robot_functionality/serial_driver_ros2/include/serial_driver/protocol_defs.hpp) | 协议常量定义 (帧头/校验)    |
@@ -949,24 +949,24 @@ lifecycle_manager_navigation
 
 ### 12.5 Python 工具节点
 
-| 文件                                                                                                           | 说明                          |
-| -------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| 文件                                                                                                             | 说明                          |
+| ---------------------------------------------------------------------------------------------------------------- | ----------------------------- |
 | [static_tf_broadcaster.py](src/robot_functionality/legged_bringup/nodes/static_tf_broadcaster.py)                 | 静态 TF 广播                  |
 | [aft_to_pose_offset_node.py](src/robot_functionality/legged_bringup/nodes/aft_to_pose_offset_node.py)             | 里程计→位姿偏移转发          |
 | [position_based_param_switcher.py](src/robot_functionality/legged_bringup/nodes/position_based_param_switcher.py) | 基于位置的参数切换器 (已禁用) |
 
 ### 12.6 地图文件
 
-| 文件                                                                    | 说明                |
-| ----------------------------------------------------------------------- | ------------------- |
+| 文件                                                                      | 说明                |
+| ------------------------------------------------------------------------- | ------------------- |
 | [test_map.yaml](src/robot_functionality/legged_bringup/maps/test_map.yaml) | Nav2 栅格地图元数据 |
 | [test_map.pgm](src/robot_functionality/legged_bringup/maps/test_map.pgm)   | Nav2 栅格地图图像   |
 | [test.pcd](src/robot_functionality/legged_bringup/maps/test.pcd)           | 重定位先验点云地图  |
 
 ### 12.7 自定义插件源码
 
-| 文件                                                                                                                                                      | 说明               |
-| --------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
+| 文件                                                                                                                                                        | 说明               |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
 | [costmap_intensity/plugins/](src/navigation_plugins/nav2_ext_plugins/costmap_intensity/plugins/)                                                             | 代价地图强度层实现 |
 | [dwb_yaw_constraint/plugins/maintain_yaw_critic.cpp](src/navigation_plugins/nav2_ext_plugins/dwb_yaw_constraint/plugins/maintain_yaw_critic.cpp)             | DWB yaw 约束实现   |
 | [behavior_ext_plugins/plugins/back_up_twz_free_action.cpp](src/navigation_plugins/nav2_ext_plugins/behavior_ext_plugins/plugins/back_up_twz_free_action.cpp) | 后退行为实现       |

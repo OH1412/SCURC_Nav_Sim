@@ -1,0 +1,92 @@
+# 航点坐标采集记录
+# 采集时间: 2026-06-30 23:17:17.565076
+# 区域边界: lower=1.35, upper=4.0, hyst=0.1
+# 采集顺序: 航点1 → 航点2 → 航点3 → 航点4 → 航点5
+
+waypoints:
+  - id: "航点1"
+    role: "过渡对齐点"
+    expected_zone: "EDGE"
+    actual_zone: "MIDDLE"
+    state_estimation:
+      x: 0.9
+      y: -0.8571
+      z: 0.1028
+      yaw: -0.0664
+    aft_mapped_in_map:
+      x: 0.9
+      y: -0.8171
+      z: 0.1028
+      yaw: -0.0664
+    zone_transitions:
+      - x: -0.089
+        from: "None"
+        to: "EDGE"
+      - x: 1.508
+        from: "EDGE"
+        to: "MIDDLE"
+
+  - id: "航点2"
+    role: "吸取第二行(左#5右#4)"
+    expected_zone: "MIDDLE"
+    actual_zone: "MIDDLE"
+    state_estimation:
+      x: 2.1299
+      y: -0.8171
+      z: 0.1014
+      yaw: -0.0664
+    aft_mapped_in_map:
+      x: 2.1299
+      y: -0.8171
+      z: 0.1014
+      yaw: -0.0664
+
+  - id: "航点3"
+    role: "吸取第一行(左#1右#0)"
+    expected_zone: "MIDDLE"
+    actual_zone: "MIDDLE"
+    state_estimation:
+      x: 3.1121
+      y: -0.868
+      z: 0.1107
+      yaw: -0.0467
+    aft_mapped_in_map:
+      x: 3.1121
+      y: -0.868
+      z: 0.1107
+      yaw: -0.0467
+
+  - id: "航点4"
+    role: "中间→边缘过渡"
+    expected_zone: "EDGE"
+    actual_zone: "EDGE"
+    state_estimation:
+      x: 4.3698
+      y: -0.8689
+      z: 0.1235
+      yaw: -0.0106
+    aft_mapped_in_map:
+      x: 4.3688
+      y: -0.8703
+      z: 0.1226
+      yaw: -0.0105
+    zone_transitions:
+      - x: 4.174
+        from: "MIDDLE"
+        to: "EDGE"
+
+  - id: "航点5"
+    role: "放置区"
+    expected_zone: "EDGE"
+    actual_zone: "EDGE"
+    state_estimation:
+      x: 5.3502
+      y: -0.657
+      z: 0.1158
+      yaw: -0.0193
+    aft_mapped_in_map:
+      x: 5.3502
+      y: -0.657
+      z: 0.1158
+      yaw: -0.0193
+

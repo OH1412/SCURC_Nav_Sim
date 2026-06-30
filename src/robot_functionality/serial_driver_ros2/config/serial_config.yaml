@@ -1,17 +1,17 @@
 serial_cmd_sender:
   ros__parameters:
-    # 串口通信参数 (复用 /dev/ttyUSB0，与 suction_controller 共用)
-    port: "/dev/ttyUSB2"
+    # 串口通信参数
+    port: "/dev/arm_port"
     baudrate: 115200
     # 机械臂协议校验和偏移 (调试验证用)
-    #   0 (默认): 标准算法 checksum = (前9字节累加和) & 0xFF
-    #   非零值:   checksum = (前9字节累加和 + offset) & 0xFF
+    #   0 (默认): 标准算法 checksum = (前10字节累加和) & 0xFF
+    #   非零值:   checksum = (前10字节累加和 + offset) & 0xFF
     #   若下位机与标准不一致，可调整此值尝试匹配
     arm_checksum_offset: 0
+    # 默认控制位: 0x01=Pick(吸取), 0x02=Place(放置)
+    # 当 /arm_target (Point) 话题无 action 字段时使用此默认值
+    default_control: 0x01
 
-# 机械臂坐标抓取控制节点 (协议: FD FD 06 X_L X_H Y_L Y_H Z_L Z_H CHECKSUM)
-suction_controller:
-  ros__parameters:
-    port: "/dev/ttyUSB2"
-    baudrate: 115200
-    arm_checksum_offset: 0
+# 机械臂坐标抓取/放置控制协议 v2.0
+# 命令帧: FD FD 07 ctrl X_L X_H Y_L Y_H Z_L Z_H CHECKSUM (11 bytes, ctrl=0x01 Pick / 0x02 Place)
+# ACK帧:  FE FE 03 state result CHECKSUM (6 bytes, state=0x01 Pick完成 / 0x02 Place完成, result=0x00 成功 / 0x01 失败)

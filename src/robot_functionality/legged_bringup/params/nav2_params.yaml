@@ -57,7 +57,7 @@ bt_navigator:
     robot_base_frame: base_link
     odom_topic: state_estimation
     bt_loop_duration: 10
-    default_server_timeout: 20
+    default_server_timeout: 50
     # TF缓存设置，增加缓存时间以避免时间戳错误
     transform_tolerance: 1.0
     # 'default_nav_through_poses_bt_xml' and 'default_nav_to_pose_bt_xml' are use defaults:
@@ -149,7 +149,7 @@ controller_server:
     general_goal_checker:
       stateful: False
       plugin: "nav2_controller::SimpleGoalChecker"
-      xy_goal_tolerance: 0.10
+      xy_goal_tolerance: 0.08
       # yaw_goal_tolerance: 6.28             # 中间区=6.28(360°) | 边缘区=0.05236(3°)
       yaw_goal_tolerance: 0.05236             # 边缘区=0.05236(3°) | 中间区由 switcher 切为 6.28
     FollowPath:    
@@ -263,12 +263,12 @@ controller_server:
       # max_robot_pose_search_dist: 10.0
       plugin: "dwb_core::DWBLocalPlanner"
       debug_trajectory_details: False
-      min_vel_x: -2.0
-      min_vel_y: -1.4
-      max_vel_x: 2.0
-      max_vel_y: 1.4
+      min_vel_x: -1.5
+      min_vel_y: -1.1
+      max_vel_x: 1.5
+      max_vel_y: 1.1
       max_vel_theta: 1.2
-      min_speed_xy: 0.4
+      min_speed_xy: 0.3
       max_speed_xy: 3.0
       min_speed_theta: -1.2
       acc_lim_x: 12.0
@@ -277,10 +277,10 @@ controller_server:
       decel_lim_x: -4.0
       decel_lim_y: -3.0
       decel_lim_theta: -20.0
-      vx_samples: 20
-      vy_samples: 20
-      vtheta_samples: 20
-      sim_time: 1.5
+      vx_samples: 10
+      vy_samples: 10
+      vtheta_samples: 10
+      sim_time: 0.8
       linear_granularity: 0.05
       angular_granularity: 0.025
       transform_tolerance: 0.2
@@ -295,7 +295,7 @@ controller_server:
       # ═══════════════════════════════════════════════════════════════
       critics: ["RotateToGoal", "Oscillation", "ObstacleFootprint", "GoalAlign", "PathAlign", "PathDist", "GoalDist", "dwb_yaw_constraint::MaintainYawCritic", "dwb_yaw_constraint::DecouplingCritic"]
       # --- 共有参数（两区相同）---
-      ObstacleFootprint.scale: 50.0
+      ObstacleFootprint.scale: 20.0
       PathDist.scale: 32.0
       GoalDist.scale: 16.0
       # ═══════════════════════════════════════════════════════════════
@@ -316,8 +316,8 @@ controller_server:
       "dwb_yaw_constraint::MaintainYawCritic.reference_frame": "map"
       # --- 解耦 critic (中间区禁用) ---
       "dwb_yaw_constraint::DecouplingCritic.scale": 0.0       # 中间区=0.0 | 边缘区=30.0
-      "dwb_yaw_constraint::DecouplingCritic.max_vx": 2.0
-      "dwb_yaw_constraint::DecouplingCritic.max_vy": 1.4
+      "dwb_yaw_constraint::DecouplingCritic.max_vx": 1.5
+      "dwb_yaw_constraint::DecouplingCritic.max_vy": 1.1
       "dwb_yaw_constraint::DecouplingCritic.max_vtheta": 1.2
       # ═══════════════════════════════════════════════════════════════
       # 边缘区 (解除yaw限制，允许旋转)
@@ -567,8 +567,8 @@ velocity_smoother:
     smoothing_frequency: 5.0
     scale_velocities: False
     feedback: "CLOSED_LOOP"
-    max_velocity: [2.0, 1.4, 1.2]
-    min_velocity: [-2.0, -1.4, -1.2]
+    max_velocity: [1.5, 1.1, 1.2]
+    min_velocity: [-1.5, -1.1, -1.2]
     max_accel: [5.0, 5.0, 15.0]
     max_decel: [-5.0, -5.0, -15.0]
     odom_topic: "state_estimation"
@@ -582,10 +582,10 @@ velocity_smoother:
 # ═══════════════════════════════════════════════════════════════
 
 # 区域切换器：根据机器人 x 坐标动态切换 DWB critic 参数
-# 注意：代码默认值 lower=0.9, upper=4.9，但 launch 文件覆盖为 1.0/4.0
+# 注意：代码默认值 lower=1.35, upper=4.0，launch 文件覆盖同值
 position_based_param_switcher:
   ros__parameters:
-    lower_boundary: 1.0          # 中间区下边界 (x<1.0 → 边缘区，允许旋转和横向移动)
+    lower_boundary: 1.35         # 中间区下边界 (x<1.35 → 边缘区，允许旋转和横向移动)
     upper_boundary: 4.0          # 中间区上边界 (x>4.0 → 边缘区，允许旋转和横向移动)
     hysteresis_margin: 0.1       # 迟滞边界 (±0.1m)，防止在边界附近来回振荡
     odom_topic: "state_estimation"
@@ -597,7 +597,7 @@ obstacle_scale_controller:
     target_node: "controller_server"
     costmap_topic: "/local_costmap/costmap"
     hysteresis_count: 5           # 连续 N 次检测到障碍物后才触发切换，防抖
-    normal_scale: 50.0            # 无障碍物时 ObstacleFootprint.scale 恢复正常值
+    normal_scale: 20.0            # 无障碍物时 ObstacleFootprint.scale 恢复正常值
     push_through_scale: 0.01      # 障碍物侵入时降为 0.01，基本禁用 footprint 代价，硬挤过去
 
 # UDP 速度桥接：将 Nav2 的 /cmd_vel 通过 UDP 转发给 deploy_cpp（机器人底盘）
@@ -625,6 +625,9 @@ arm_control_server:
     arm_timeout: 30.0             # 机械臂动作超时时间 (秒)
     enable_serial_publish: true
     arm_command_topic: "/arm_command"
+    arm_target_topic: "/arm_target"
+    arm_status_topic: "/arm_status"
+    arm_action: 1                 # 默认动作: 1=Pick(吸取), 2=Place(放置)
 
 # 机械臂抓取使命触发器（可选，enable_waypoint_mission=true 时启用）
 arm_mission_trigger:

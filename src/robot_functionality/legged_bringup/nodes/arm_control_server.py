@@ -23,6 +23,7 @@
 
 import math
 import sys
+import threading
 
 import rclpy
 from rclpy.action import ActionServer, CancelResponse, GoalResponse
@@ -31,7 +32,7 @@ from rclpy.node import Node
 from rclpy.executors import MultiThreadedExecutor
 
 from geometry_msgs.msg import PoseStamped, Point, Quaternion
-from std_msgs.msg import Float64MultiArray
+from std_msgs.msg import Float64MultiArray, UInt8MultiArray
 
 # 导入自定义 Action 类型
 # behavior_ext_plugins 包会生成 Python 接口
@@ -50,12 +51,14 @@ class ArmControlServer(Node):
         # ================================================================
         # 参数声明
         # ================================================================
-        self.declare_parameter('arm_timeout', 30.0)        # 机械臂超时 (秒)
+        self.declare_parameter('arm_timeout', 30.0)          # 机械臂超时 (秒)
         self.declare_parameter('base_link_frame', 'base_link')
         self.declare_parameter('map_frame', 'map')
         self.declare_parameter('enable_serial_publish', True)
         self.declare_parameter('arm_command_topic', '/arm_command')
         self.declare_parameter('arm_target_topic', '/arm_target')
+        self.declare_parameter('arm_status_topic', '/arm_status')
+        self.declare_parameter('arm_action', 1)              # 1=Pick(吸取), 2=Place(放置)
 
         self.arm_timeout = self.get_parameter('arm_timeout').value
         self.base_link_frame = self.get_parameter('base_link_frame').value
@@ -63,6 +66,8 @@ class ArmControlServer(Node):
         self.enable_serial_publish = self.get_parameter('enable_serial_publish').value
         self.arm_command_topic = self.get_parameter('arm_command_topic').value
         self.arm_target_topic = self.get_parameter('arm_target_topic').value
+        self.arm_status_topic = self.get_parameter('arm_status_topic').value
+        self.arm_action = self.get_parameter('arm_action').value
 
         # ================================================================
         # tf2 初始化 — 用于 map → base_link 坐标变换
@@ -100,7 +105,29 @@ class ArmControlServer(Node):
             callback_group=ReentrantCallbackGroup(),
         )
 
-        self.get_logger().info('ArmControlServer started. Waiting for arm control goals...')
+        # ================================================================
+        # ACK 状态订阅 — 接收下位机的 FE FE 03 state result CHECKSUM 帧
+        # 通过 serial_main.cpp 的 /arm_status 话题中继
+        # ================================================================
+        self._ack_event = threading.Event()
+        self._ack_state = 0
+        self._ack_result = 0
+        self._ack_lock = threading.Lock()
+
+        self.arm_status_sub = self.create_subscription(
+            UInt8MultiArray,
+            self.arm_status_topic,
+            self.arm_status_callback,
+            10,
+            callback_group=ReentrantCallbackGroup(),
+        )
+
+        self.get_logger().info(
+            f'ArmControlServer started. '
+            f'arm_action={self.arm_action}({"PICK" if self.arm_action == 1 else "PLACE"}), '
+            f'arm_timeout={self.arm_timeout}s, '
+            f'ACK via {self.arm_status_topic}'
+        )
 
     # ------------------------------------------------------------------
     # Action 回调
@@ -208,15 +235,15 @@ class ArmControlServer(Node):
             try:
                 # 将 arm_base 坐标打包为 Float64MultiArray (兼容格式)
                 # 格式: [x, y, z, yaw, arm_action]
+                # arm_action: 1=Pick(吸取→0x01), 2=Place(放置→0x02)
                 yaw = self._quat_to_yaw(base_link_pose.orientation)
-                arm_action = 1  # 默认抓取
                 msg = Float64MultiArray()
                 msg.data = [
                     float(arm_pose.position.x),
                     float(arm_pose.position.y),
                     float(arm_pose.position.z),
                     float(yaw),
-                    float(arm_action),
+                    float(self.arm_action),
                 ]
 
                 self.arm_cmd_pub.publish(msg)
@@ -254,18 +281,52 @@ class ArmControlServer(Node):
             arm_success = True
 
         # ---------------------------------------------------------------
-        # Step 3: 等待机械臂完成 (占位 — 通过 topic 或其他机制)
+        # Step 3: 等待机械臂 ACK 完成
+        # 下位机完成动作后通过 FE FE 03 state result CHECKSUM 回报
+        # serial_main.cpp 解析后发布到 /arm_status 话题
         # ---------------------------------------------------------------
-        self._publish_feedback(goal_handle, 'Waiting for arm completion...')
+        self._publish_feedback(goal_handle, 'Waiting for arm ACK...')
 
-        # TODO: 订阅机械臂状态反馈 topic 并等待完成信号
-        # 当前版本直接返回成功（后续可扩展为订阅 /arm_status 等待完成）
-        # wait_until_complete(base_link_stamped, self.arm_timeout)
+        # 清空上一轮的 ACK 状态
+        self._ack_event.clear()
+
+        # 阻塞等待 ACK (使用 threading.Event.wait 带超时)
+        ack_received = self._ack_event.wait(timeout=self.arm_timeout)
+
+        if ack_received:
+            with self._ack_lock:
+                ack_state = self._ack_state
+                ack_result = self._ack_result
+
+            self.get_logger().info(
+                f'ACK received: state=0x{ack_state:02X} result=0x{ack_result:02X}')
+
+            if ack_result == 0x00:  # 成功
+                arm_result_msg = (
+                    f'Arm {"PICK" if ack_state == 0x01 else "PLACE"} '
+                    f'completed successfully (ACK OK)'
+                )
+                arm_success = True
+            else:  # 失败
+                arm_result_msg = (
+                    f'Arm {"PICK" if ack_state == 0x01 else "PLACE"} '
+                    f'failed (ACK result=0x{ack_result:02X})'
+                )
+                arm_success = False
+        else:
+            # 超时
+            self.get_logger().warn(
+                f'ACK timeout after {self.arm_timeout}s — no response from arm')
+            arm_result_msg = f'Arm ACK timeout ({self.arm_timeout}s)'
+            arm_success = False
 
         # ---------------------------------------------------------------
         # Step 4: 返回结果
         # ---------------------------------------------------------------
-        goal_handle.succeed()
+        if arm_success:
+            goal_handle.succeed()
+        else:
+            goal_handle.abort()
 
         result = ArmControl.Result()
         result.success = arm_success
@@ -281,6 +342,29 @@ class ArmControlServer(Node):
     # ------------------------------------------------------------------
     # 辅助方法
     # ------------------------------------------------------------------
+
+    def arm_status_callback(self, msg: UInt8MultiArray):
+        """接收下位机 ACK 状态 (通过 /arm_status 话题)"""
+        if len(msg.data) < 2:
+            self.get_logger().warn(
+                f'Malformed /arm_status message: expected [state, result], '
+                f'got {len(msg.data)} elements')
+            return
+
+        with self._ack_lock:
+            self._ack_state = msg.data[0]
+            self._ack_result = msg.data[1]
+
+        state_str = 'PICK' if self._ack_state == 0x01 else \
+                    'PLACE' if self._ack_state == 0x02 else f'0x{self._ack_state:02X}'
+        result_str = 'OK' if self._ack_result == 0x00 else \
+                     'FAIL' if self._ack_result == 0x01 else f'0x{self._ack_result:02X}'
+
+        self.get_logger().info(
+            f'ACK status: state={state_str} result={result_str}')
+
+        # 唤醒 execute_callback 中等待的线程
+        self._ack_event.set()
 
     def _publish_feedback(self, goal_handle, status: str):
         """发布 action feedback"""

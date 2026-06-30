@@ -2,8 +2,7 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, RegisterEventHandler, TimerAction
-from launch.event_handlers import OnProcessExit
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, TimerAction
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node
 from launch.substitutions import LaunchConfiguration
@@ -16,6 +15,7 @@ def generate_launch_description():
     # ========================================================================
     use_sim_time = LaunchConfiguration('use_sim_time', default='false')
     use_fast_livo = LaunchConfiguration('use_fast_livo', default='true')
+    enable_relocalization = LaunchConfiguration('enable_relocalization', default='false')
     use_respawn = LaunchConfiguration('use_respawn', default='true')
     log_level = LaunchConfiguration('log_level', default='WARN')
 
@@ -32,9 +32,9 @@ def generate_launch_description():
     # 配置文件路径
     config_path = os.path.join(bringup_dir, 'params')
     fast_livo_config_dir = os.path.join(fast_livo_dir, "config")
-    
+
     amcl_config_path = os.path.join(config_path, 'amcl_params.yaml')
-    fast_livo_config = os.path.join(fast_livo_config_dir, 'avia.yaml')
+    fast_livo_config = os.path.join(config_path, 'avia_minimal.yaml')  # 精简配置：关闭建图/保存
     camera_config = os.path.join(fast_livo_config_dir, "camera_MARS_LVIG.yaml")
     rviz_config = os.path.join(bringup_dir, 'rviz', 'loam_livox.rviz')
 
@@ -45,13 +45,14 @@ def generate_launch_description():
     # 3. 节点定义
     # ========================================================================
 
-    # Global relocalization using relocalization package
+    # Global relocalization using relocalization package (可关闭)
     transform_publisher = Node(
         package='relocalization',
         executable='transform_publisher',
         name='transform_publisher',
         output='screen',
         parameters=[{'use_sim_time': False}],
+        condition=IfCondition(enable_relocalization),
     )
 
     teaser_gicp_node = Node(
@@ -82,6 +83,7 @@ def generate_launch_description():
             {'converged_count_thre': 10},
             {'registration_type': 'VGICP'},
         ],
+        condition=IfCondition(enable_relocalization),
     )
 
     # Fast-Livo (里程计) using the working fast_livo mapping launch
@@ -174,6 +176,10 @@ def generate_launch_description():
         'log_level', default_value='WARN',
         description='Log level for fast_livo nodes'))
 
+    ld.add_action(DeclareLaunchArgument(
+        'enable_relocalization', default_value='false',
+        description='Enable global relocalization (teaser_gicp + transform_publisher). Default off.'))
+
     # 1. Nav2 定位栈 (Map Server + Lifecycle Manager)  # AMCL temporarily disabled
     ld.add_action(map_server_node)
     # ld.add_action(amcl_node)
@@ -182,17 +188,23 @@ def generate_launch_description():
     # 2. 延迟启动 Fast-Livo
     ld.add_action(TimerAction(period=1.0, actions=[fast_livo_node]))
 
-    # 3. 延迟启动全局重定位
+    # 3. 全局重定位（条件启用）
     ld.add_action(transform_publisher)
     ld.add_action(TimerAction(period=2.0, actions=[teaser_gicp_node]))
-    ld.add_action(RegisterEventHandler(
-        OnProcessExit(
-            target_action=teaser_gicp_node,
-            on_exit=[static_tf_node]
-        )
+
+    # 4. static_tf: 重定位关闭时早期启动，开启时延迟等待 teaser_gicp 完成
+    ld.add_action(TimerAction(
+        period=3.0,
+        actions=[static_tf_node],
+        condition=UnlessCondition(enable_relocalization)
+    ))
+    ld.add_action(TimerAction(
+        period=10.0,
+        actions=[static_tf_node],
+        condition=IfCondition(enable_relocalization)
     ))
 
-    # 4. RViz
+    # 5. RViz
     ld.add_action(rviz_node)
 
     return ld

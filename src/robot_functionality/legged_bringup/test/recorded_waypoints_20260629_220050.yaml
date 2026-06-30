@@ -1,0 +1,95 @@
+# 航点坐标采集记录
+# 采集时间: 2026-06-29 22:00:50.868070
+# 区域边界: lower=1.35, upper=4.0, hyst=0.1
+# 采集顺序: 航点1 → 航点2 → 航点3 → 航点4 → 航点6
+# 2026-06-30 更新: 删除旧航点5(边缘→中间过渡, x=3.8), 旧航点6→航点5(放置区)
+# 策略: 到达目标点必须经过之前所有中间点
+
+waypoints:
+  - id: "航点1"
+    role: "过渡对齐点"
+    expected_zone: "EDGE"
+    actual_zone: "EDGE"
+    state_estimation:
+      x: 1.1887
+      y: -0.9489
+      z: 0.1024
+      yaw: -0.0727
+    aft_mapped_in_map:
+      x: 1.2089
+      y: -0.8722
+      z: 0.0785
+      yaw: -0.0736
+    zone_transitions:
+      - x: -0.096
+        from: "None"
+        to: "EDGE"
+
+  - id: "航点2"
+    role: "吸取第二行(左#5右#4)"
+    expected_zone: "MIDDLE"
+    actual_zone: "MIDDLE"
+    state_estimation:
+      x: 2.15
+      y: -0.8315
+      z: 0.0953
+      yaw: -0.0734
+    aft_mapped_in_map:
+      x: 2.1704
+      y: -0.7556
+      z: 0.0844
+      yaw: -0.0741
+    zone_transitions:
+      - x: 1.484
+        from: "EDGE"
+        to: "MIDDLE"
+
+  - id: "航点3"
+    role: "吸取第一行(左#1右#0)"
+    expected_zone: "MIDDLE"
+    actual_zone: "MIDDLE"
+    state_estimation:
+      x: 2.9433
+      y: -0.8624
+      z: 0.1144
+      yaw: -0.0185
+    aft_mapped_in_map:
+      x: 2.9633
+      y: -0.7875
+      z: 0.1137
+      yaw: -0.0194
+
+  - id: "航点4"
+    role: "中间→边缘过渡"
+    expected_zone: "EDGE"
+    actual_zone: "EDGE"
+    state_estimation:
+      x: 4.2
+      y: -0.9839
+      z: 0.1211
+      yaw: -0.0185
+    aft_mapped_in_map:
+      x: 4.2
+      y: -0.91
+      z: 0.1325
+      yaw: -0.0194
+    zone_transitions:
+      - x: 3.63
+        from: "MIDDLE"
+        to: "EDGE"
+
+  - id: "航点5"
+    role: "放置区"
+    expected_zone: "EDGE"
+    actual_zone: "EDGE"
+    state_estimation:
+      x: 5.4712
+      y: -0.8122
+      z: 0.1206
+      yaw: -0.1017
+    # 原 航点6，2026-06-30 从 point.yaml 更新，原坐标 (5.446, -0.947) 落在障碍代价区致规划器 ABORT
+    aft_mapped_in_map:
+      x: 5.4658
+      y: -0.8749
+      z: 0.161
+      yaw: -0.0636

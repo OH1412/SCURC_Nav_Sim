@@ -17,6 +17,19 @@ SerialComm::SerialComm(const std::string& port, unsigned long baudrate)
         serial_port_.open();
         
         if (serial_port_.isOpen()) {
+            // CH341 硬件稳定化 — 解决首次 write() 丢失问题
+            // 根因: CH341 USB-UART 的首个 bulk transfer 可能被静默丢弃
+            // 修复: 发送 dummy byte 预唤醒 USB 端点，后续真实命令就不会丢失
+            serial_port_.flushInput();   // tcflush(TCIFLUSH)
+            serial_port_.flushOutput();  // tcflush(TCOFLUSH)
+            std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+            try {
+                std::vector<uint8_t> wakeup = {0x00};  // 下位机忽略非 FD 字节
+                serial_port_.write(wakeup);
+                serial_port_.flush();  // tcdrain — 确保 dummy byte 已发出
+            } catch (...) {}
+
             RCLCPP_INFO(rclcpp::get_logger("SerialComm"), "✅ Serial Open at: %s @ %lu bps", port.c_str(), baudrate);
         }
     } catch (const std::exception& e) {
@@ -66,6 +79,17 @@ bool SerialComm::attemptReconnect() {
         serial_port_.open();
         
         if (serial_port_.isOpen()) {
+            // CH341 硬件稳定化（重连后同样需要）
+            serial_port_.flushInput();
+            serial_port_.flushOutput();
+            std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+            try {
+                std::vector<uint8_t> wakeup = {0x00};
+                serial_port_.write(wakeup);
+                serial_port_.flush();  // tcdrain
+            } catch (...) {}
+
             RCLCPP_INFO(rclcpp::get_logger("SerialComm"), "✅ Serial reconnected: %s @ %lu bps", port_.c_str(), baudrate_);
             return true;
         }
@@ -149,36 +173,40 @@ std::vector<uint8_t> SerialComm::encodeFloatArray(const std::vector<float>& valu
 }
 
 // ============================================================================
-// 机械臂坐标抓取控制协议 (FD FD 06 X_L X_H Y_L Y_H Z_L Z_H CHECKSUM)
-// 帧长固定 10 字节，X/Y/Z 为 int16 小端序，单位 mm
+// 机械臂坐标抓取控制协议 v2.0 (FD FD 07 ctrl X_L X_H Y_L Y_H Z_L Z_H CHECKSUM)
+// 帧长固定 11 字节，ctrl=0x01(Pick)/0x02(Place)，X/Y/Z 为 int16 小端序，单位 mm
 // ============================================================================
-std::vector<uint8_t> SerialComm::encodeArmTarget(int16_t x_mm, int16_t y_mm, int16_t z_mm,
+std::vector<uint8_t> SerialComm::encodeArmTarget(uint8_t control,
+                                                  int16_t x_mm, int16_t y_mm, int16_t z_mm,
                                                   int checksum_offset) {
     std::vector<uint8_t> frame;
 
-    // 帧头 1, 2
-    frame.push_back(0xFD);
-    frame.push_back(0xFD);
+    // 字节 0-1: 帧头
+    frame.push_back(protocol::FRAME_HEAD_ARM_CMD);  // 0xFD
+    frame.push_back(protocol::FRAME_HEAD_ARM_CMD);  // 0xFD
 
-    // 数据区长度 (固定 6 字节: X_L X_H Y_L Y_H Z_L Z_H)
-    frame.push_back(0x06);
+    // 字节 2: 数据区长度 (固定 7 字节: ctrl + X_L X_H + Y_L Y_H + Z_L Z_H)
+    frame.push_back(0x07);
 
-    // X 坐标 (int16, 小端序: 低字节在前)
+    // 字节 3: 控制位 (0x01=Pick吸取, 0x02=Place放置)
+    frame.push_back(control);
+
+    // 字节 4-5: X 坐标 (int16, 小端序: 低字节在前)
     frame.push_back(static_cast<uint8_t>(x_mm & 0xFF));
     frame.push_back(static_cast<uint8_t>((x_mm >> 8) & 0xFF));
 
-    // Y 坐标 (int16, 小端序)
+    // 字节 6-7: Y 坐标 (int16, 小端序)
     frame.push_back(static_cast<uint8_t>(y_mm & 0xFF));
     frame.push_back(static_cast<uint8_t>((y_mm >> 8) & 0xFF));
 
-    // Z 坐标 (int16, 小端序)
+    // 字节 8-9: Z 坐标 (int16, 小端序)
     frame.push_back(static_cast<uint8_t>(z_mm & 0xFF));
     frame.push_back(static_cast<uint8_t>((z_mm >> 8) & 0xFF));
 
-    // 校验和 = (前 9 字节累加和 + offset) 取低 8 位
+    // 字节 10: 校验和 = (前 10 字节累加和 + offset) 取低 8 位
     // offset 默认 0；调试时可设为非零值来匹配不同下位机实现
     uint8_t checksum = 0;
-    for (size_t i = 0; i < 9; i++) {
+    for (size_t i = 0; i < 10; i++) {
         checksum += frame[i];
     }
     checksum = static_cast<uint8_t>((checksum + checksum_offset) & 0xFF);
@@ -187,13 +215,22 @@ std::vector<uint8_t> SerialComm::encodeArmTarget(int16_t x_mm, int16_t y_mm, int
     return frame;
 }
 
-bool SerialComm::sendArmTargetCommand(int16_t x_mm, int16_t y_mm, int16_t z_mm,
+bool SerialComm::sendArmTargetCommand(uint8_t control,
+                                       int16_t x_mm, int16_t y_mm, int16_t z_mm,
                                        int checksum_offset) {
     std::lock_guard<std::mutex> lock(serial_mutex_);
 
     if (!serial_port_.isOpen()) return false;
 
-    std::vector<uint8_t> frame = encodeArmTarget(x_mm, y_mm, z_mm, checksum_offset);
+    // 发送前清空接收缓冲区，丢弃陈旧 ACK（防止上一次的重复 ACK 干扰）
+    if (serial_port_.available() > 0) {
+        std::vector<uint8_t> stale;
+        serial_port_.read(stale, serial_port_.available());
+        RCLCPP_DEBUG(rclcpp::get_logger("SerialComm"),
+            "[ARM] Flushed %zu stale bytes from receive buffer", stale.size());
+    }
+
+    std::vector<uint8_t> frame = encodeArmTarget(control, x_mm, y_mm, z_mm, checksum_offset);
 
     // Debug: 打印发送的帧数据
     char buf[4];
@@ -203,8 +240,8 @@ bool SerialComm::sendArmTargetCommand(int16_t x_mm, int16_t y_mm, int16_t z_mm,
         hex_str += buf;
     }
     RCLCPP_INFO(rclcpp::get_logger("SerialComm"),
-        "[ARM] Sending target: (%d, %d, %d) mm | checksum_offset=%d | Raw: %s",
-        x_mm, y_mm, z_mm, checksum_offset, hex_str.c_str());
+        "[ARM] Sending: ctrl=0x%02X target=(%d, %d, %d) mm | checksum_offset=%d | Raw: %s",
+        control, x_mm, y_mm, z_mm, checksum_offset, hex_str.c_str());
 
     try {
         size_t bytes_written = serial_port_.write(frame);
@@ -216,6 +253,94 @@ bool SerialComm::sendArmTargetCommand(int16_t x_mm, int16_t y_mm, int16_t z_mm,
         }
         return false;
     }
+}
+
+void SerialComm::flushReceiveBuffer() {
+    std::lock_guard<std::mutex> lock(serial_mutex_);
+
+    if (!serial_port_.isOpen()) return;
+
+    try {
+        size_t available = serial_port_.available();
+        if (available > 0) {
+            std::vector<uint8_t> discarded;
+            serial_port_.read(discarded, available);
+            RCLCPP_DEBUG(rclcpp::get_logger("SerialComm"),
+                "[ARM] flushReceiveBuffer: discarded %zu bytes", available);
+        }
+    } catch (const std::exception& e) {
+        RCLCPP_ERROR(rclcpp::get_logger("SerialComm"),
+            "flushReceiveBuffer error: %s", e.what());
+    }
+}
+
+// ============================================================================
+// 机械臂 ACK 接收协议 (FE FE 03 state result CHECKSUM)
+// 非阻塞：扫描串口缓冲区寻找 ACK 帧，找到则解析返回，未找到返回 valid=false
+// ============================================================================
+ArmAck SerialComm::readArmAck() {
+    ArmAck ack;
+    std::lock_guard<std::mutex> lock(serial_mutex_);
+
+    if (!serial_port_.isOpen()) return ack;
+
+    try {
+        size_t available = serial_port_.available();
+
+        if (available < 1) return ack;  // 无数据
+
+        std::vector<uint8_t> buffer;
+        serial_port_.read(buffer, available);
+
+        // 扫描 FE FE 帧头
+        for (size_t i = 0; i + 5 < buffer.size(); i++) {
+            if (buffer[i] == protocol::FRAME_HEAD_ARM_ACK &&
+                buffer[i + 1] == protocol::FRAME_HEAD_ARM_ACK) {
+
+                uint8_t length = buffer[i + 2];
+                if (length != 0x03) {
+                    RCLCPP_WARN(rclcpp::get_logger("SerialComm"),
+                        "[ARM ACK] Unexpected length: 0x%02X (expected 0x03), skipping", length);
+                    continue;
+                }
+
+                uint8_t state  = buffer[i + 3];
+                uint8_t result = buffer[i + 4];
+                uint8_t received_checksum = buffer[i + 5];
+
+                // 计算校验和: (0xFE + 0xFE + 0x03 + state + result) & 0xFF
+                uint8_t calc_checksum = (protocol::FRAME_HEAD_ARM_ACK +
+                                         protocol::FRAME_HEAD_ARM_ACK +
+                                         0x03 + state + result) & 0xFF;
+
+                if (received_checksum != calc_checksum) {
+                    RCLCPP_WARN(rclcpp::get_logger("SerialComm"),
+                        "[ARM ACK] Checksum mismatch: calc=0x%02X recv=0x%02X",
+                        calc_checksum, received_checksum);
+                    continue;
+                }
+
+                ack.valid = true;
+                ack.state = state;
+                ack.result = result;
+
+                const char* state_str = (state == protocol::ARM_CTRL_PICK)  ? "PICK" :
+                                        (state == protocol::ARM_CTRL_PLACE) ? "PLACE" : "UNKNOWN";
+                const char* result_str = (result == protocol::ARM_ACK_OK)   ? "OK" :
+                                         (result == protocol::ARM_ACK_FAIL) ? "FAIL" : "UNKNOWN";
+
+                RCLCPP_INFO(rclcpp::get_logger("SerialComm"),
+                    "[ARM ACK] Received: state=0x%02X(%s) result=0x%02X(%s) checksum=0x%02X",
+                    state, state_str, result, result_str, received_checksum);
+
+                return ack;  // 找到第一帧即返回
+            }
+        }
+    } catch (const std::exception& e) {
+        RCLCPP_ERROR(rclcpp::get_logger("SerialComm"), "readArmAck error: %s", e.what());
+    }
+
+    return ack;
 }
 
 std::vector<float> SerialComm::readFloatArrayResponse() {

@@ -51,7 +51,10 @@ def generate_launch_description():
         PythonLaunchDescriptionSource(os.path.join(
             bringup_dir,'launch','global_relocalization.launch.py'
             )
-        )
+        ),
+        launch_arguments={
+            'enable_relocalization': 'false',
+        }.items(),
     )
 
     start_navigation = IncludeLaunchDescription(

@@ -41,6 +41,9 @@ install(PROGRAMS
   nodes/arm_control_server.py
   nodes/arm_mission_trigger.py
   nodes/pointcloud_range_filter.py
+  test/path1_nav_test.py
+  test/record_waypoints.py
+  test/save_current_point.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

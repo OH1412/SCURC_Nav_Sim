@@ -3,5 +3,7 @@ mode: trinary
 resolution: 0.01
 origin: [-1.31, -2.59, 0]
 negate: 0
-occupied_thresh: 0.65
+occupied_thresh: 1.0
 free_thresh: 0.25
+# 原值: occupied_thresh=0.65, free_thresh=0.25
+# occupied_thresh=1.0 → 无像素被判为障碍（关闭障碍物避障）

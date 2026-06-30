@@ -377,6 +377,20 @@ def generate_launch_description():
     )
     ld.add_action(TimerAction(period=6.0, actions=[obstacle_scale_ctrl_node]))
 
+    # Static TF: map → odom (identity).
+    # Without this, the global costmap (global_frame: map) cannot locate the robot
+    # because no map→odom transform exists (AMCL is disabled).
+    # This makes the planner_server report "Robot is out of bounds of the costmap!"
+    # and prevents ComputePathToPose from generating new paths for distant goals.
+    map_to_odom_tf = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        name='map_to_odom_tf',
+        output='screen',
+        arguments=['0', '0', '0', '0', '0', '0', 'map', 'odom'],
+    )
+    ld.add_action(map_to_odom_tf)
+
     ld.add_action(start_rviz)
 
     # # ======================
