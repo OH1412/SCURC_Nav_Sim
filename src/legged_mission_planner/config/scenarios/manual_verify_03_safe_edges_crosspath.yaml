@@ -1,0 +1,11 @@
+# 案例3：safe_edges 跨路径放置多（无智力题）
+# 上排[3,2,1,0]=[2,3,0,1]  下排[7,6,5,4]=[1,0,3,2]
+# 预期严格扫掠路径序: 1 → 2 → 3 → 4 → 5；吸取序: 4, 0, 1, 5, 6, 2, 3, 7
+name: safe_edges_cross_path
+strategy: safe_edges
+switch_mode: wp4_only
+box_types: [1, 0, 3, 2, 2, 3, 0, 1]
+zone_types: [0, 1, 2, 3]
+include_quiz_state: false
+quiz_type: null
+expected_pick_order: [4, 0, 1, 5, 6, 2, 3, 7]

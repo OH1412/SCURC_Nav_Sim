@@ -1,0 +1,13 @@
+# 手动验证案例索引（共 5 个，覆盖 2520 种合法摆放中的典型情形）
+# UI 标注：box_types 按下标 0..7 对应场位 0..7（上排右→左 3,2,1,0；下排 7,6,5,4）
+scenarios:
+  - file: manual_verify_01_doc_example.yaml
+    summary: 需求文档 path1 直走优先
+  - file: manual_verify_02_safe_edges_quiz3.yaml
+    summary: safe_edges + quiz=3 首条选 path5
+  - file: manual_verify_03_safe_edges_crosspath.yaml
+    summary: safe_edges 跨路径多
+  - file: manual_verify_04_middle_paths_direct.yaml
+    summary: middle_paths 直走优先
+  - file: manual_verify_05_middle_paths_quiz2.yaml
+    summary: middle_paths + quiz=2
