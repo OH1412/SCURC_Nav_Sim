@@ -1,0 +1,20 @@
+# 航点坐标采集记录
+# 采集时间: 2026-07-05 16:14:26.343717
+# 区域边界: lower=1.35, upper=4.0, hyst=0.1
+# 采集顺序: 航点1 → 航点2 → 航点3 → 航点4 → 航点5
+
+waypoints:
+  - id: "航点1"
+    role: "过渡对齐点"
+    expected_zone: "EDGE"
+    actual_zone: "EDGE"
+    aft_mapped_to_init:
+      x: 0.0042
+      y: -0.003
+      z: -0.0008
+      yaw: 0.0038
+    zone_transitions:
+      - x: 0.009
+        from: "None"
+        to: "EDGE"
+

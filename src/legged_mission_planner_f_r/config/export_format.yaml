@@ -1,0 +1,26 @@
+format_version: 2
+planner_variant: front_back
+max_waypoint: 4
+top_level_fields:
+  - format_version
+  - planner_variant
+  - max_waypoint
+  - generated_at
+  - switch_mode
+  - scenario
+  - quiz_type
+  - quiz_received
+  - quiz_wait_started
+  - plan_source
+  - sequence
+sequence_fields:
+  - step
+  - path
+  - wp
+  - state
+  - state_label
+  - target_box
+  - target_zone
+  - box_type
+  - zone_type
+  - note

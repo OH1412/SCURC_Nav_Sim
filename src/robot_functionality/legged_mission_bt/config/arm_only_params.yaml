@@ -1,0 +1,5 @@
+mission_bt_node:
+  ros__parameters:
+    require_nav2: false
+    arm_command_topic: "/arm_command"
+    arm_status_topic: "/arm_status"

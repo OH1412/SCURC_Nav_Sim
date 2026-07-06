@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  纯机械臂测试 — 无导航节点
+  坐标: arm_base 毫米 (BT 中 x/y 为逻辑坐标，下发串口时 x、y 自动取反)
+-->
+<root BTCPP_format="4">
+  <BehaviorTree ID="ArmOnlyDemo">
+    <Sequence name="ArmOnlyTest">
+
+      <ArmPickNode x="550.0" y="0.0" z="-50.0" yaw="0.0" timeout="30.0"/>
+
+      <WaitSecondsNode duration="5.0"/>
+
+      <ArmPlaceNode x="0.0" y="500.0" z="-50.0" yaw="0.0" timeout="30.0"/>
+<!--       
+      <WaitSecondsNode duration="5.0"/>
+      
+      <ArmPickNode x="0.0" y="550.0" z="-100.0" yaw="0.0" timeout="30.0"/>
+
+      <WaitSecondsNode duration="5.0"/>
+
+      <ArmPlaceNode x="0.0" y="500.0" z="-50.0" yaw="0.0" timeout="30.0"/> -->
+    </Sequence>
+  </BehaviorTree>
+</root>

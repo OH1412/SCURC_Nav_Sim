@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  手动机械臂联调 — Enter 选点 + ArmPick/ArmPlace（与 arm_only_demo 相同执行路径）
+  6 步：抓 → 放 × 3
+-->
+<root BTCPP_format="4">
+  <BehaviorTree ID="ArmManualTest">
+    <Sequence name="ManualPickPlaceCycle">
+
+      <ManualConfirmNode action="pick" timeout="300.0" arm_slot="{slot1}"/>
+      <ArmPickNode arm_point_id="{slot1}" timeout="120.0"/>
+
+      <ManualConfirmNode action="place" timeout="300.0" arm_slot="{slot2}"/>
+      <ArmPlaceNode arm_point_id="{slot2}" timeout="120.0"/>
+
+      <ManualConfirmNode action="pick" timeout="300.0" arm_slot="{slot3}"/>
+      <ArmPickNode arm_point_id="{slot3}" timeout="120.0"/>
+
+      <ManualConfirmNode action="place" timeout="300.0" arm_slot="{slot4}"/>
+      <ArmPlaceNode arm_point_id="{slot4}" timeout="120.0"/>
+
+      <ManualConfirmNode action="pick" timeout="300.0" arm_slot="{slot5}"/>
+      <ArmPickNode arm_point_id="{slot5}" timeout="120.0"/>
+
+      <ManualConfirmNode action="place" timeout="300.0" arm_slot="{slot6}"/>
+      <ArmPlaceNode arm_point_id="{slot6}" timeout="120.0"/>
+
+    </Sequence>
+  </BehaviorTree>
+</root>

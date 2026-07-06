@@ -1,0 +1,17 @@
+mission_bt_node:
+  ros__parameters:
+    require_nav2: true
+    wait_for_nav2_timeout: 120.0
+    bt_navigator_node_name: "bt_navigator"
+    wait_for_bt_navigator_active_timeout: 120.0
+    plan_wait_timeout: 120.0
+    waypoint_wait_timeout: 120.0
+    arm_command_topic: "/arm_command"
+    arm_status_topic: "/arm_status"
+    mission_plan_topic: "/mission_bt/mission_plan"
+    nav_waypoint_topic: "/mission_bt/nav_waypoint"
+    arm_waypoint_topic: "/mission_bt/arm_waypoint"
+    nav_reached_topic: "/mission_bt/nav_reached"
+    arm_pose_request_topic: "/mission_bt/arm_pose_request"
+    clear_waypoints_topic: "/mission_bt/clear_waypoints"
+    waypoints_file: ""

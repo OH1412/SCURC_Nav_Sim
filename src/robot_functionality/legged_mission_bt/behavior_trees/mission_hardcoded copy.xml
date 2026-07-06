@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  硬编码任务 BT — 两物体抓取→放置，含中间航点
+
+  物体A: 抓取点0 → 放置点8
+  物体B: 抓取点1 → 放置点9
+
+  航点:    mission_hardcoded.yaml
+  机械臂:  arm_points.yaml (map_target → arm_pose_broadcaster 变换到 base_link)
+-->
+<root BTCPP_format="4">
+  <BehaviorTree ID="MissionHardcoded">
+    <Sequence name="HardcodedMission">
+
+      <!-- ===== 抓取: 物体A (arm_point 0) ===== -->
+      <Nav2PoseNode wp_id="wp1_pick1"/>
+      <ArmPickNode arm_point_id="0" timeout="30.0"/>
+
+      <!-- ===== 搬运: 中间航点 ===== -->
+      <Nav2PoseNode wp_id="wp3_transit"/>
+      <Nav2PoseNode wp_id="wp4_transit"/>
+
+      <!-- ===== 放置: 放置点8 ===== -->
+      <Nav2PoseNode wp_id="wp5_place9"/>
+      <ArmPlaceNode arm_point_id="8" timeout="30.0"/>
+
+      <!-- ===== 抓取: 物体B (arm_point 1) ===== -->
+      <Nav2PoseNode wp_id="wp6_pick2"/>
+      <ArmPickNode arm_point_id="1" timeout="30.0"/>
+
+      <!-- ===== 放置: 放置点9 ===== -->
+      <Nav2PoseNode wp_id="wp7_place10"/>
+      <ArmPlaceNode arm_point_id="9" timeout="30.0"/>
+
+    </Sequence>
+  </BehaviorTree>
+</root>

@@ -17,6 +17,14 @@
         are lightly penalized.
       </description>
     </class>
+    <class type="dwb_yaw_constraint::RotateToGoalXYCritic"
+           base_class_type="dwb_core::TrajectoryCritic">
+      <description>
+        Like RotateToGoal but uses independent x/y axis-aligned goal window
+        (matches SimpleGoalCheckerXY). Reads FollowPath.x_goal_tolerance /
+        y_goal_tolerance.
+      </description>
+    </class>
     <class type="dwb_yaw_constraint::MaintainVyCritic"
            base_class_type="dwb_core::TrajectoryCritic">
       <description>

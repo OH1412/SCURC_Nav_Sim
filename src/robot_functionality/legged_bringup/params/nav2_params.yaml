@@ -62,11 +62,11 @@ bt_navigator:
     transform_tolerance: 1.0
     # 'default_nav_through_poses_bt_xml' and 'default_nav_to_pose_bt_xml' are use defaults:
     # nav2_bt_navigator/navigate_to_pose_w_replanning_and_recovery.xml
-    # 单点导航 BT（简单重规划+跟随，无机械臂任务）
+    # 单点导航 BT（纯导航，无机械臂）
     default_nav_to_pose_bt_xml: $(find-pkg-share legged_bringup)/behavior_tree/navigate_to_pose_w_replanning_and_recovery.xml
-    # 机械臂抓取任务 BT（自包含 3 waypoints + 机械臂抓取，调试时禁用）:
-    # default_nav_to_pose_bt_xml: $(find-pkg-share legged_bringup)/behavior_tree/navigate_with_arm_grasp.xml
-    # 多点导航 BT（直接 NavigateThroughPoses 时使用）
+    # 导航 + 每点 ArmControl（需 enable_arm_control:=true）:
+    # default_nav_to_pose_bt_xml: $(find-pkg-share legged_bringup)/behavior_tree/navigate_waypoints_with_task.xml
+    # 多点连续导航 BT（NavigateThroughPoses / FollowWaypoints 时使用）
     default_nav_through_poses_bt_xml: $(find-pkg-share legged_bringup)/behavior_tree/navigate_through_pose_w_replanning_and_recovery.xml
     # They can be set here or via a RewrittenYaml remap from a parent launch file to Nav2.
     plugin_lib_names:
@@ -148,10 +148,12 @@ controller_server:
     # Goal checker parameters
     general_goal_checker:
       stateful: False
-      plugin: "nav2_controller::SimpleGoalChecker"
-      xy_goal_tolerance: 0.08
-      # yaw_goal_tolerance: 6.28             # 中间区=6.28(360°) | 边缘区=0.05236(3°)
-      yaw_goal_tolerance: 0.05236             # 边缘区=0.05236(3°) | 中间区由 switcher 切为 6.28
+      plugin: "behavior_ext_plugins::SimpleGoalCheckerXY"
+      # xy_goal_tolerance: 0.10             # 兜底值（未设置 x/y 时默认使用此值）
+      x_goal_tolerance: 0.08                # x 方向独立容差 (m)
+      y_goal_tolerance: 0.15                # y 方向独立容差 (m)
+      # yaw_goal_tolerance: 6.28             # 中间区=6.28(360°) | 边缘区=0.17453(10°)
+      yaw_goal_tolerance: 0.5236             # 边缘区=0.5236(30°) | 中间区由 switcher 切为 6.28
     FollowPath:    
       # plugin: "nav2_mppi_controller::MPPIControllerExt"
       # #param 
@@ -263,10 +265,10 @@ controller_server:
       # max_robot_pose_search_dist: 10.0
       plugin: "dwb_core::DWBLocalPlanner"
       debug_trajectory_details: False
-      min_vel_x: -1.5
-      min_vel_y: -1.1
-      max_vel_x: 1.5
-      max_vel_y: 1.1
+      min_vel_x: -2.0
+      min_vel_y: -1.4
+      max_vel_x: 2.0
+      max_vel_y: 1.4
       max_vel_theta: 1.2
       min_speed_xy: 0.3
       max_speed_xy: 3.0
@@ -274,8 +276,8 @@ controller_server:
       acc_lim_x: 12.0
       acc_lim_y: 6.0
       acc_lim_theta: 20.0
-      decel_lim_x: -4.0
-      decel_lim_y: -3.0
+      decel_lim_x: -12.0
+      decel_lim_y: -6.0
       decel_lim_theta: -20.0
       vx_samples: 10
       vy_samples: 10
@@ -284,7 +286,9 @@ controller_server:
       linear_granularity: 0.05
       angular_granularity: 0.025
       transform_tolerance: 0.2
-      xy_goal_tolerance: 0.08
+      xy_goal_tolerance: 0.30             # 兜底（未设 x/y 时 RotateToGoalXY 使用）
+      x_goal_tolerance: 0.08              # 与 general_goal_checker 一致
+      y_goal_tolerance: 0.15
       trans_stopped_velocity: 0.08
       short_circuit_trajectory_evaluation: True
       stateful: True
@@ -293,7 +297,7 @@ controller_server:
       # 当前默认 = 中间区 (yaw锁0，禁止旋转)
       # 切边缘区 = 注释中间区值，取消边缘区值注释，重启 switcher
       # ═══════════════════════════════════════════════════════════════
-      critics: ["RotateToGoal", "Oscillation", "ObstacleFootprint", "GoalAlign", "PathAlign", "PathDist", "GoalDist", "dwb_yaw_constraint::MaintainYawCritic", "dwb_yaw_constraint::DecouplingCritic"]
+      critics: ["dwb_yaw_constraint::RotateToGoalXY", "Oscillation", "ObstacleFootprint", "GoalAlign", "PathAlign", "PathDist", "GoalDist", "dwb_yaw_constraint::MaintainYawCritic", "dwb_yaw_constraint::DecouplingCritic"]
       # --- 共有参数（两区相同）---
       ObstacleFootprint.scale: 20.0
       PathDist.scale: 32.0
@@ -302,10 +306,10 @@ controller_server:
       # 默认中间区 (yaw锁0，禁止旋转) — 安全fallback
       # 运行时由 position_based_param_switcher 动态切换
       # ═══════════════════════════════════════════════════════════════
-      # --- 旋转 critic ---
-      RotateToGoal.scale: 0.0           # 中间区=0.0 | 边缘区=32.0
-      RotateToGoal.slowing_factor: 5.0
-      RotateToGoal.lookahead_time: -1.0
+      # --- 旋转 critic（矩形 x/y 窗口，配套 SimpleGoalCheckerXY）---
+      "dwb_yaw_constraint::RotateToGoalXY.scale": 0.0           # 中间区=0.0 | 边缘区=32.0
+      "dwb_yaw_constraint::RotateToGoalXY.slowing_factor": 5.0
+      "dwb_yaw_constraint::RotateToGoalXY.lookahead_time": -1.0
       GoalAlign.scale: 0.0              # 中间区=0.0 | 边缘区=24.0
       GoalAlign.forward_point_distance: 0.1
       PathAlign.scale: 0.0              # 中间区=0.0 | 边缘区=32.0
@@ -316,8 +320,8 @@ controller_server:
       "dwb_yaw_constraint::MaintainYawCritic.reference_frame": "map"
       # --- 解耦 critic (中间区禁用) ---
       "dwb_yaw_constraint::DecouplingCritic.scale": 0.0       # 中间区=0.0 | 边缘区=30.0
-      "dwb_yaw_constraint::DecouplingCritic.max_vx": 1.5
-      "dwb_yaw_constraint::DecouplingCritic.max_vy": 1.1
+      "dwb_yaw_constraint::DecouplingCritic.max_vx": 2.0
+      "dwb_yaw_constraint::DecouplingCritic.max_vy": 1.4
       "dwb_yaw_constraint::DecouplingCritic.max_vtheta": 1.2
       # ═══════════════════════════════════════════════════════════════
       # 边缘区 (解除yaw限制，允许旋转)
@@ -567,10 +571,10 @@ velocity_smoother:
     smoothing_frequency: 5.0
     scale_velocities: False
     feedback: "CLOSED_LOOP"
-    max_velocity: [1.5, 1.1, 1.2]
-    min_velocity: [-1.5, -1.1, -1.2]
-    max_accel: [5.0, 5.0, 15.0]
-    max_decel: [-5.0, -5.0, -15.0]
+    max_velocity: [2.0, 1.4, 1.2]
+    min_velocity: [-2.0, -1.4, -1.2]
+    max_accel: [12.0, 6.0, 20.0]
+    max_decel: [-12.0, -6.0, -20.0]
     odom_topic: "state_estimation"
     odom_duration: 0.1
     deadband_velocity: [0.0, 0.0, 0.0]
@@ -609,15 +613,20 @@ cmd_vel_udp_bridge:
     cmd_vel_topic: "/cmd_vel"
     use_twist_stamped: false
     estop_topic: ""
-    # --- 死区补偿（实测死区：vx≈0.105, vy≈0.8, wz≈0.7 m/s·rad/s）---
-    # 当速度非零但低于 deadzone 阈值时，自动提升到 min_effective 值
-    # 防止小速度指令被底盘死区吞掉导致机器人不动
-    deadzone_vx: 0.05
-    deadzone_vy: 0.4
-    deadzone_wz: 0.2
-    min_effective_vx: 0.4
+    # deploy 速度量纲上限 (标定 /robot_cmd 记录: vx±2.0 vy±1.4 wz±1.2)
+    cmd_vx_min: -2.0
+    cmd_vx_max: 2.0
+    cmd_vy_min: -1.4
+    cmd_vy_max: 1.4
+    cmd_yaw_min: -1.2
+    cmd_yaw_max: 1.2
+    # step 死区补偿 (标定: velocity_calibration_20260705_022941.csv)
+    deadzone_vx: 0.45
+    deadzone_vy: 0.43
+    deadzone_wz: 0.85
+    min_effective_vx: 0.5
     min_effective_vy: 0.5
-    min_effective_wz: 0.4
+    min_effective_wz: 0.9
 
 # 机械臂控制服务器（可选，enable_arm_control=true 时启用）
 arm_control_server:
@@ -625,7 +634,6 @@ arm_control_server:
     arm_timeout: 30.0             # 机械臂动作超时时间 (秒)
     enable_serial_publish: true
     arm_command_topic: "/arm_command"
-    arm_target_topic: "/arm_target"
     arm_status_topic: "/arm_status"
     arm_action: 1                 # 默认动作: 1=Pick(吸取), 2=Place(放置)
 

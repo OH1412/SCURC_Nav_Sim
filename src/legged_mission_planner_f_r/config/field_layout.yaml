@@ -1,0 +1,22 @@
+# UI path-diagram geometry for front/back planner (4 waypoints per path).
+
+paths:
+  1: {y: 0.30, label: fallback_edge, from_left_cm: 370}
+  2: {y: 1.15, label: col0, from_left_cm: 285}
+  3: {y: 2.00, label: col1, from_left_cm: 200}
+  4: {y: 2.85, label: col2, from_left_cm: 115}
+  5: {y: 3.70, label: col3, from_left_cm: 30}
+
+waypoint_rows:
+  1: {x: 1.00, role: lower_pick}
+  2: {x: 1.625, role: upper_pick}
+  3: {x: 4.00, role: transit_after_bump}
+  4: {x: 5.00, role: place}
+
+frame:
+  id: map
+  local_origin_in_map: [0.0, 0.0, 0.0]
+  fixed_yaw: 0.0
+waypoint_overrides: {}
+box_slots: {}
+placement_zones: {}

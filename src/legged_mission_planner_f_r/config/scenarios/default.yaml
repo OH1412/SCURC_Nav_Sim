@@ -1,0 +1,4 @@
+box_types: [0, 1, 2, 3, 0, 1, 2, 3]
+zone_types: [0, 1, 2, 3]
+switch_mode: safe_mode
+include_quiz_state: false

@@ -1,0 +1,91 @@
+# 航点坐标采集记录 (record_waypoints_all.py)
+# 采集时间: 2026-07-06 04:34:25.834225
+# 航点数量: 8
+# 区域边界: lower=1.35, upper=4.0, hyst=0.1
+# 采集顺序: 航点1 → 航点2 → 航点3 → 航点4 → 航点5 → 航点6 → 航点7 → 航点8
+
+waypoints:
+  - id: "航点1"
+    role: "自定义航点 1"
+    expected_zone: "MIDDLE"
+    actual_zone: "MIDDLE"
+    aft_mapped_to_init:
+      x: 1.6206
+      y: -1.3002
+      z: 0.0033
+      yaw: -0.0542
+    zone_transitions:
+      - x: 1.521
+        from: "None"
+        to: "MIDDLE"
+
+  - id: "航点2"
+    role: "自定义航点 2"
+    expected_zone: "MIDDLE"
+    actual_zone: "MIDDLE"
+    aft_mapped_to_init:
+      x: 1.6204
+      y: -1.3002
+      z: 0.0043
+      yaw: -0.0542
+
+  - id: "航点3"
+    role: "自定义航点 3"
+    expected_zone: "MIDDLE"
+    actual_zone: "MIDDLE"
+    aft_mapped_to_init:
+      x: 1.6229
+      y: -1.3024
+      z: 0.0032
+      yaw: -0.0545
+
+  - id: "航点4"
+    role: "自定义航点 4"
+    expected_zone: "MIDDLE"
+    actual_zone: "MIDDLE"
+    aft_mapped_to_init:
+      x: 1.6192
+      y: -1.3062
+      z: 0.0036
+      yaw: -0.0541
+
+  - id: "航点5"
+    role: "自定义航点 5"
+    expected_zone: "MIDDLE"
+    actual_zone: "MIDDLE"
+    aft_mapped_to_init:
+      x: 1.6216
+      y: -1.3036
+      z: 0.0031
+      yaw: -0.0542
+
+  - id: "航点6"
+    role: "自定义航点 6"
+    expected_zone: "MIDDLE"
+    actual_zone: "MIDDLE"
+    aft_mapped_to_init:
+      x: 1.6249
+      y: -1.3012
+      z: 0.0032
+      yaw: -0.0546
+
+  - id: "航点7"
+    role: "自定义航点 7"
+    expected_zone: "MIDDLE"
+    actual_zone: "MIDDLE"
+    aft_mapped_to_init:
+      x: 1.6237
+      y: -1.3013
+      z: 0.0034
+      yaw: -0.0547
+
+  - id: "航点8"
+    role: "自定义航点 8"
+    expected_zone: "MIDDLE"
+    actual_zone: "MIDDLE"
+    aft_mapped_to_init:
+      x: 1.6207
+      y: -1.3025
+      z: 0.0035
+      yaw: -0.0543
+

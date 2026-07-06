@@ -23,6 +23,7 @@ find_package(nav2_behaviors REQUIRED)
 find_package(nav2_behavior_tree REQUIRED)
 find_package(pluginlib REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
+find_package(angles REQUIRED)
 find_package(action_msgs REQUIRED)
 find_package(CURL REQUIRED)
 # find_package(OpenCV REQUIRED)
@@ -49,6 +50,7 @@ set(dependencies
   nav2_behavior_tree
   pluginlib
   nav2_behaviors
+  angles
   # OpenCV
 )
 
@@ -64,6 +66,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
 add_library(${library_name} SHARED
   plugins/back_up_twz_free_action.cpp
   plugins/arm_control_bt_node.cpp
+  plugins/simple_goal_checker_xy.cpp
 )
 
 target_compile_definitions(${library_name} PUBLIC "PLUGINLIB__DISABLE_BOOST_FUNCTIONS")

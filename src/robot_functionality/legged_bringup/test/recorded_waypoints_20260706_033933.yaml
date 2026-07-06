@@ -1,0 +1,21 @@
+# 航点坐标采集记录 (record_waypoints_all.py)
+# 采集时间: 2026-07-06 03:39:33.986378
+# 航点数量: 1
+# 区域边界: lower=1.35, upper=4.0, hyst=0.1
+# 采集顺序: 航点1
+
+waypoints:
+  - id: "航点1"
+    role: "自定义航点 1"
+    expected_zone: "EDGE"
+    actual_zone: "EDGE"
+    aft_mapped_to_init:
+      x: -5.4028
+      y: 0.8774
+      z: 0.0124
+      yaw: 0.1734
+    zone_transitions:
+      - x: -5.403
+        from: "None"
+        to: "EDGE"
+

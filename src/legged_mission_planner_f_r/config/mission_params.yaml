@@ -1,0 +1,21 @@
+default_switch_mode: fast_mode  # safe_mode or fast_mode
+include_quiz_state: false
+start_state: 1
+
+ui_points:
+  fast_mode: ui_points_fast_mode.yaml
+
+quiz_result_topic: /mission/quiz_type
+quiz_result_type: std_msgs/msg/Int32
+quiz_wait_timeout_s: 10.0
+
+plan_ready_topic: /mission/plan_ready
+plan_ready_type: std_msgs/msg/Bool
+
+planner_variant: front_back
+max_waypoint: 4
+
+ranking:
+  prefer_direct_path_weight: 10.0
+  cross_path_penalty: 5.0
+  path_change_penalty: 1.0

@@ -1,0 +1,101 @@
+# 十六个机械臂标定点 — map/init 坐标系（与 /aft_mapped_to_init 同一固定系）
+#
+# 编号 0~7  ：抓取（role: pick）
+# 编号 8~15 ：放置（role: place）
+#
+# 每个点位只存 map_target：物体/抓取点在 map/init 系下的固定位姿
+#   x, y, z   — 米
+#   yaw       — 弧度
+#
+# 运行时 arm_pose_broadcaster：
+#   1. 读 /aft_mapped_to_init（aft_mapped 在 init 系位姿）
+#   2. 叠加静态 TF aft_mapped→base_link（见 static_tf_params.yaml t1）
+#   3. 将 map_target 变换到当前 base_link，再转 arm_root（mm, rad）
+#      arm_root 原点在 base_link 下 (-9.73, 0.04, 190.68) mm，无旋转
+#   4. 吸盘几何优化 XY：容差圆 R=12.5cm、吸盘中心≤665mm（arm_root 原点为圆心）
+#
+# 可选 arm_root_target / base_link_target：无定位时回退（base_link 会自动转 arm_root）
+#
+# 机制说明：legged_bringup/docs/arm_pose_broadcaster.md
+
+arm_points:
+  "0":
+    role: pick
+    label: "抓取点 1"
+    map_target: {x: 2.7615, y: -1.2750, z: 0.0300, yaw: 0.0000}
+    base_link_target: {x: 550.0, y: 0.0, z: -50.0, yaw: 0.0}
+
+  "1":
+    role: pick
+    label: "抓取点 2"
+    map_target: {x: 2.7615, y: -0.4250, z: 0.0300, yaw: 0.0000}
+
+  "2":
+    role: pick
+    label: "抓取点 3"
+    map_target: {x: 2.7615, y: 0.4250, z: 0.0300, yaw: 0.0000}
+
+  "3":
+    role: pick
+    label: "抓取点 4"
+    map_target: {x: 2.7615, y: 1.2750, z: 0.0300, yaw: 0.0000}
+
+  "4":
+    role: pick
+    label: "抓取点 5"
+    map_target: {x: 1.9115, y: -1.2750, z: 0.0300, yaw: 0.0000}
+
+  "5":
+    role: pick
+    label: "抓取点 6"
+    map_target: {x: 1.9115, y: -0.4250, z: 0.0300, yaw: 0.0000}
+
+  "6":
+    role: pick
+    label: "抓取点 7"
+    map_target: {x: 1.9115, y: 0.4250, z: 0.0300, yaw: 0.0000}
+
+  "7":
+    role: pick
+    label: "抓取点 8"
+    map_target: {x: 1.9115, y: 1.2750, z: 0.0300, yaw: 0.0000}
+
+  "8":
+    role: place
+    label: "放置点 1"
+    map_target: {x: 5.0865, y: -1.1000, z: 0.0300, yaw: 0.0000}
+
+  "9":
+    role: place
+    label: "放置点 2"
+    map_target: {x: 5.0865, y: -0.3000, z: 0.0300, yaw: 0.0000}
+
+  "10":
+    role: place
+    label: "放置点 3"
+    map_target: {x: 5.0865, y: 0.3000, z: 0.0300, yaw: 0.0000}
+
+  "11":
+    role: place
+    label: "放置点 4"
+    map_target: {x: 5.0865, y: 1.1000, z: 0.0300, yaw: 0.0000}
+
+  "12":
+    role: place
+    label: "放置点 5"
+    map_target: {x: 5.0865, y: -1.1000, z: 0.3000, yaw: 0.0000}
+
+  "13":
+    role: place
+    label: "放置点 6"
+    map_target: {x: 5.0865, y: -0.3000, z: 0.3000, yaw: 0.0000}
+
+  "14":
+    role: place
+    label: "放置点 7"
+    map_target: {x: 5.0865, y: 0.3000, z: 0.3000, yaw: 0.0000}
+
+  "15":
+    role: place
+    label: "放置点 8"
+    map_target: {x: 5.0865, y: 1.1000, z: 0.3000, yaw: 0.0000}

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  任务模板 — 复制此文件并按需编辑 Sequence 子节点顺序与参数。
+  可用节点:
+    Nav2PoseNode   — wp_id (推荐) 或 inline frame_id/x/y/yaw
+    ArmPickNode    — wp_id (推荐) 或 inline x/y/z/yaw/timeout (arm_base 毫米)
+    ArmPlaceNode   — wp_id (推荐) 或 inline x/y/z/yaw/timeout (arm_base 毫米)
+    WaitSecondsNode — duration (秒)
+  航点坐标见 config/mission_waypoints.yaml，launch 参数 waypoints_file 指定路径
+-->
+<root BTCPP_format="4">
+  <BehaviorTree ID="MissionTemplate">
+    <Sequence name="CustomMission">
+
+      <Nav2PoseNode wp_id="1"/>
+      <ArmPickNode wp_id="10" timeout="30.0"/>
+      <Nav2PoseNode wp_id="3"/>
+      <ArmPlaceNode wp_id="11" timeout="30.0"/>
+
+    </Sequence>
+  </BehaviorTree>
+</root>

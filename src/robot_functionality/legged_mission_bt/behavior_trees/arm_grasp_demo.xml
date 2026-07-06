@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  机械臂抓取演示 — fly_step 架构（独立 BT 节点 tick）
+  航点由外部节点发布到 /mission_bt/nav_waypoint、/mission_bt/arm_waypoint
+  BT 里只写 wp_id；若航点尚未到达，节点会阻塞等待（默认 120s）
+-->
+<root BTCPP_format="4">
+  <BehaviorTree ID="ArmGraspDemo">
+    <Sequence name="MainMission">
+
+      <Nav2PoseNode wp_id="1"/>
+      <Nav2PoseNode wp_id="2"/>
+      <ArmPickNode wp_id="10" timeout="30.0"/>
+      <WaitSecondsNode duration="10.0"/>
+      <Nav2PoseNode wp_id="3"/>
+      <ArmPlaceNode wp_id="11" timeout="30.0"/>
+
+    </Sequence>
+  </BehaviorTree>
+</root>

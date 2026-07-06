@@ -1,5 +1,4 @@
 #include "rclcpp/rclcpp.hpp"
-#include "geometry_msgs/msg/point.hpp"
 #include "std_msgs/msg/float64_multi_array.hpp"
 #include "std_msgs/msg/u_int8_multi_array.hpp"
 #include "serial_driver/serial_comm.hpp"
@@ -38,14 +37,8 @@ public:
         // 订阅者
         // ====================================================================
 
-        // /arm_target -> 机械臂目标坐标 (geometry_msgs/msg/Point, 单位: mm)
-        // 协议帧: FD FD 07 ctrl X_L X_H Y_L Y_H Z_L Z_H CHECKSUM (int16 mm, 小端序)
-        sub_arm_target_ = this->create_subscription<geometry_msgs::msg::Point>(
-            "/arm_target", 10,
-            std::bind(&SerialCmdSender::armTargetCallback, this, _1));
-
         // /arm_command -> 机械臂指令 (Float64MultiArray, 格式: [x, y, z, yaw, action])
-        // action: 1=Pick(0x01), 2=Place(0x02)
+        // x, y, z: arm_base 坐标 (mm); action: 1=Pick(0x01), 2=Place(0x02)
         sub_arm_command_ = this->create_subscription<std_msgs::msg::Float64MultiArray>(
             "/arm_command", 10,
             std::bind(&SerialCmdSender::armCommandCallback, this, _1));
@@ -66,39 +59,15 @@ public:
             std::bind(&SerialCmdSender::ackPollCallback, this));
 
         RCLCPP_INFO(this->get_logger(),
-            "Serial ready. Listening on /arm_target, /arm_command | "
+            "Serial ready. Listening on /arm_command | "
             "Publishing ACK on /arm_status @ 10Hz");
     }
 
 private:
     // ========================================================================
-    // 机械臂目标坐标回调 (Point, 单位: mm)
-    // 使用 default_control_ 作为控制位
-    // ========================================================================
-    void armTargetCallback(const geometry_msgs::msg::Point::SharedPtr msg)
-    {
-        int16_t x_mm = static_cast<int16_t>(
-            std::round(std::clamp(msg->x, -32768.0, 32767.0)));
-        int16_t y_mm = static_cast<int16_t>(
-            std::round(std::clamp(msg->y, -32768.0, 32767.0)));
-        int16_t z_mm = static_cast<int16_t>(
-            std::round(std::clamp(msg->z, -32768.0, 32767.0)));
-
-        RCLCPP_INFO(this->get_logger(),
-            "[ARM] /arm_target received: (%d, %d, %d) mm | control=0x%02X",
-            x_mm, y_mm, z_mm, default_control_);
-
-        bool success = comm_->sendArmTargetCommand(
-            default_control_, x_mm, y_mm, z_mm, arm_checksum_offset_);
-        if (!success) {
-            RCLCPP_WARN(this->get_logger(), "Send Error (arm_target)");
-        }
-    }
-
-    // ========================================================================
-    // 机械臂指令回调 (Float64MultiArray, 来自 arm_control_server.py)
+    // 机械臂指令回调 (Float64MultiArray)
     // 格式: [x, y, z, yaw, action]
-    //   x, y, z: arm_base 坐标 (米)
+    //   x, y, z: arm_base 坐标 (mm)
     //   action: 1→0x01(Pick), 2→0x02(Place)
     // ========================================================================
     void armCommandCallback(const std_msgs::msg::Float64MultiArray::SharedPtr msg)
@@ -121,14 +90,14 @@ private:
         }
 
         int16_t x_mm = static_cast<int16_t>(
-            std::round(std::clamp(msg->data[0] * 1000.0, -32768.0, 32767.0)));
+            std::round(std::clamp(msg->data[0], -32768.0, 32767.0)));
         int16_t y_mm = static_cast<int16_t>(
-            std::round(std::clamp(msg->data[1] * 1000.0, -32768.0, 32767.0)));
+            std::round(std::clamp(msg->data[1], -32768.0, 32767.0)));
         int16_t z_mm = static_cast<int16_t>(
-            std::round(std::clamp(msg->data[2] * 1000.0, -32768.0, 32767.0)));
+            std::round(std::clamp(msg->data[2], -32768.0, 32767.0)));
 
         RCLCPP_INFO(this->get_logger(),
-            "[ARM] /arm_command: base_link=(%.3f, %.3f, %.3f)m → (%d, %d, %d)mm | control=0x%02X",
+            "[ARM] /arm_command: (%.1f, %.1f, %.1f) mm → (%d, %d, %d) mm | control=0x%02X",
             msg->data[0], msg->data[1], msg->data[2],
             x_mm, y_mm, z_mm, control);
 
@@ -169,7 +138,6 @@ private:
     // ------------------------------------------------------------------
     int arm_checksum_offset_;
     uint8_t default_control_;
-    rclcpp::Subscription<geometry_msgs::msg::Point>::SharedPtr sub_arm_target_;
     rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr sub_arm_command_;
     rclcpp::Publisher<std_msgs::msg::UInt8MultiArray>::SharedPtr arm_status_pub_;
     rclcpp::TimerBase::SharedPtr ack_poll_timer_;

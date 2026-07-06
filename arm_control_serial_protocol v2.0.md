@@ -157,8 +157,7 @@ map_goal (PoseStamped)
     ▼
 arm_control_server.py          ← Action Server, tf2 坐标变换
     │  map → base_link → arm_base
-    │  /arm_command (Float64MultiArray [x,y,z,yaw,action])
-    │  /arm_target (Point, mm)
+    │  /arm_command (Float64MultiArray [x,y,z,yaw,action], mm)
     ▼
 serial_cmd_sender (C++)        ← 串口驱动节点
     │  FD FD 07 ctrl X Y Z CHK  ──►  下位机
@@ -172,17 +171,16 @@ arm_control_server.py          ← 等待 ACK，判断成功/失败
 
 | 话题          | 类型                  | 方向            | 说明                            |
 | ------------- | --------------------- | --------------- | ------------------------------- |
-| `/arm_target` | `geometry_msgs/Point` | → 下位机         | 目标坐标 (mm)，control 由参数决定 |
-| `/arm_command`| `Float64MultiArray`   | → 下位机         | [x,y,z,yaw,action], xyz 单位 m  |
+| `/arm_command`| `Float64MultiArray`   | → 下位机         | [x,y,z,yaw,action], xyz 单位 mm |
 | `/arm_status` | `UInt8MultiArray`     | ← 下位机         | [state, result] ACK 状态回报     |
 
 ### `/arm_command` 数据格式
 
 | 索引 | 字段   | 单位 | 说明                  |
 | ---- | ------ | ---- | --------------------- |
-| 0    | x      | m    | arm_base 坐标系 X     |
-| 1    | y      | m    | arm_base 坐标系 Y     |
-| 2    | z      | m    | arm_base 坐标系 Z     |
+| 0    | x      | mm   | arm_base 坐标系 X     |
+| 1    | y      | mm   | arm_base 坐标系 Y     |
+| 2    | z      | mm   | arm_base 坐标系 Z     |
 | 3    | yaw    | rad  | 偏航角（备用）        |
 | 4    | action | -    | 1=Pick(吸取), 2=Place(放置) |
 
@@ -200,16 +198,16 @@ arm_control_server.py          ← 等待 ACK，判断成功/失败
 
 ## ROS2 使用示例
 
-### 直接发送吸取命令 (Point, mm)
+### 发送吸取命令 (Float64MultiArray, mm)
 
 ```bash
-ros2 topic pub --once /arm_target geometry_msgs/msg/Point "{x: 0.0, y: 350.0, z: 50.0}"
+ros2 topic pub --once /arm_command std_msgs/msg/Float64MultiArray "{data: [0.0, 350.0, 50.0, 0.0, 1.0]}"
 ```
 
-### 通过 arm_command 发送吸取 (Float64MultiArray, m)
+### 发送放置命令 (Float64MultiArray, mm)
 
 ```bash
-ros2 topic pub --once /arm_command std_msgs/msg/Float64MultiArray "{data: [0.0, 0.35, 0.05, 0.0, 1.0]}"
+ros2 topic pub --once /arm_command std_msgs/msg/Float64MultiArray "{data: [0.0, 350.0, 50.0, 0.0, 2.0]}"
 ```
 
 ### 查看 ACK 状态

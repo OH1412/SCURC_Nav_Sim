@@ -26,6 +26,7 @@ import sys
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import PoseStamped
+from std_msgs.msg import Bool
 
 
 class StandUpSender(Node):
@@ -41,6 +42,7 @@ class StandUpSender(Node):
         self.declare_parameter('reloc_delay', 4.0)
         self.declare_parameter('reloc_timeout', 60.0)
         self.declare_parameter('reloc_topic', '/LIVO2/pose_offset')
+        self.declare_parameter('stand_up_done_topic', '/bringup/stand_up_done')
 
         udp_ip = self.get_parameter('udp_ip').value
         udp_port = self.get_parameter('udp_port').value
@@ -49,6 +51,7 @@ class StandUpSender(Node):
         reloc_delay = self.get_parameter('reloc_delay').value
         reloc_timeout = self.get_parameter('reloc_timeout').value
         reloc_topic = self.get_parameter('reloc_topic').value
+        stand_up_done_topic = self.get_parameter('stand_up_done_topic').value
 
         self.udp_ip = udp_ip
         self.udp_port = udp_port
@@ -58,6 +61,8 @@ class StandUpSender(Node):
         self._reloc_received = False
         self._reloc_arrival_time = None
         self._start_time = self.get_clock().now()
+        self._stand_up_done_topic = stand_up_done_topic
+        self._done_pub = self.create_publisher(Bool, stand_up_done_topic, 10)
 
         if wait_for_reloc:
             self.get_logger().info(
@@ -124,6 +129,10 @@ class StandUpSender(Node):
 
     def _done(self):
         self.get_logger().info('Standup should be complete. Exiting.')
+        done_msg = Bool()
+        done_msg.data = True
+        self._done_pub.publish(done_msg)
+        self.get_logger().info(f'Published stand-up done on {self._stand_up_done_topic}')
         rclpy.shutdown()
 
 

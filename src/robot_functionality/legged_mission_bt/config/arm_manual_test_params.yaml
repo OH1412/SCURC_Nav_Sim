@@ -1,0 +1,13 @@
+mission_bt_node:
+  ros__parameters:
+    require_nav2: false
+    wait_for_nav2_timeout: 60.0
+    plan_wait_timeout: 120.0
+    waypoint_wait_timeout: 120.0
+    arm_command_topic: "/arm_command"
+    arm_status_topic: "/arm_status"
+    manual_arm_prompt_topic: "/mission_bt/manual_arm_prompt"
+    manual_arm_input_topic: "/mission_bt/manual_arm_input"
+    arm_pose_request_topic: "/mission_bt/arm_pose_request"
+    arm_waypoint_topic: "/mission_bt/arm_waypoint"
+    waypoints_file: ""

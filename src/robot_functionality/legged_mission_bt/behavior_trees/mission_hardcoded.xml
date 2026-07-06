@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  由 mission_quintuple_loader 根据 mission_quintuple.yaml 自动生成。
+  来源: /home/dog12/SCURC_Nav_Sim/src/legged_mission_planner_f_r/tmp/mission_quintuple.yaml
+  state=1: Nav2PoseNode
+  state=2: Nav2PoseNode + ArmPickNode
+  state=3: Nav2PoseNode + ArmPlaceNode
+-->
+<root BTCPP_format="4">
+  <BehaviorTree ID="MissionHardcoded">
+    <Sequence name="HardcodedMission">
+
+      <!-- step 1: path=0 wp=0 state=1 (transit) target_id=-1 -->
+      <Nav2PoseNode wp_id="nav_p0_wp0"/>
+
+      <!-- step 2: path=1 wp=1 state=2 (pick) target_id=4 -->
+      <Nav2PoseNode wp_id="nav_p1_wp1"/>
+      <ArmPickNode arm_point_id="4" timeout="30.0"/>
+
+      <!-- step 3: path=1 wp=2 state=1 (transit) target_id=-1 -->
+      <Nav2PoseNode wp_id="nav_p1_wp2"/>
+
+      <!-- step 4: path=1 wp=3 state=1 (transit) target_id=-1 -->
+      <Nav2PoseNode wp_id="nav_p1_wp3"/>
+
+      <!-- step 5: path=2 wp=2 state=3 (place) target_id=0 -->
+      <Nav2PoseNode wp_id="nav_p2_wp2"/>
+      <ArmPlaceNode arm_point_id="0" timeout="30.0"/>
+
+      <!-- step 6: path=2 wp=1 state=2 (pick) target_id=0 -->
+      <Nav2PoseNode wp_id="nav_p2_wp1"/>
+      <ArmPickNode arm_point_id="0" timeout="30.0"/>
+
+      <!-- step 7: path=3 wp=3 state=3 (place) target_id=1 -->
+      <Nav2PoseNode wp_id="nav_p3_wp3"/>
+      <ArmPlaceNode arm_point_id="1" timeout="30.0"/>
+
+      <!-- step 8: path=3 wp=2 state=2 (pick) target_id=1 -->
+      <Nav2PoseNode wp_id="nav_p3_wp2"/>
+      <ArmPickNode arm_point_id="1" timeout="30.0"/>
+
+      <!-- step 9: path=4 wp=3 state=3 (place) target_id=2 -->
+      <Nav2PoseNode wp_id="nav_p4_wp3"/>
+      <ArmPlaceNode arm_point_id="2" timeout="30.0"/>
+
+      <!-- step 10: path=4 wp=2 state=2 (pick) target_id=2 -->
+      <Nav2PoseNode wp_id="nav_p4_wp2"/>
+      <ArmPickNode arm_point_id="2" timeout="30.0"/>
+
+      <!-- step 11: path=5 wp=3 state=3 (place) target_id=3 -->
+      <Nav2PoseNode wp_id="nav_p5_wp3"/>
+      <ArmPlaceNode arm_point_id="3" timeout="30.0"/>
+
+      <!-- step 12: path=5 wp=2 state=2 (pick) target_id=3 -->
+      <Nav2PoseNode wp_id="nav_p5_wp2"/>
+      <ArmPickNode arm_point_id="3" timeout="30.0"/>
+
+      <!-- step 13: path=2 wp=2 state=3 (place) target_id=0 -->
+      <Nav2PoseNode wp_id="nav_p2_wp2"/>
+      <ArmPlaceNode arm_point_id="0" timeout="30.0"/>
+
+      <!-- step 14: path=3 wp=1 state=2 (pick) target_id=5 -->
+      <Nav2PoseNode wp_id="nav_p3_wp1"/>
+      <ArmPickNode arm_point_id="5" timeout="30.0"/>
+
+      <!-- step 15: path=5 wp=3 state=3 (place) target_id=3 -->
+      <Nav2PoseNode wp_id="nav_p5_wp3"/>
+      <ArmPlaceNode arm_point_id="3" timeout="30.0"/>
+
+      <!-- step 16: path=5 wp=1 state=2 (pick) target_id=7 -->
+      <Nav2PoseNode wp_id="nav_p5_wp1"/>
+      <ArmPickNode arm_point_id="7" timeout="30.0"/>
+
+      <!-- step 17: path=4 wp=3 state=3 (place) target_id=2 -->
+      <Nav2PoseNode wp_id="nav_p4_wp3"/>
+      <ArmPlaceNode arm_point_id="2" timeout="30.0"/>
+
+      <!-- step 18: path=4 wp=1 state=2 (pick) target_id=6 -->
+      <Nav2PoseNode wp_id="nav_p4_wp1"/>
+      <ArmPickNode arm_point_id="6" timeout="30.0"/>
+
+      <!-- step 19: path=3 wp=3 state=3 (place) target_id=1 -->
+      <Nav2PoseNode wp_id="nav_p3_wp3"/>
+      <ArmPlaceNode arm_point_id="1" timeout="30.0"/>
+
+    </Sequence>
+  </BehaviorTree>
+</root>

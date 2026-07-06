@@ -1,0 +1,68 @@
+# 航点坐标采集记录
+# 采集时间: 2026-07-05 16:39:33.447991
+# 区域边界: lower=1.35, upper=4.0, hyst=0.1
+# 采集顺序: 航点1 → 航点2 → 航点3 → 航点4 → 航点5
+
+waypoints:
+  - id: "航点1"
+    role: "过渡对齐点"
+    expected_zone: "EDGE"
+    actual_zone: "EDGE"
+    aft_mapped_to_init:
+      x: 1.1483
+      y: -1.7387
+      z: 0.1062
+      yaw: 0.0083
+    zone_transitions:
+      - x: 0.008
+        from: "None"
+        to: "EDGE"
+
+  - id: "航点2"
+    role: "吸取第二行(左#5右#4)"
+    expected_zone: "MIDDLE"
+    actual_zone: "MIDDLE"
+    aft_mapped_to_init:
+      x: 2.1278
+      y: -1.7455
+      z: 0.099
+      yaw: -0.0216
+    zone_transitions:
+      - x: 1.486
+        from: "EDGE"
+        to: "MIDDLE"
+
+  - id: "航点3"
+    role: "吸取第一行(左#1右#0)"
+    expected_zone: "MIDDLE"
+    actual_zone: "MIDDLE"
+    aft_mapped_to_init:
+      x: 3.0004
+      y: -1.7705
+      z: 0.1042
+      yaw: 0.0367
+
+  - id: "航点4"
+    role: "中间→边缘过渡"
+    expected_zone: "EDGE"
+    actual_zone: "EDGE"
+    aft_mapped_to_init:
+      x: 4.259
+      y: -1.7962
+      z: 0.1194
+      yaw: 0.0217
+    zone_transitions:
+      - x: 4.154
+        from: "MIDDLE"
+        to: "EDGE"
+
+  - id: "航点5"
+    role: "放置区"
+    expected_zone: "EDGE"
+    actual_zone: "EDGE"
+    aft_mapped_to_init:
+      x: 5.1756
+      y: -1.7968
+      z: 0.1274
+      yaw: 0.0213
+

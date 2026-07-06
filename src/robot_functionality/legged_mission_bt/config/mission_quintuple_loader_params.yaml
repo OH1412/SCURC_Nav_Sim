@@ -1,0 +1,11 @@
+mission_quintuple_loader:
+  ros__parameters:
+    plan_ready_topic: /mission/plan_ready
+    bt_config_ready_topic: /mission/bt_config_ready
+    quintuple_yaml: /home/dog12/SCURC_Nav_Sim/src/legged_mission_planner_f_r/tmp/mission_quintuple.yaml
+    bt_xml_output: /home/dog12/SCURC_Nav_Sim/src/robot_functionality/legged_mission_bt/behavior_trees/mission_hardcoded.xml
+    waypoints_yaml_output: /home/dog12/SCURC_Nav_Sim/src/robot_functionality/legged_mission_bt/config/mission_hardcoded.yaml
+    path_count: 6
+    wp_count: 4
+    arm_timeout: 30.0
+    nav_frame_id: map

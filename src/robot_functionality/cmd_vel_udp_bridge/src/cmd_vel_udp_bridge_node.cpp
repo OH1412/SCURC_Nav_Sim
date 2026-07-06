@@ -48,12 +48,12 @@ public:
     deploy_config_file_ = declare_parameter<std::string>("deploy_config_file", "");
 
     // 死区补偿参数：当速度非零但低于死区阈值时，自动提升到最小有效速度
-    deadzone_vx_ = declare_parameter<double>("deadzone_vx", 0.25);
-    deadzone_vy_ = declare_parameter<double>("deadzone_vy", 0.25);
-    deadzone_wz_ = declare_parameter<double>("deadzone_wz", 0.08);
-    min_effective_vx_ = declare_parameter<double>("min_effective_vx", 0.4);
-    min_effective_vy_ = declare_parameter<double>("min_effective_vy", 0.4);
-    min_effective_wz_ = declare_parameter<double>("min_effective_wz", 0.2);
+    deadzone_vx_ = declare_parameter<double>("deadzone_vx", 0.45);
+    deadzone_vy_ = declare_parameter<double>("deadzone_vy", 0.43);
+    deadzone_wz_ = declare_parameter<double>("deadzone_wz", 0.85);
+    min_effective_vx_ = declare_parameter<double>("min_effective_vx", 0.5);
+    min_effective_vy_ = declare_parameter<double>("min_effective_vy", 0.5);
+    min_effective_wz_ = declare_parameter<double>("min_effective_wz", 0.9);
     publish_compensated_ = declare_parameter<bool>("publish_compensated", true);
 
     if (!deploy_config_file_.empty()) {
@@ -221,11 +221,11 @@ private:
 
   // 死区补偿参数
   double deadzone_vx_ = 0.25;
-  double deadzone_vy_ = 0.25;
-  double deadzone_wz_ = 0.08;
-  double min_effective_vx_ = 0.4;
-  double min_effective_vy_ = 0.4;
-  double min_effective_wz_ = 0.2;
+  double deadzone_vy_ = 0.30;
+  double deadzone_wz_ = 0.60;
+  double min_effective_vx_ = 0.5;
+  double min_effective_vy_ = 0.45;
+  double min_effective_wz_ = 0.9;
   bool publish_compensated_ = true;
 
   // 补偿后速度发布者

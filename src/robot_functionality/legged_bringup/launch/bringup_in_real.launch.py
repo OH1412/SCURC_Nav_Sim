@@ -73,8 +73,8 @@ def generate_launch_description():
 
     declare_enable_waypoint_mission = DeclareLaunchArgument(
         'enable_waypoint_mission',
-        default_value='false',
-        description='Auto-start waypoint navigation mission on boot'
+        default_value='true',
+        description='Auto-start waypoint_sender (NavigateToPose, pure navigation BT)'
     )
 
     declare_waypoint_file = DeclareLaunchArgument(
@@ -87,7 +87,7 @@ def generate_launch_description():
     declare_waypoint_start_delay = DeclareLaunchArgument(
         'waypoint_start_delay',
         default_value='25.0',
-        description='Delay (seconds) after bringup before sending arm mission trigger.'
+        description='Delay (seconds) after bringup before waypoint_sender starts NavigateToPose sequence.'
     )
 
     declare_enable_stand_up = DeclareLaunchArgument(
@@ -110,7 +110,7 @@ def generate_launch_description():
     declare_enable_arm_control = DeclareLaunchArgument(
         'enable_arm_control',
         default_value='false',
-        description='Enable Arm Control Action Server for manipulator tasks'
+        description='ArmControl Action Server (enable for navigate_waypoints_with_task BT)'
     )
 
     declare_arm_control_delay = DeclareLaunchArgument(
@@ -311,22 +311,23 @@ def generate_launch_description():
         condition=IfCondition(enable_arm_control)
     )
 
-    # 机械臂抓取使命自动触发器 — Python Action Client
-    arm_mission_trigger = Node(
+    # 逐点导航：waypoint_sender → NavigateToPose → bt_navigator
+    # 行为树: navigate_to_pose_w_replanning_and_recovery.xml (纯导航)
+    waypoint_sender_node = Node(
         package='legged_bringup',
-        executable='arm_mission_trigger.py',
-        name='arm_mission_trigger',
+        executable='waypoint_sender.py',
+        name='waypoint_sender',
         output='screen',
         condition=IfCondition(enable_waypoint_mission),
         parameters=[{
-            'startup_delay': 0.0,   # TimerAction 已经做了延迟
-            'action_timeout': 30.0,
+            'waypoint_file': waypoint_file,
+            'startup_delay': 0.0,  # TimerAction 已做延迟
         }],
     )
 
-    delayed_arm_mission_trigger = TimerAction(
+    delayed_waypoint_sender = TimerAction(
         period=waypoint_start_delay,
-        actions=[arm_mission_trigger],
+        actions=[waypoint_sender_node],
         condition=IfCondition(enable_waypoint_mission)
     )
 
@@ -372,7 +373,7 @@ def generate_launch_description():
     ld.add_action(delayed_stand_up_sender)
     # Arm Control Action Server for manipulator tasks
     ld.add_action(delayed_arm_control)
-    # Start arm-grasp mission trigger (NavigateToPose → 自包含BT)
-    ld.add_action(delayed_arm_mission_trigger)
+    # Waypoint 逐点导航 (NavigateToPose + navigate_waypoints_with_task BT)
+    ld.add_action(delayed_waypoint_sender)
 
     return ld

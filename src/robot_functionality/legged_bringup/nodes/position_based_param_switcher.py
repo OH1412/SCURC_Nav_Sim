@@ -7,7 +7,7 @@ DWB critic scales + goal checker tolerance via ros2 param set — zero downtime.
 
 Zones:
   - 0 ≤ x < 1.35m   → edge  zone (rotation allowed, yaw unlocked, single-axis preferred)
-  - 1.35m ≤ x ≤ 4.0m → middle zone (yaw locked to 0, vy=0, pure X-only movement)
+  - 1.35m ≤ x ≤ 4.0m → middle zone (yaw locked to 0, allow lateral vy)
   - 4.0m < x ≤ 6.30m → edge  zone (rotation allowed, yaw unlocked, single-axis preferred)
 
 Hysteresis: ±0.1m around boundaries to prevent rapid oscillation.
@@ -31,24 +31,29 @@ from rcl_interfaces.msg import Parameter, ParameterValue
 
 MIDDLE_PARAMS = {
     # 中间区：不检查朝向（只要 xy 到位即视为完成）
-    # MaintainYawCritic(5000) 强锁 yaw=0，vy=0，纯X单轴运动
-    'general_goal_checker.xy_goal_tolerance': 0.08,
+    # x/y 容差与 nav2_params.yaml general_goal_checker / FollowPath 一致
+    'general_goal_checker.x_goal_tolerance': 0.08,
+    'general_goal_checker.y_goal_tolerance': 0.15,
     'general_goal_checker.yaw_goal_tolerance': 6.28,
-    'FollowPath.RotateToGoal.scale': 0.0,
+    'FollowPath.x_goal_tolerance': 0.08,
+    'FollowPath.y_goal_tolerance': 0.15,
+    'FollowPath.dwb_yaw_constraint::RotateToGoalXY.scale': 0.0,
     'FollowPath.GoalAlign.scale': 0.0,
     'FollowPath.PathAlign.scale': 0.0,
     'FollowPath.dwb_yaw_constraint::MaintainYawCritic.scale': 5000.0,
     'FollowPath.dwb_yaw_constraint::DecouplingCritic.scale': 0.0,
-    'FollowPath.min_vel_y': 0.0,
-    'FollowPath.max_vel_y': 0.0,
+    'FollowPath.min_vel_y': -1.4,
+    'FollowPath.max_vel_y': 1.4,
 }
 
 EDGE_PARAMS = {
     # 边缘区：允许旋转对齐朝向，允许横向移动
-    # yaw_goal_tolerance=0.05236 rad(3°)，精确对齐 yaw 确保中间区穿障碍物安全
-    'general_goal_checker.xy_goal_tolerance': 0.08,
-    'general_goal_checker.yaw_goal_tolerance': 0.05236,
-    'FollowPath.RotateToGoal.scale': 32.0,
+    'general_goal_checker.x_goal_tolerance': 0.08,
+    'general_goal_checker.y_goal_tolerance': 0.15,
+    'general_goal_checker.yaw_goal_tolerance': 0.17453,
+    'FollowPath.x_goal_tolerance': 0.08,
+    'FollowPath.y_goal_tolerance': 0.15,
+    'FollowPath.dwb_yaw_constraint::RotateToGoalXY.scale': 32.0,
     'FollowPath.GoalAlign.scale': 24.0,
     'FollowPath.PathAlign.scale': 32.0,
     'FollowPath.dwb_yaw_constraint::MaintainYawCritic.scale': 0.0,
@@ -98,8 +103,6 @@ class PositionBasedParamSwitcher(Node):
         self.sub = self.create_subscription(
             Odometry, self.odom_topic, self.odom_callback, 10)
 
-        # Periodic status print so user can verify which zone is active
-        self.status_timer = self.create_timer(3.0, self._print_status)
 
         self.get_logger().info(
             '============================================================\n'
@@ -138,24 +141,6 @@ class PositionBasedParamSwitcher(Node):
     # ------------------------------------------------------------------
     # Periodic status dump
     # ------------------------------------------------------------------
-
-    def _print_status(self):
-        """Log current zone + planner type so user can verify switching."""
-        if self.current_zone is None:
-            self.get_logger().info(
-                '⏳ WAITING: No odometry received yet, zone undetermined.')
-            return
-
-        if self.current_zone == 'middle':
-            self.get_logger().info(
-                'ZONE=MIDDLE | DWB: yaw锁0 vy=0 (MaintainYaw=5000) PathAlign=0 | '
-                'RotateToGoal=0 GoalAlign=0 DecouplingCritic=0 | '
-                f'范围: [{self.lower_boundary}, {self.upper_boundary}]m')
-        else:
-            self.get_logger().info(
-                'ZONE=EDGE   | DWB: yaw自由 vy自由(±1.4) yaw_tol=0.052rad(3°) | '
-                'RotateToGoal=32 GoalAlign=24 PathAlign=32 DecouplingCritic=30 | '
-                f'范围: x<{self.lower_boundary} 或 x>{self.upper_boundary}m')
 
     # ------------------------------------------------------------------
     # Odometry → zone check
@@ -232,7 +217,7 @@ class PositionBasedParamSwitcher(Node):
             )
         else:
             self.get_logger().info(
-                f'✓ Switched to {self.current_zone} zone params (8/8 OK)'
+                f'✓ Switched to {self.current_zone} zone params (OK)'
             )
 
 

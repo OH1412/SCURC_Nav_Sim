@@ -209,6 +209,7 @@ def generate_launch_description():
                 arguments=['--ros-args', '--log-level', log_level],
                 parameters=[{'use_sim_time': use_sim_time},
                             {'autostart': autostart},
+                            {'bond_timeout': 15.0},
                             {'node_names': lifecycle_nodes}]),
         ]
     )
@@ -269,6 +270,7 @@ def generate_launch_description():
                         name='lifecycle_manager_navigation',
                         parameters=[{'use_sim_time': use_sim_time,
                                      'autostart': autostart,
+                                     'bond_timeout': 15.0,
                                      'node_names': lifecycle_nodes}]),
                 ],
             )
@@ -363,7 +365,7 @@ def generate_launch_description():
         parameters=[configured_params],
         arguments=['--ros-args', '--log-level', 'info'],
     )
-    ld.add_action(TimerAction(period=5.0, actions=[position_switcher_node]))
+    ld.add_action(TimerAction(period=8.0, actions=[position_switcher_node]))
 
     # Obstacle-aware scale controller: lowers ObstacleFootprint.scale to 1.0
     # when lethal obstacles invade the robot footprint, restores to 50.0 when clear.
@@ -375,7 +377,7 @@ def generate_launch_description():
         parameters=[configured_params],
         arguments=['--ros-args', '--log-level', 'info'],
     )
-    ld.add_action(TimerAction(period=6.0, actions=[obstacle_scale_ctrl_node]))
+    ld.add_action(TimerAction(period=10.0, actions=[obstacle_scale_ctrl_node]))
 
     # Static TF: map → odom (identity).
     # Without this, the global costmap (global_frame: map) cannot locate the robot

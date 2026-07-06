@@ -1,0 +1,34 @@
+# 外部航点库 — BT XML 中只需写 wp_id="编号"
+# 启动时通过 mission_bt_node 参数 waypoints_file 指定本文件路径
+#
+# nav: 导航航点 (Nav2PoseNode)
+# arm: 机械臂航点 (ArmPickNode / ArmPlaceNode)，单位 mm (arm_base)
+
+nav:
+  "1":
+    frame_id: map
+    x: 1.35
+    y: -0.85
+    yaw: 0.0
+  "2":
+    frame_id: map
+    x: 1.925
+    y: -0.85
+    yaw: 0.0
+  "3":
+    frame_id: map
+    x: 5.25
+    y: -0.85
+    yaw: 0.0
+
+arm:
+  "10":
+    x: 0.0
+    y: -550.0
+    z: -100.0
+    yaw: 0.0
+  "11":
+    x: 0.0
+    y: -500.0
+    z: -50.0
+    yaw: 0.0

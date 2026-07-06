@@ -179,6 +179,10 @@ std::vector<uint8_t> SerialComm::encodeFloatArray(const std::vector<float>& valu
 std::vector<uint8_t> SerialComm::encodeArmTarget(uint8_t control,
                                                   int16_t x_mm, int16_t y_mm, int16_t z_mm,
                                                   int checksum_offset) {
+    // 串口下发时 X/Y 自动取反（机械臂坐标系与 map 系方向相反）
+    x_mm = -x_mm;
+    y_mm = -y_mm;
+
     std::vector<uint8_t> frame;
 
     // 字节 0-1: 帧头

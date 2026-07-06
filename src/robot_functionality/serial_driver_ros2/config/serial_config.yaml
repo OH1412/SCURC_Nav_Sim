@@ -9,7 +9,7 @@ serial_cmd_sender:
     #   若下位机与标准不一致，可调整此值尝试匹配
     arm_checksum_offset: 0
     # 默认控制位: 0x01=Pick(吸取), 0x02=Place(放置)
-    # 当 /arm_target (Point) 话题无 action 字段时使用此默认值
+    # 当 /arm_command 未携带 action 字段 (data 长度 < 5) 时使用此默认值
     default_control: 0x01
 
 # 机械臂坐标抓取/放置控制协议 v2.0

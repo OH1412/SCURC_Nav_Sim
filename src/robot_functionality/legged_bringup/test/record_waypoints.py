@@ -87,7 +87,7 @@ class WaypointRecorder(Node):
         self._odom: Odometry | None = None
         self._odom_lock = threading.Lock()
         self._odom_sub = self.create_subscription(
-            Odometry, '/state_estimation', self._odom_cb, 10)
+            Odometry, '/aft_mapped_to_init', self._odom_cb, 10)
 
         # 可选: aft_mapped 作为参考
         self._aft_odom: Odometry | None = None
@@ -143,7 +143,7 @@ class WaypointRecorder(Node):
     def _print_status(self):
         robot = self._get_robot_state()
         if not robot['available']:
-            self.get_logger().info('⏳ 等待 /state_estimation 数据...')
+            self.get_logger().info('⏳ 等待 /aft_mapped_to_init 数据...')
             return
 
         current_wp = WAYPOINT_ORDER[self._wp_index]
@@ -192,7 +192,7 @@ class WaypointRecorder(Node):
         wp = WAYPOINT_ORDER[self._wp_index]
 
         if not robot['available']:
-            self.get_logger().error('❌ /state_estimation 无数据，无法记录！')
+            self.get_logger().error('❌ /aft_mapped_to_init 无数据，无法记录！')
             return
 
         record = {
@@ -201,7 +201,7 @@ class WaypointRecorder(Node):
             'expected_zone': wp['expected_zone'],
             'actual_zone': self._current_zone or '?',
             'timestamp': datetime.now().isoformat(),
-            'state_estimation': {
+            'aft_mapped_to_init': {
                 'x': round(robot['x'], 4),
                 'y': round(robot['y'], 4),
                 'z': round(robot['z'], 4),
@@ -230,11 +230,11 @@ class WaypointRecorder(Node):
             f'📝 已记录 [{len(self._records)}/{len(WAYPOINT_ORDER)}] {wp["id"]} '
             f'({wp["role"]})')
         self.get_logger().info(
-            f'   state_estimation: '
-            f'({record["state_estimation"]["x"]:.4f}, '
-            f'{record["state_estimation"]["y"]:.4f}, '
-            f'{record["state_estimation"]["z"]:.4f}) '
-            f'yaw={record["state_estimation"]["yaw"]:.4f}')
+            f'   aft_mapped_to_init: '
+            f'({record["aft_mapped_to_init"]["x"]:.4f}, '
+            f'{record["aft_mapped_to_init"]["y"]:.4f}, '
+            f'{record["aft_mapped_to_init"]["z"]:.4f}) '
+            f'yaw={record["aft_mapped_to_init"]["yaw"]:.4f}')
         if aft:
             self.get_logger().info(
                 f'   aft_mapped_in_map: '
@@ -285,7 +285,7 @@ class WaypointRecorder(Node):
             'expected_zone': wp['expected_zone'],
             'actual_zone': None,
             'timestamp': datetime.now().isoformat(),
-            'state_estimation': None,
+            'aft_mapped_to_init': None,
             'aft_mapped_in_map': None,
             'zone_transitions_during_nav': [],
             'skipped': True,
@@ -327,9 +327,9 @@ class WaypointRecorder(Node):
                 f.write(f'    actual_zone: "{r["actual_zone"]}"\n')
                 if r.get('skipped'):
                     f.write(f'    skipped: true\n')
-                if r.get('state_estimation'):
-                    se = r['state_estimation']
-                    f.write(f'    state_estimation:\n')
+                if r.get('aft_mapped_to_init'):
+                    se = r['aft_mapped_to_init']
+                    f.write(f'    aft_mapped_to_init:\n')
                     f.write(f'      x: {se["x"]}\n')
                     f.write(f'      y: {se["y"]}\n')
                     f.write(f'      z: {se["z"]}\n')
@@ -356,14 +356,14 @@ class WaypointRecorder(Node):
         # 同时打印速查表
         self.get_logger().info('')
         self.get_logger().info('=' * 60)
-        self.get_logger().info('📋 采集结果速查 (state_estimation):')
+        self.get_logger().info('📋 采集结果速查 (aft_mapped_to_init):')
         self.get_logger().info(f'   {"航点":<8} {"x":>8} {"y":>8} {"z":>8} {"区域":<8} {"匹配"}')
         self.get_logger().info(f'   {"─"*8} {"─"*8} {"─"*8} {"─"*8} {"─"*8} {"─"*4}')
         for r in self._records:
             if r.get('skipped'):
                 self.get_logger().info(f'   {r["id"]:<8} {"(跳过)":>27}')
             else:
-                se = r['state_estimation']
+                se = r['aft_mapped_to_init']
                 match = '✅' if r['actual_zone'] == r['expected_zone'] else '⚠️'
                 self.get_logger().info(
                     f'   {r["id"]:<8} '

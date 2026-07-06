@@ -6,8 +6,9 @@
 # 订阅 /state_estimation 获取实时坐标，内嵌迟滞区域判定逻辑，
 # 在到达每个航点时输出详细日志（终端 + 文件）。
 #
-# 航点坐标硬编码在 HARDCODED_WAYPOINTS 字典中。
-# 也可通过 --ros-args -p waypoints_config:=/path/to/waypoints.yaml 覆盖。
+# 航点坐标默认从 recorded_waypoints_20260630_231717.yaml 加载。
+# 使用硬编码: --ros-args -p waypoints_config:=""
+# 指定其他文件: --ros-args -p waypoints_config:=/path/to/waypoints.yaml
 #
 # 用法:
 #   ros2 run legged_bringup path1_nav_test.py
@@ -259,8 +260,10 @@ class Path1NavTest(Node):
         self.declare_parameter('nav_timeout', 120.0)
         self.declare_parameter('stop_on_failure', True)
 
-        # 航点配置文件路径 (默认: 空 → 使用硬编码数据)
-        default_config = ''
+        # 航点配置文件 (默认同目录 recorded_waypoints_20260630_231717.yaml)
+        _script_dir = os.path.dirname(os.path.realpath(__file__))
+        default_config = os.path.join(
+            _script_dir, 'recorded_waypoints_20260705_163933.yaml')
         self.declare_parameter('waypoints_config', default_config)
 
         self._startup_delay = self.get_parameter('startup_delay').value

@@ -31,7 +31,7 @@ from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.node import Node
 from rclpy.executors import MultiThreadedExecutor
 
-from geometry_msgs.msg import PoseStamped, Point, Quaternion
+from geometry_msgs.msg import PoseStamped, Quaternion
 from std_msgs.msg import Float64MultiArray, UInt8MultiArray
 
 # 导入自定义 Action 类型
@@ -56,7 +56,6 @@ class ArmControlServer(Node):
         self.declare_parameter('map_frame', 'map')
         self.declare_parameter('enable_serial_publish', True)
         self.declare_parameter('arm_command_topic', '/arm_command')
-        self.declare_parameter('arm_target_topic', '/arm_target')
         self.declare_parameter('arm_status_topic', '/arm_status')
         self.declare_parameter('arm_action', 1)              # 1=Pick(吸取), 2=Place(放置)
 
@@ -65,7 +64,6 @@ class ArmControlServer(Node):
         self.map_frame = self.get_parameter('map_frame').value
         self.enable_serial_publish = self.get_parameter('enable_serial_publish').value
         self.arm_command_topic = self.get_parameter('arm_command_topic').value
-        self.arm_target_topic = self.get_parameter('arm_target_topic').value
         self.arm_status_topic = self.get_parameter('arm_status_topic').value
         self.arm_action = self.get_parameter('arm_action').value
 
@@ -76,20 +74,15 @@ class ArmControlServer(Node):
         self.tf_listener = TransformListener(self.tf_buffer, self)
 
         # ================================================================
-        # 机械臂指令发布者 — 发送 base_link 坐标到串口驱动
-        #   /arm_target:   geometry_msgs/Point (协议标准话题)
-        #   /arm_command:  Float64MultiArray [兼容话题, 格式: x,y,z,yaw,action]
+        # 机械臂指令发布者 — 发送 arm_base 坐标到串口驱动 (mm)
+        #   /arm_command: Float64MultiArray [x, y, z, yaw, action]
         # ================================================================
         if self.enable_serial_publish:
-            self.arm_target_pub = self.create_publisher(
-                Point, self.arm_target_topic, 10)
             self.arm_cmd_pub = self.create_publisher(
                 Float64MultiArray, self.arm_command_topic, 10)
             self.get_logger().info(
-                f'Arm targets will be published to: {self.arm_target_topic} (Point) '
-                f'and {self.arm_command_topic} (Float64MultiArray)')
+                f'Arm commands will be published to: {self.arm_command_topic} (mm)')
         else:
-            self.arm_target_pub = None
             self.arm_cmd_pub = None
 
         # ================================================================
@@ -195,15 +188,12 @@ class ArmControlServer(Node):
                 f'{base_link_pose.position.z:.3f})')
 
             # -----------------------------------------------------------
-            # Step 1.5: base_link → arm_base 坐标变换 (绕 Z 轴 180°)
-            #   机械臂基座与机器人 base_link 之间存在绕 Z 轴 180° 的安装偏差:
-            #     arm_x = -base_link_x
-            #     arm_y = -base_link_y
-            #     arm_z =  base_link_z
+            # Step 1.5: base_link → arm_base 坐标变换
+            #   直接使用 base_link 坐标，无需取反
             # -----------------------------------------------------------
             arm_pose = base_link_pose
-            arm_pose.position.x = -base_link_pose.position.x
-            arm_pose.position.y = -base_link_pose.position.y
+            arm_pose.position.x = base_link_pose.position.x
+            arm_pose.position.y = base_link_pose.position.y
             # z 保持不变
 
             self.get_logger().info(
@@ -212,7 +202,7 @@ class ArmControlServer(Node):
                 f'{base_link_pose.position.z:.3f}) '
                 f'→ arm_base({arm_pose.position.x:.3f}, '
                 f'{arm_pose.position.y:.3f}, '
-                f'{arm_pose.position.z:.3f}) [Z-180°]')
+                f'{arm_pose.position.z:.3f})')
 
         except TransformException as e:
             self.get_logger().error(f'TF transform failed: {e}')
@@ -233,15 +223,15 @@ class ArmControlServer(Node):
 
         if self.enable_serial_publish and self.arm_cmd_pub is not None:
             try:
-                # 将 arm_base 坐标打包为 Float64MultiArray (兼容格式)
+                # 将 arm_base 坐标打包为 Float64MultiArray (单位: mm)
                 # 格式: [x, y, z, yaw, arm_action]
                 # arm_action: 1=Pick(吸取→0x01), 2=Place(放置→0x02)
                 yaw = self._quat_to_yaw(base_link_pose.orientation)
                 msg = Float64MultiArray()
                 msg.data = [
-                    float(arm_pose.position.x),
-                    float(arm_pose.position.y),
-                    float(arm_pose.position.z),
+                    float(arm_pose.position.x * 1000.0),
+                    float(arm_pose.position.y * 1000.0),
+                    float(arm_pose.position.z * 1000.0),
                     float(yaw),
                     float(self.arm_action),
                 ]
@@ -249,22 +239,9 @@ class ArmControlServer(Node):
                 self.arm_cmd_pub.publish(msg)
                 self.get_logger().info(
                     f'Arm command sent to {self.arm_command_topic}: '
-                    f'[x={msg.data[0]:.3f}, y={msg.data[1]:.3f}, '
-                    f'z={msg.data[2]:.3f}, yaw={msg.data[3]:.3f}, '
-                    f'action={int(msg.data[4])}]')
-
-                # 同时发布 Point 消息到 /arm_target (协议标准话题, 单位: mm)
-                if self.arm_target_pub is not None:
-                    target_point = Point()
-                    # 协议规定 /arm_target 的 Point 值单位为 mm，需要从米转换
-                    target_point.x = float(arm_pose.position.x * 1000.0)
-                    target_point.y = float(arm_pose.position.y * 1000.0)
-                    target_point.z = float(arm_pose.position.z * 1000.0)
-                    self.arm_target_pub.publish(target_point)
-                    self.get_logger().info(
-                        f'Arm target sent to {self.arm_target_topic}: '
-                        f'(x={target_point.x:.1f}, y={target_point.y:.1f}, '
-                        f'z={target_point.z:.1f}) mm')
+                    f'[x={msg.data[0]:.1f}, y={msg.data[1]:.1f}, '
+                    f'z={msg.data[2]:.1f}, yaw={msg.data[3]:.3f}, '
+                    f'action={int(msg.data[4])}] mm')
 
                 arm_result_msg = 'Arm command published successfully.'
                 arm_success = True

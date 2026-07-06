@@ -1,7 +1,10 @@
 <class_libraries>
-	<library path="behavior_ext_plugins_lib">
-	  <class name="nav2_behaviors/BackUpTwzFree" type="nav2_behaviors::BackUpTwzFree" base_class_type="nav2_core::Behavior">
-	    <description></description>
-	  </class>
-	</library>
+  <library path="behavior_ext_plugins_lib">
+    <class name="nav2_behaviors/BackUpTwzFree" type="nav2_behaviors::BackUpTwzFree" base_class_type="nav2_core::Behavior">
+      <description></description>
+    </class>
+    <class name="behavior_ext_plugins::SimpleGoalCheckerXY" type="behavior_ext_plugins::SimpleGoalCheckerXY" base_class_type="nav2_core::GoalChecker">
+      <description>Goal checker with independent x/y tolerances (not Euclidean distance)</description>
+    </class>
+  </library>
 </class_libraries>
