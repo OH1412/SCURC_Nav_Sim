@@ -47,6 +47,8 @@ MIDDLE_PARAMS = {
 EDGE_PARAMS = {
     # 边缘区 (edge)：允许旋转对齐朝向，允许横向移动
     # limit_yaw: false → 解除 yaw 限制，允许旋转对齐目标朝向
+    # vy 保持原值（mapper 需要大 cmd 克服死区），通过降低 DecouplingCritic
+    # 来抑制螃蟹走：DWB 更倾向转 yaw + 直走 X，需要 vy 时仍能全量输出
     'general_goal_checker.x_goal_tolerance': 0.08,
     'general_goal_checker.y_goal_tolerance': 0.15,
     'general_goal_checker.yaw_goal_tolerance': 0.17453,
@@ -56,7 +58,7 @@ EDGE_PARAMS = {
     'FollowPath.GoalAlign.scale': 24.0,
     'FollowPath.PathAlign.scale': 32.0,
     'FollowPath.dwb_yaw_constraint::MaintainYawCritic.scale': 0.0,
-    'FollowPath.dwb_yaw_constraint::DecouplingCritic.scale': 30.0,
+    'FollowPath.dwb_yaw_constraint::DecouplingCritic.scale': 5.0,
     'FollowPath.min_vel_y': -1.1,
     'FollowPath.max_vel_y': 1.1,
 }

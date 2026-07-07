@@ -321,7 +321,7 @@ controller_server:
       "dwb_yaw_constraint::MaintainYawCritic.desired_yaw": 0.0
       "dwb_yaw_constraint::MaintainYawCritic.reference_frame": "map"
       # --- 解耦 critic (middle 区禁用) ---
-      "dwb_yaw_constraint::DecouplingCritic.scale": 0.0       # middle=0.0 | edge=30.0
+      "dwb_yaw_constraint::DecouplingCritic.scale": 0.0       # middle=0.0 | edge=5.0
       "dwb_yaw_constraint::DecouplingCritic.max_vx": 2.0
       "dwb_yaw_constraint::DecouplingCritic.max_vy": 1.4
       "dwb_yaw_constraint::DecouplingCritic.max_vtheta": 1.2
@@ -342,7 +342,7 @@ controller_server:
       # "dwb_yaw_constraint::MaintainYawCritic.desired_yaw": 0.0
       # "dwb_yaw_constraint::MaintainYawCritic.reference_frame": "map"
       # # --- 解耦 critic (edge 区启用) ---
-      # "dwb_yaw_constraint::DecouplingCritic.scale": 30.0       # middle=0.0 | edge=30.0
+      # "dwb_yaw_constraint::DecouplingCritic.scale": 5.0        # middle=0.0 | edge=5.0
 
 local_costmap:
   local_costmap:
