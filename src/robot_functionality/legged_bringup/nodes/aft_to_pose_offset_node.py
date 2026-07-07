@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
 
+import sys
+from pathlib import Path
+
 import rclpy
 from rclpy.node import Node
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import PoseStamped
 from std_msgs.msg import Bool
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from mission_log_client import log_event
 
 
 class AftMappedToPoseOffsetNode(Node):
@@ -32,6 +38,10 @@ class AftMappedToPoseOffsetNode(Node):
             ready = Bool()
             ready.data = True
             self._reloc_ready_pub.publish(ready)
+            log_event(
+                self, 'aft_to_pose_offset_node', 'RELOC_READY',
+                '首帧 /aft_mapped_in_map 已转发至 /LIVO2/pose_offset',
+            )
             self._reloc_ready_sent = True
             self.get_logger().info('Published reloc ready (first /aft_mapped_in_map relay)')
 

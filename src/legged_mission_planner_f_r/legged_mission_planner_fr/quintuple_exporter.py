@@ -25,17 +25,29 @@ def build_quintuple_plan(
     waypoint_config: WaypointConfig | None = None,
 ) -> dict:
     quintuple_sequence: list[dict] = []
+    zone_visit_count: dict[int, int] = {}
     for step in sequence:
         limit_yaw = False
         if waypoint_config is not None:
             meta = waypoint_config.get_meta(step.path, step.wp)
             if meta is not None:
                 limit_yaw = meta.limit_yaw
+
+        tid = target_id_for_step(step)
+
+        # 归还区第二次放置时，target_id = 实际编号 + 4
+        if step.state == MissionState.PLACE and step.target_zone is not None:
+            zone = int(step.target_zone)
+            count = zone_visit_count.get(zone, 0)
+            if count >= 1:
+                tid = zone + 4
+            zone_visit_count[zone] = count + 1
+
         quintuple_sequence.append({
             'path': step.path,
             'wp': step.wp,
             'state': int(step.state),
-            'target_id': target_id_for_step(step),
+            'target_id': tid,
             'limit_yaw': limit_yaw,
         })
     return {

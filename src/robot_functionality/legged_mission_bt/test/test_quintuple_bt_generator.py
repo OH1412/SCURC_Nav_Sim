@@ -9,6 +9,7 @@ SCRIPT_DIR = Path(__file__).resolve().parents[1] / 'scripts'
 sys.path.insert(0, str(SCRIPT_DIR))
 
 from quintuple_bt_generator import (  # noqa: E402
+    arm_point_id_for_step,
     build_bt_xml,
     build_waypoints_yaml,
     collect_waypoint_ids,
@@ -21,6 +22,12 @@ def test_nav_wp_id():
     assert nav_wp_id(5, 3) == 'nav_p5_wp3'
 
 
+def test_arm_point_id_mapping():
+    assert arm_point_id_for_step(2, 4) == 4
+    assert arm_point_id_for_step(3, 0) == 8
+    assert arm_point_id_for_step(3, 7) == 15
+
+
 def test_build_bt_xml_pick_and_place():
     sequence = [
         {'path': 0, 'wp': 0, 'state': 1, 'target_id': -1},
@@ -30,7 +37,7 @@ def test_build_bt_xml_pick_and_place():
     xml = build_bt_xml(sequence, arm_timeout=30.0)
     assert '<Nav2PoseNode wp_id="nav_p0_wp0"/>' in xml
     assert '<ArmPickNode arm_point_id="4" timeout="30.0"/>' in xml
-    assert '<ArmPlaceNode arm_point_id="0" timeout="30.0"/>' in xml
+    assert '<ArmPlaceNode arm_point_id="8" timeout="30.0"/>' in xml
 
 
 def test_collect_waypoint_ids_includes_grid_and_sequence():

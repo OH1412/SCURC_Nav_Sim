@@ -1,9 +1,31 @@
 #include "legged_mission_bt/nav2_pose_node.hpp"
 
+#include <cmath>
+#include <sstream>
+#include <iomanip>
+
 #include <tf2/LinearMath/Quaternion.h>
+#include <tf2/LinearMath/Matrix3x3.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+#include "legged_bringup/mission_log.hpp"
 
 using namespace std::chrono_literals;
+
+namespace
+{
+
+double normalizeAngle(double yaw)
+{
+  while (yaw > M_PI) {
+    yaw -= 2.0 * M_PI;
+  }
+  while (yaw < -M_PI) {
+    yaw += 2.0 * M_PI;
+  }
+  return yaw;
+}
+
+}  // namespace
 
 Nav2PoseNode::Nav2PoseNode(
   const std::string & name,
@@ -25,6 +47,27 @@ Nav2PoseNode::Nav2PoseNode(
   nav_reached_pub_ = node_->create_publisher<legged_mission_bt::msg::NavReached>(
     nav_reached_topic, rclcpp::QoS(rclcpp::KeepLast(10)).reliable());
   client_ = rclcpp_action::create_client<NavigateToPose>(node_, "navigate_to_pose");
+
+  if (!node_->has_parameter("odom_topic")) {
+    node_->declare_parameter("odom_topic", "/state_estimation");
+  }
+  if (!node_->has_parameter("base_frame")) {
+    node_->declare_parameter("base_frame", "base_link");
+  }
+  if (!node_->has_parameter("nav_progress_log_interval")) {
+    node_->declare_parameter("nav_progress_log_interval", 5.0);
+  }
+  odom_topic_ = node_->get_parameter("odom_topic").as_string();
+  base_frame_ = node_->get_parameter("base_frame").as_string();
+  nav_progress_log_interval_ = node_->get_parameter("nav_progress_log_interval").as_double();
+
+  tf_buffer_ = std::make_shared<tf2_ros::Buffer>(node_->get_clock());
+  tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_, node_, false);
+  odom_sub_ = node_->create_subscription<nav_msgs::msg::Odometry>(
+    odom_topic_, rclcpp::QoS(rclcpp::KeepLast(10)),
+    [this](const nav_msgs::msg::Odometry::SharedPtr msg) {
+      latest_odom_ = msg;
+    });
 }
 
 BT::PortsList Nav2PoseNode::providedPorts()
@@ -116,6 +159,8 @@ void Nav2PoseNode::publishNavReached(const std::string & nav_id)
   legged_mission_bt::msg::NavReached msg;
   msg.nav_id = nav_id;
   nav_reached_pub_->publish(msg);
+  legged_bringup::mission_log::publish(
+    *node_, "Nav2PoseNode", "NAV_REACHED_PUBLISHED", "INFO", "导航点=" + nav_id);
 }
 
 bool Nav2PoseNode::sendGoal(const std::string & frame_id, double x, double y, double yaw)
@@ -134,23 +179,140 @@ bool Nav2PoseNode::sendGoal(const std::string & frame_id, double x, double y, do
     };
 
   RCLCPP_INFO(node_->get_logger(), "Nav2PoseNode: sending goal (%.3f, %.3f, yaw=%.3f)", x, y, yaw);
+  std::ostringstream detail;
+  detail << "坐标系=" << frame_id << " x=" << x << " y=" << y << " 航向=" << yaw << "弧度";
+  if (!resolved_nav_id_.empty()) {
+    detail << " 导航点=" << resolved_nav_id_;
+  }
+  legged_bringup::mission_log::publish(
+    *node_, "Nav2PoseNode", "NAV_GOAL_SENT", "INFO", detail.str());
 
   auto future_goal_handle = client_->async_send_goal(goal, send_goal_options);
   if (rclcpp::spin_until_future_complete(node_, future_goal_handle, 5s) !=
     rclcpp::FutureReturnCode::SUCCESS)
   {
     RCLCPP_ERROR(node_->get_logger(), "Nav2PoseNode: failed to send goal");
+    legged_bringup::mission_log::publish(
+      *node_, "Nav2PoseNode", "NAV_GOAL_SEND_FAILED", "ERROR", detail.str());
     return false;
   }
 
   goal_handle_ = future_goal_handle.get();
   if (!goal_handle_) {
     RCLCPP_ERROR(node_->get_logger(), "Nav2PoseNode: goal rejected");
+    legged_bringup::mission_log::publish(
+      *node_, "Nav2PoseNode", "NAV_GOAL_REJECTED", "ERROR", detail.str());
     return false;
   }
 
   goal_sent_ = true;
+  resetNavProgressLogSchedule();
   return true;
+}
+
+void Nav2PoseNode::resetNavProgressLogSchedule()
+{
+  if (nav_progress_log_interval_ > 0.0) {
+    nav_progress_start_ = node_->now();
+    next_progress_log_time_ =
+      nav_progress_start_ + rclcpp::Duration::from_seconds(nav_progress_log_interval_);
+  }
+}
+
+bool Nav2PoseNode::getCurrentStateInGoalFrame(
+  double & x, double & y, double & yaw, double & vx, double & vy, double & wz) const
+{
+  vx = 0.0;
+  vy = 0.0;
+  wz = 0.0;
+  if (latest_odom_) {
+    vx = latest_odom_->twist.twist.linear.x;
+    vy = latest_odom_->twist.twist.linear.y;
+    wz = latest_odom_->twist.twist.angular.z;
+  }
+
+  if (tf_buffer_ && tf_buffer_->canTransform(
+      resolved_frame_id_, base_frame_, tf2::TimePointZero))
+  {
+    try {
+      const auto tf = tf_buffer_->lookupTransform(
+        resolved_frame_id_, base_frame_, tf2::TimePointZero);
+      x = tf.transform.translation.x;
+      y = tf.transform.translation.y;
+      tf2::Quaternion q(
+        tf.transform.rotation.x,
+        tf.transform.rotation.y,
+        tf.transform.rotation.z,
+        tf.transform.rotation.w);
+      double roll = 0.0;
+      double pitch = 0.0;
+      tf2::Matrix3x3(q).getRPY(roll, pitch, yaw);
+      return true;
+    } catch (const tf2::TransformException &) {
+      // fall through to odometry pose
+    }
+  }
+
+  if (!latest_odom_) {
+    return false;
+  }
+  if (latest_odom_->header.frame_id != resolved_frame_id_) {
+    return false;
+  }
+
+  x = latest_odom_->pose.pose.position.x;
+  y = latest_odom_->pose.pose.position.y;
+  tf2::Quaternion q(
+    latest_odom_->pose.pose.orientation.x,
+    latest_odom_->pose.pose.orientation.y,
+    latest_odom_->pose.pose.orientation.z,
+    latest_odom_->pose.pose.orientation.w);
+  double roll = 0.0;
+  double pitch = 0.0;
+  tf2::Matrix3x3(q).getRPY(roll, pitch, yaw);
+  return true;
+}
+
+void Nav2PoseNode::maybeLogNavProgress()
+{
+  if (nav_progress_log_interval_ <= 0.0 || !goal_sent_ || result_ready_) {
+    return;
+  }
+  if (node_->now() < next_progress_log_time_) {
+    return;
+  }
+
+  double cur_x = 0.0;
+  double cur_y = 0.0;
+  double cur_yaw = 0.0;
+  double vx = 0.0;
+  double vy = 0.0;
+  double wz = 0.0;
+  if (getCurrentStateInGoalFrame(cur_x, cur_y, cur_yaw, vx, vy, wz)) {
+    const double dx = resolved_x_ - cur_x;
+    const double dy = resolved_y_ - cur_y;
+    const double dist_err = std::hypot(dx, dy);
+    const double yaw_err = normalizeAngle(resolved_yaw_ - cur_yaw);
+    const double elapsed = (node_->now() - nav_progress_start_).seconds();
+
+    std::ostringstream detail;
+    detail << "耗时=" << std::fixed << std::setprecision(1) << elapsed << "秒"
+           << " 坐标系=" << resolved_frame_id_
+           << " 当前位置=(" << cur_x << ',' << cur_y << ",航向=" << cur_yaw << "弧度)"
+           << " 当前速度=(" << vx << ',' << vy << ",角速度=" << wz << "弧度/秒)"
+           << " 目标位置=(" << resolved_x_ << ',' << resolved_y_
+           << ",航向=" << resolved_yaw_ << "弧度)"
+           << " 距离误差=" << dist_err << "米 航向误差=" << yaw_err << "弧度";
+    if (!resolved_nav_id_.empty()) {
+      detail << " 导航点=" << resolved_nav_id_;
+    }
+
+    RCLCPP_INFO(node_->get_logger(), "Nav2PoseNode: 导航进度 %s", detail.str().c_str());
+    legged_bringup::mission_log::publish(
+      *node_, "Nav2PoseNode", "NAV_PROGRESS", "INFO", detail.str());
+  }
+
+  next_progress_log_time_ += rclcpp::Duration::from_seconds(nav_progress_log_interval_);
 }
 
 BT::NodeStatus Nav2PoseNode::onStart()
@@ -169,6 +331,11 @@ BT::NodeStatus Nav2PoseNode::onStart()
   result_ready_ = false;
 
   if (resolveGoal(frame_id, x, y, yaw)) {
+    std::ostringstream detail;
+    detail << "导航点=" << wp_id_ << " 坐标系=" << frame_id
+           << " x=" << x << " y=" << y << " 航向=" << yaw << "弧度";
+    legged_bringup::mission_log::publish(
+      *node_, "Nav2PoseNode", "NAV_STEP_START", "INFO", detail.str());
     return sendGoal(frame_id, x, y, yaw) ? BT::NodeStatus::RUNNING : BT::NodeStatus::FAILURE;
   }
 
@@ -196,6 +363,11 @@ BT::NodeStatus Nav2PoseNode::onRunning()
     double yaw = 0.0;
     if (resolveGoal(frame_id, x, y, yaw)) {
       waiting_for_wp_ = false;
+      std::ostringstream detail;
+      detail << "导航点=" << wp_id_ << " 坐标系=" << frame_id
+             << " x=" << x << " y=" << y << " 航向=" << yaw << "弧度";
+      legged_bringup::mission_log::publish(
+        *node_, "Nav2PoseNode", "NAV_STEP_START", "INFO", detail.str());
       return sendGoal(frame_id, x, y, yaw) ? BT::NodeStatus::RUNNING : BT::NodeStatus::FAILURE;
     }
 
@@ -205,6 +377,10 @@ BT::NodeStatus Nav2PoseNode::onRunning()
         node_->get_logger(),
         "Nav2PoseNode: timeout waiting for nav wp_id='%s' (%.0fs)",
         wp_id_.c_str(), waypoint_wait_timeout_);
+      legged_bringup::mission_log::publish(
+        *node_, "Nav2PoseNode", "NAV_WAYPOINT_TIMEOUT", "ERROR",
+        "导航点=" + wp_id_ + " 超时=" +
+        std::to_string(static_cast<int>(waypoint_wait_timeout_)) + "秒");
       return BT::NodeStatus::FAILURE;
     }
     return BT::NodeStatus::RUNNING;
@@ -215,6 +391,7 @@ BT::NodeStatus Nav2PoseNode::onRunning()
   }
   if (!result_ready_) {
     rclcpp::spin_some(node_);
+    maybeLogNavProgress();
     return BT::NodeStatus::RUNNING;
   }
 
@@ -224,12 +401,21 @@ BT::NodeStatus Nav2PoseNode::onRunning()
         publishNavReached(resolved_nav_id_);
       }
       RCLCPP_INFO(node_->get_logger(), "Nav2PoseNode: navigation succeeded");
+      legged_bringup::mission_log::publish(
+        *node_, "Nav2PoseNode", "NAV_SUCCEEDED", "INFO",
+        resolved_nav_id_.empty() ? "内联目标" : "导航点=" + resolved_nav_id_);
       return BT::NodeStatus::SUCCESS;
     case rclcpp_action::ResultCode::ABORTED:
       RCLCPP_WARN(node_->get_logger(), "Nav2PoseNode: navigation aborted");
+      legged_bringup::mission_log::publish(
+        *node_, "Nav2PoseNode", "NAV_ABORTED", "ERROR",
+        resolved_nav_id_.empty() ? "内联目标" : "导航点=" + resolved_nav_id_);
       return BT::NodeStatus::FAILURE;
     case rclcpp_action::ResultCode::CANCELED:
       RCLCPP_WARN(node_->get_logger(), "Nav2PoseNode: navigation canceled");
+      legged_bringup::mission_log::publish(
+        *node_, "Nav2PoseNode", "NAV_CANCELED", "ERROR",
+        resolved_nav_id_.empty() ? "内联目标" : "导航点=" + resolved_nav_id_);
       return BT::NodeStatus::FAILURE;
     default:
       RCLCPP_ERROR(node_->get_logger(), "Nav2PoseNode: unknown result code");

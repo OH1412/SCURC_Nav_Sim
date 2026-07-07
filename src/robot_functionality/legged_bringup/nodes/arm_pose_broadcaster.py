@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import math
 import os
+import sys
+from pathlib import Path
 from typing import Any, Optional
 
 import rclpy
@@ -23,6 +25,9 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy
 
 from legged_mission_bt.msg import ArmPoseRequest, ArmWaypoint, NavReached
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from mission_log_client import log_event
 
 MM_PER_M = 1000.0
 MIN_POINT_ID = 0
@@ -463,19 +468,28 @@ class ArmPoseBroadcaster(Node):
             self._try_publish_for_request(self._pending)
 
     def _on_nav_reached(self, msg: NavReached) -> None:
+        log_event(
+            self, 'arm_pose_broadcaster', 'NAV_REACHED_RECEIVED',
+            f'导航点={msg.nav_id}',
+        )
         self.get_logger().info(f'nav_reached nav_id={msg.nav_id}')
 
     def _on_arm_request(self, msg: ArmPoseRequest) -> None:
         self._request_seq += 1
-        self.get_logger().info(
-            f'arm_pose_request #{self._request_seq} arm_point={msg.arm_point_id} '
-            f'nav_id={msg.nav_id}')
+        log_event(
+            self, 'arm_pose_broadcaster', 'ARM_POSE_REQUEST_RECEIVED',
+            f'序号={self._request_seq} 机械臂点位={msg.arm_point_id} 关联导航点={msg.nav_id}',
+        )
         self._pending = msg
         self._try_publish_for_request(msg)
 
     def _try_publish_for_request(self, msg: ArmPoseRequest) -> None:
         pid = msg.arm_point_id
         if not (MIN_POINT_ID <= pid <= MAX_POINT_ID):
+            log_event(
+                self, 'arm_pose_broadcaster', 'ARM_WAYPOINT_INVALID_POINT',
+                f'机械臂点位={pid}（有效范围0~15）', level='ERROR',
+            )
             self.get_logger().error(
                 f'Invalid arm_point_id (need 0~15), got {pid}')
             return
@@ -484,19 +498,33 @@ class ArmPoseBroadcaster(Node):
         expected = point_role(pid)
         entry = self._arm_points.get(slot)
         if entry is None:
+            log_event(
+                self, 'arm_pose_broadcaster', 'ARM_WAYPOINT_MISSING_ENTRY',
+                f'点位编号={slot} 在arm_points.yaml中不存在', level='ERROR',
+            )
             self.get_logger().error(f'arm_points.yaml has no entry for slot "{slot}"')
             return
 
         point_role_yaml = entry.get('role', '')
         if point_role_yaml != expected:
-            self.get_logger().error(
-                f'Point {slot} yaml role={point_role_yaml} 与编号段不符 (expected {expected})')
+            role_cn = '抓取' if expected == 'pick' else '放置'
+            yaml_role_cn = '抓取' if point_role_yaml == 'pick' else (
+                '放置' if point_role_yaml == 'place' else point_role_yaml)
+            log_event(
+                self, 'arm_pose_broadcaster', 'ARM_WAYPOINT_ROLE_MISMATCH',
+                f'点位={slot} 配置角色={yaml_role_cn} 期望角色={role_cn}',
+                level='ERROR',
+            )
             return
 
         map_target = self._resolve_map_target(slot, entry)
         arm_root_fallback = self._resolve_arm_root_target(slot, entry)
 
         if map_target is None and arm_root_fallback is None:
+            log_event(
+                self, 'arm_pose_broadcaster', 'ARM_WAYPOINT_NO_TARGET',
+                f'点位={slot} 缺少map_target与arm_root备用坐标', level='ERROR',
+            )
             self.get_logger().error(
                 f'Slot "{slot}" missing map_target and arm_root/base_link fallback')
             return
@@ -510,6 +538,10 @@ class ArmPoseBroadcaster(Node):
                 return
         else:
             if map_target is None:
+                log_event(
+                    self, 'arm_pose_broadcaster', 'ARM_WAYPOINT_NO_MAP_TARGET',
+                    f'点位={slot} 有里程计但缺少map_target', level='ERROR',
+                )
                 self.get_logger().error(
                     f'Slot "{slot}" has /aft_mapped_to_init but no map_target')
                 return
@@ -539,6 +571,12 @@ class ArmPoseBroadcaster(Node):
         self._arm_pub.publish(out)
 
         label = entry.get('label', slot)
+        role_cn = '抓取' if expected == 'pick' else '放置'
+        log_event(
+            self, 'arm_pose_broadcaster', 'ARM_WAYPOINT_PUBLISHED',
+            f'点位={slot} 角色={role_cn} 标签={label} 计算方式={mode} '
+            f'机械臂坐标(mm)=({out.x:.1f},{out.y:.1f},{out.z:.1f}) 航向={out.yaw:.3f}弧度',
+        )
         self.get_logger().info(
             f'Published arm_waypoint id={slot} ({label}, {expected}) [{mode}] '
             f'arm_root(mm)=({out.x:.1f}, {out.y:.1f}, {out.z:.1f}, yaw={out.yaw:.3f})')

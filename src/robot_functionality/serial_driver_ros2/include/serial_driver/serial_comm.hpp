@@ -10,6 +10,10 @@
 #include <atomic>
 #include <chrono>
 
+namespace rclcpp {
+class Node;
+}
+
 // 机械臂 ACK 帧解析结果
 struct ArmAck {
     bool valid = false;       // 帧解析成功
@@ -19,7 +23,7 @@ struct ArmAck {
 
 class SerialComm {
 public:
-    SerialComm(const std::string& port, unsigned long baudrate);
+    SerialComm(const std::string& port, unsigned long baudrate, rclcpp::Node * log_node = nullptr);
     ~SerialComm();
 
     // send (existing protocol)
@@ -49,6 +53,7 @@ private:
     std::thread reconnect_thread_;
     std::atomic<bool> running_;
     std::mutex serial_mutex_;
+    rclcpp::Node * log_node_ = nullptr;
     
     bool isOpen();
     void reconnectLoop();

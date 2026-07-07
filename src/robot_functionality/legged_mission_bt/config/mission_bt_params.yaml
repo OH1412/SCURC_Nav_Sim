@@ -14,4 +14,6 @@ mission_bt_node:
     nav_reached_topic: "/mission_bt/nav_reached"
     arm_pose_request_topic: "/mission_bt/arm_pose_request"
     clear_waypoints_topic: "/mission_bt/clear_waypoints"
-    waypoints_file: ""
+    nav_progress_log_interval: 5.0
+    odom_topic: "/state_estimation"
+    base_frame: "base_link"

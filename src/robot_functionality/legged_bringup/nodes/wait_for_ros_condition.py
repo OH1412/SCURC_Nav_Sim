@@ -6,10 +6,14 @@ from __future__ import annotations
 import argparse
 import sys
 import time
+from pathlib import Path
 
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from mission_log_client import log_event
 
 
 class WaitForRosCondition(Node):
@@ -21,7 +25,7 @@ class WaitForRosCondition(Node):
         self._checks: list[str] = []
 
         if not args.skip_stand_up:
-            self._checks.append(f'stand_up_done({args.stand_up_done_topic})')
+            self._checks.append(f'站立完成({args.stand_up_done_topic})')
             self.create_subscription(
                 self._import_bool(),
                 args.stand_up_done_topic,
@@ -30,7 +34,7 @@ class WaitForRosCondition(Node):
             )
 
         if args.reloc_ready_topic:
-            self._checks.append(f'reloc_ready({args.reloc_ready_topic})')
+            self._checks.append(f'重定位就绪({args.reloc_ready_topic})')
             self.create_subscription(
                 self._import_bool(),
                 args.reloc_ready_topic,
@@ -40,11 +44,11 @@ class WaitForRosCondition(Node):
 
         if args.topic:
             msg_type = self._import_msg_type(args.msg_type)
-            self._checks.append(f'topic({args.topic})')
+            self._checks.append(f'话题({args.topic})')
             self.create_subscription(msg_type, args.topic, self._on_topic, qos_profile_sensor_data)
 
         if args.lifecycle_node:
-            self._checks.append(f'lifecycle_active({args.lifecycle_node})')
+            self._checks.append(f'Nav2生命周期激活({args.lifecycle_node})')
             self._lifecycle_ready = False
             from lifecycle_msgs.srv import GetState
 
@@ -54,7 +58,7 @@ class WaitForRosCondition(Node):
             )
 
         if args.action_name:
-            self._checks.append(f'action({args.action_name})')
+            self._checks.append(f'导航动作就绪({args.action_name})')
             self._action_ready = False
             from rclpy.action import ActionClient
 
@@ -62,11 +66,11 @@ class WaitForRosCondition(Node):
             self._action_client = ActionClient(self, action_type, args.action_name)
 
         if args.publisher_topic:
-            self._checks.append(f'publisher({args.publisher_topic})')
+            self._checks.append(f'发布者就绪({args.publisher_topic})')
             self._publisher_ready = False
 
         if args.bt_config_ready_topic:
-            self._checks.append(f'bt_config_ready({args.bt_config_ready_topic})')
+            self._checks.append(f'行为树配置就绪({args.bt_config_ready_topic})')
             self.create_subscription(
                 self._import_bool(),
                 args.bt_config_ready_topic,
@@ -187,6 +191,17 @@ class WaitForRosCondition(Node):
         return False
 
     def _finish(self, code: int) -> None:
+        if code == 0:
+            log_event(
+                self, 'wait_for_ros_condition', 'READINESS_GATE_PASSED',
+                f'已满足条件: {"、".join(self._checks)}',
+            )
+        else:
+            log_event(
+                self, 'wait_for_ros_condition', 'READINESS_GATE_TIMEOUT',
+                f'超时={self._args.timeout}秒 待满足条件: {"、".join(self._checks)}',
+                level='ERROR',
+            )
         self._done = True
         self._exit_code = code
         rclpy.shutdown()

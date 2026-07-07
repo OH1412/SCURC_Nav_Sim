@@ -1,8 +1,11 @@
 #include "legged_mission_bt/arm_action_node.hpp"
 
 #include <chrono>
+#include <sstream>
 #include <stdexcept>
 #include <thread>
+
+#include "legged_bringup/mission_log.hpp"
 
 using namespace std::chrono_literals;
 
@@ -130,6 +133,11 @@ void ArmActionNode::publishArmPoseRequest()
   msg.nav_id = nav_ref_id_;
 
   arm_request_pub_->publish(msg);
+  std::ostringstream detail;
+  detail << "节点=" << name() << " 机械臂点位=" << static_cast<unsigned>(msg.arm_point_id)
+         << " 关联导航点=" << msg.nav_id;
+  legged_bringup::mission_log::publish(
+    *node_, "ArmActionNode", "ARM_POSE_REQUEST_PUBLISHED", "INFO", detail.str());
   RCLCPP_INFO(
     node_->get_logger(),
     "%s: published arm_pose_request arm_point=%u nav_id='%s'",
@@ -140,6 +148,11 @@ BT::NodeStatus ArmActionNode::onStart()
 {
   waiting_for_wp_ = false;
   getInput("timeout", timeout_sec_);
+
+  const char * step_name = (action_code_ == 1) ? "抓取" : "放置";
+  std::ostringstream start_detail;
+  start_detail << "节点=" << name() << " 步骤=" << step_name
+               << " 超时=" << timeout_sec_ << "秒";
 
   // Resolve arm_point_id / wp_id first (need wp_id_ for mode decision)
   {
@@ -159,6 +172,10 @@ BT::NodeStatus ArmActionNode::onStart()
     }
     getInput("nav_ref_id", nav_ref_id_);
   }
+
+  start_detail << " 机械臂点位=" << wp_id_ << " 关联导航点=" << nav_ref_id_;
+  legged_bringup::mission_log::publish(
+    *node_, "ArmActionNode", "ARM_STEP_START", "INFO", start_detail.str());
 
   // ── inline mode (x/y/z ports, no wp_id) ──
   if (wp_id_.empty()) {
@@ -180,6 +197,9 @@ BT::NodeStatus ArmActionNode::onStart()
         node_->get_logger(),
         "%s: no subscriber on %s after 5s (count=%zu). Is serial_cmd_sender running?",
         name().c_str(), arm_command_topic_.c_str(), cmd_pub_->get_subscription_count());
+      legged_bringup::mission_log::publish(
+        *node_, "ArmActionNode", "ARM_COMMAND_NO_SUBSCRIBER", "ERROR",
+        std::string("话题=") + arm_command_topic_ + " 无订阅者");
       return BT::NodeStatus::FAILURE;
     }
 
@@ -226,7 +246,15 @@ void ArmActionNode::publishCommand()
   msg.data = {serial_x, serial_y, z_mm_, yaw_, static_cast<double>(action_code_)};
   cmd_pub_->publish(msg);
 
-  const char * action_name = (action_code_ == 1) ? "Pick" : "Place";
+  const char * action_name = (action_code_ == 1) ? "抓取" : "放置";
+  std::ostringstream detail;
+  detail << "节点=" << name() << " 动作=" << action_name
+         << " 话题=" << arm_command_topic_
+         << " 行为树坐标(mm)=(" << x_mm_ << ',' << y_mm_ << ',' << z_mm_ << ",航向=" << yaw_ << "弧度)"
+         << " 串口坐标(mm)=(" << serial_x << ',' << serial_y << ',' << z_mm_ << ",航向=" << yaw_
+         << ",动作码=" << static_cast<int>(action_code_) << ')';
+  legged_bringup::mission_log::publish(
+    *node_, "ArmActionNode", "ARM_COMMAND_SENT", "INFO", detail.str());
   RCLCPP_INFO(
     node_->get_logger(),
     "%s: sent %s to %s (subs=%zu): BT(x=%.1f, y=%.1f) → serial(x=%.1f, y=%.1f, z=%.1f, yaw=%.3f, action=%.0f)",
@@ -258,6 +286,9 @@ BT::NodeStatus ArmActionNode::onRunning()
           node_->get_logger(),
           "%s: no subscriber on %s after 5s",
           name().c_str(), arm_command_topic_.c_str());
+        legged_bringup::mission_log::publish(
+          *node_, "ArmActionNode", "ARM_COMMAND_NO_SUBSCRIBER", "ERROR",
+          std::string("话题=") + arm_command_topic_ + " 无订阅者");
         return BT::NodeStatus::FAILURE;
       }
 
@@ -269,6 +300,10 @@ BT::NodeStatus ArmActionNode::onRunning()
           node_->get_logger(),
           "%s: timeout waiting for arm wp_id='%s' (%.0fs)",
           name().c_str(), wp_id_.c_str(), waypoint_wait_timeout_);
+        legged_bringup::mission_log::publish(
+          *node_, "ArmActionNode", "ARM_WAYPOINT_TIMEOUT", "ERROR",
+          "机械臂点位=" + wp_id_ + " 超时=" +
+          std::to_string(static_cast<int>(waypoint_wait_timeout_)) + "秒");
         return BT::NodeStatus::FAILURE;
       }
       return BT::NodeStatus::RUNNING;
@@ -278,9 +313,13 @@ BT::NodeStatus ArmActionNode::onRunning()
   if (ack_received_.load()) {
     if (ack_success_.load()) {
       RCLCPP_INFO(node_->get_logger(), "%s: ACK success", name().c_str());
+      legged_bringup::mission_log::publish(
+        *node_, "ArmActionNode", "ARM_ACK_SUCCESS", "INFO", "节点=" + name());
       return BT::NodeStatus::SUCCESS;
     }
     RCLCPP_ERROR(node_->get_logger(), "%s: ACK reported failure", name().c_str());
+    legged_bringup::mission_log::publish(
+      *node_, "ArmActionNode", "ARM_ACK_FAILURE", "ERROR", "节点=" + name());
     return BT::NodeStatus::FAILURE;
   }
 
@@ -291,6 +330,11 @@ BT::NodeStatus ArmActionNode::onRunning()
       "%s: ACK timeout after %.1fs (expected state=0x%02X on %s, cmd_subs=%zu)",
       name().c_str(), elapsed, expected_ack_state_, arm_status_topic_.c_str(),
       cmd_pub_->get_subscription_count());
+    std::ostringstream detail;
+    detail << "节点=" << name() << " 超时=" << elapsed << "秒 期望状态=0x"
+           << std::hex << static_cast<int>(expected_ack_state_) << std::dec;
+    legged_bringup::mission_log::publish(
+      *node_, "ArmActionNode", "ARM_ACK_TIMEOUT", "ERROR", detail.str());
     return BT::NodeStatus::FAILURE;
   }
 

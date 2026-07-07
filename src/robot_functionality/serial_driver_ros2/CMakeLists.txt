@@ -10,6 +10,7 @@ find_package(rclcpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(serial REQUIRED)
+find_package(legged_bringup REQUIRED)
 
 include_directories(include)
 
@@ -23,6 +24,7 @@ ament_target_dependencies(serial_cmd_sender
   geometry_msgs
   std_msgs
   serial
+  legged_bringup
 )
 
 install(TARGETS

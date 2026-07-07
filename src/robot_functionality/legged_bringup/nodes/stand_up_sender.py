@@ -20,13 +20,16 @@
 
 import socket
 import struct
-import time
 import sys
+from pathlib import Path
 
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import PoseStamped
 from std_msgs.msg import Bool
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from mission_log_client import log_event
 
 
 class StandUpSender(Node):
@@ -65,6 +68,10 @@ class StandUpSender(Node):
         self._done_pub = self.create_publisher(Bool, stand_up_done_topic, 10)
 
         if wait_for_reloc:
+            log_event(
+                self, 'stand_up_sender', 'STANDUP_WAIT_RELOC_START',
+                f'话题={reloc_topic} 延迟={reloc_delay:.1f}秒 超时={reloc_timeout:.1f}秒',
+            )
             self.get_logger().info(
                 f'Waiting for relocalization signal on {reloc_topic} '
                 f'(delay={reloc_delay:.0f}s, timeout={reloc_timeout:.0f}s)')
@@ -72,6 +79,7 @@ class StandUpSender(Node):
                 PoseStamped, reloc_topic, self._reloc_callback, 10)
             self._check_timer = self.create_timer(0.5, self._check_reloc)
         else:
+            log_event(self, 'stand_up_sender', 'STANDUP_SKIP_RELOC', '未启用重定位等待')
             self.get_logger().info('Skipping reloc wait, sending immediately...')
             self._send_stand_up()
 
@@ -80,6 +88,10 @@ class StandUpSender(Node):
             self._reloc_received = True
             self._reloc_arrival_time = self.get_clock().now()
             elapsed = (self._reloc_arrival_time - self._start_time).nanoseconds * 1e-9
+            log_event(
+                self, 'stand_up_sender', 'STANDUP_RELOC_RECEIVED',
+                f'已等待={elapsed:.1f}秒 额外延迟={self.reloc_delay:.1f}秒',
+            )
             self.get_logger().info(
                 f'Relocalization signal received (t+{elapsed:.1f}s). '
                 f'Delay={self.reloc_delay:.1f}s')
@@ -94,6 +106,11 @@ class StandUpSender(Node):
         elapsed = (now - self._start_time).nanoseconds * 1e-9
 
         if elapsed > self.reloc_timeout:
+            log_event(
+                self, 'stand_up_sender', 'STANDUP_RELOC_TIMEOUT',
+                f'超时={self.reloc_timeout:.0f}秒，仍将发送站立指令',
+                level='ERROR',
+            )
             self.get_logger().warn(
                 f'Reloc wait timeout ({self.reloc_timeout:.0f}s). Sending stand_up anyway...')
             self._check_timer.cancel()
@@ -117,8 +134,16 @@ class StandUpSender(Node):
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             sock.sendto(packet, (self.udp_ip, self.udp_port))
             sock.close()
+            log_event(
+                self, 'stand_up_sender', 'STANDUP_UDP_SENT',
+                f'UDP目标={self.udp_ip}:{self.udp_port} 模式=站立(1)',
+            )
             self.get_logger().info('STAND_UP command sent successfully.')
         except Exception as e:
+            log_event(
+                self, 'stand_up_sender', 'STANDUP_UDP_FAILED',
+                f'发送失败: {e}', level='ERROR',
+            )
             self.get_logger().fatal(f'Failed to send STAND_UP: {e}')
             sys.exit(1)
 
@@ -129,9 +154,17 @@ class StandUpSender(Node):
 
     def _done(self):
         self.get_logger().info('Standup should be complete. Exiting.')
+        log_event(
+            self, 'stand_up_sender', 'STANDUP_WAIT_COMPLETE',
+            f'等待时长={self.standup_wait:.1f}秒',
+        )
         done_msg = Bool()
         done_msg.data = True
         self._done_pub.publish(done_msg)
+        log_event(
+            self, 'stand_up_sender', 'STANDUP_DONE_PUBLISHED',
+            f'话题={self._stand_up_done_topic}',
+        )
         self.get_logger().info(f'Published stand-up done on {self._stand_up_done_topic}')
         rclpy.shutdown()
 

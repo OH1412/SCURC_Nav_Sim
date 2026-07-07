@@ -15,6 +15,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/bool.hpp>
 #include <yaml-cpp/yaml.h>
+#include "legged_bringup/mission_log.hpp"
 
 namespace cmd_vel_udp_bridge {
 
@@ -66,6 +67,10 @@ public:
     RCLCPP_INFO(get_logger(),
                 "cmd_vel_udp_bridge: topic=%s ip=%s port=%d mode=%d",
                 cmd_vel_topic_.c_str(), udp_ip_.c_str(), udp_port_, mode_);
+    legged_bringup::mission_log::publish(
+      *this, "cmd_vel_udp_bridge", "UDP_BRIDGE_STARTED", "INFO",
+      "订阅话题=" + cmd_vel_topic_ + " UDP目标=" + udp_ip_ + ":" + std::to_string(udp_port_) +
+      " 模式=" + std::to_string(mode_));
     RCLCPP_INFO(get_logger(),
                 "limits: vx[%.2f, %.2f] vy[%.2f, %.2f] yaw[%.2f, %.2f]",
                 cmd_vx_min_, cmd_vx_max_, cmd_vy_min_, cmd_vy_max_,

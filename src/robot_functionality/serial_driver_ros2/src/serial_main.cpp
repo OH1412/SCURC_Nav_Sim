@@ -3,7 +3,9 @@
 #include "std_msgs/msg/u_int8_multi_array.hpp"
 #include "serial_driver/serial_comm.hpp"
 #include "serial_driver/protocol_defs.hpp"
+#include "legged_bringup/mission_log.hpp"
 #include <cmath>
+#include <sstream>
 
 using std::placeholders::_1;
 
@@ -31,7 +33,11 @@ public:
             default_control_ == protocol::ARM_CTRL_PLACE ? "PLACE" : "UNKNOWN");
 
         // 初始化串口通信类
-        comm_ = std::make_unique<SerialComm>(port, baudrate);
+        comm_ = std::make_unique<SerialComm>(port, baudrate, this);
+
+        legged_bringup::mission_log::publish(
+            *this, "serial_cmd_sender", "SERIAL_READY",
+            "INFO", "监听话题=/arm_command 发布话题=/arm_status");
 
         // ====================================================================
         // 订阅者
@@ -101,9 +107,19 @@ private:
             msg->data[0], msg->data[1], msg->data[2],
             x_mm, y_mm, z_mm, control);
 
+        std::ostringstream detail;
+        detail << "输入(mm)=(" << msg->data[0] << ',' << msg->data[1] << ',' << msg->data[2]
+               << ") 输出(mm)=(" << x_mm << ',' << y_mm << ',' << z_mm
+               << ") 控制字节=0x" << std::hex << static_cast<int>(control) << std::dec;
+        legged_bringup::mission_log::publish(
+            *this, "serial_cmd_sender", "ARM_COMMAND_RECEIVED", "INFO", detail.str());
+
         bool success = comm_->sendArmTargetCommand(
             control, x_mm, y_mm, z_mm, arm_checksum_offset_);
         if (!success) {
+            legged_bringup::mission_log::publish(
+                *this, "serial_cmd_sender", "ARM_COMMAND_SEND_FAILED", "ERROR",
+                detail.str());
             RCLCPP_WARN(this->get_logger(), "Send Error (arm_command)");
         }
     }
@@ -120,14 +136,17 @@ private:
             auto msg = std_msgs::msg::UInt8MultiArray();
             msg.data = {ack.state, ack.result};
 
-            const char* state_str = (ack.state == protocol::ARM_CTRL_PICK)  ? "PICK" :
-                                    (ack.state == protocol::ARM_CTRL_PLACE) ? "PLACE" : "?";
-            const char* result_str = (ack.result == protocol::ARM_ACK_OK)   ? "OK" :
-                                     (ack.result == protocol::ARM_ACK_FAIL) ? "FAIL" : "?";
+            const char* state_cn = (ack.state == protocol::ARM_CTRL_PICK) ? "抓取" :
+                                   (ack.state == protocol::ARM_CTRL_PLACE) ? "放置" : "未知";
+            const char* result_cn = (ack.result == protocol::ARM_ACK_OK) ? "成功" :
+                                    (ack.result == protocol::ARM_ACK_FAIL) ? "失败" : "未知";
 
-            RCLCPP_INFO(this->get_logger(),
-                "[ARM STATUS] Published: state=0x%02X(%s) result=0x%02X(%s)",
-                ack.state, state_str, ack.result, result_str);
+            std::ostringstream detail;
+            detail << "状态=0x" << std::hex << static_cast<int>(ack.state) << std::dec
+                   << '(' << state_cn << ") 结果=0x" << std::hex
+                   << static_cast<int>(ack.result) << std::dec << '(' << result_cn << ')';
+            legged_bringup::mission_log::publish(
+                *this, "serial_cmd_sender", "ARM_STATUS_PUBLISHED", "INFO", detail.str());
 
             arm_status_pub_->publish(msg);
         }

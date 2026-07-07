@@ -16,21 +16,15 @@
       <Nav2PoseNode wp_id="wp1_pick1"/>
       <ArmPickNode arm_point_id="0" timeout="30.0"/>
 
-      <!-- ===== 搬运: 中间航点 ===== -->
-      <Nav2PoseNode wp_id="wp3_transit"/>
-      <Nav2PoseNode wp_id="wp4_transit"/>
+       <!-- step 3: path=1 wp=2 state=1 (transit) target_id=-1 -->
+      <Nav2PoseNode wp_id="nav_p1_wp2"/>
 
-      <!-- ===== 放置: 放置点8 ===== -->
-      <Nav2PoseNode wp_id="wp5_place9"/>
-      <ArmPlaceNode arm_point_id="8" timeout="30.0"/>
+      <!-- step 4: path=1 wp=3 state=1 (transit) target_id=-1 -->
+      <Nav2PoseNode wp_id="nav_p1_wp3"/>
 
-      <!-- ===== 抓取: 物体B (arm_point 1) ===== -->
-      <Nav2PoseNode wp_id="wp6_pick2"/>
-      <ArmPickNode arm_point_id="1" timeout="30.0"/>
-
-      <!-- ===== 放置: 放置点9 ===== -->
-      <Nav2PoseNode wp_id="wp7_place10"/>
-      <ArmPlaceNode arm_point_id="9" timeout="30.0"/>
+      <!-- step 5: path=2 wp=2 state=3 (place) target_id=0 -->
+      <Nav2PoseNode wp_id="nav_p2_wp2"/>
+      <ArmPlaceNode arm_point_id="0" timeout="30.0"/>
 
     </Sequence>
   </BehaviorTree>

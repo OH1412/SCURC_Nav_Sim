@@ -8,6 +8,8 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(nav2_bringup REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(std_msgs REQUIRED)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -42,6 +44,9 @@ install(PROGRAMS
   nodes/arm_mission_trigger.py
   nodes/arm_pose_broadcaster.py
   nodes/wait_for_ros_condition.py
+  nodes/mission_session_logger.py
+  nodes/mission_log_client.py
+  nodes/mission_log_labels.py
   nodes/pointcloud_range_filter.py
   test/path1_nav_test.py
   test/record_waypoints.py
@@ -58,6 +63,14 @@ install(PROGRAMS
 )
 
 
-# 4 include 
+install(DIRECTORY include/
+  DESTINATION include)
+
+install(DIRECTORY logs
+  DESTINATION share/${PROJECT_NAME}
+  OPTIONAL)
+
+ament_export_include_directories(include)
+ament_export_dependencies(rclcpp std_msgs)
 
 ament_package()

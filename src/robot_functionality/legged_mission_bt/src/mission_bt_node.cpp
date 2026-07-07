@@ -19,6 +19,9 @@
 #include "legged_mission_bt/wait_seconds_node.hpp"
 #include "legged_mission_bt/waypoint_registry.hpp"
 #include "legged_mission_bt/waypoint_ros_bridge.hpp"
+#include "legged_bringup/mission_log.hpp"
+
+#include <sstream>
 
 using namespace std::chrono_literals;
 
@@ -73,6 +76,9 @@ bool waitForLifecycleActive(
           node->get_logger(),
           "%s lifecycle ACTIVE (label=%s)",
           lifecycle_node_name.c_str(), state.label.c_str());
+        legged_bringup::mission_log::publish(
+          *node, "mission_bt_node", "NAV2_LIFECYCLE_ACTIVE", "INFO",
+          "节点=" + lifecycle_node_name + " 状态=已激活");
         return true;
       }
       if ((node->now() - last_log).seconds() >= 5.0) {
@@ -92,6 +98,10 @@ bool waitForLifecycleActive(
     node->get_logger(),
     "Timeout waiting for %s lifecycle ACTIVE (%.0fs)",
     lifecycle_node_name.c_str(), timeout_sec);
+  legged_bringup::mission_log::publish(
+    *node, "mission_bt_node", "NAV2_LIFECYCLE_TIMEOUT", "ERROR",
+    "节点=" + lifecycle_node_name + " 超时=" +
+    std::to_string(static_cast<int>(timeout_sec)) + "秒");
   return false;
 }
 
@@ -112,6 +122,8 @@ bool waitForNavigateToPoseAction(
   while (rclcpp::ok() && node->now() < deadline) {
     if (client->wait_for_action_server(0s)) {
       RCLCPP_INFO(node->get_logger(), "navigate_to_pose action server ready.");
+      legged_bringup::mission_log::publish(
+        *node, "mission_bt_node", "NAV2_ACTION_READY", "INFO", "动作=navigate_to_pose 状态=就绪");
       return true;
     }
     if ((node->now() - last_log).seconds() >= 5.0) {
@@ -125,6 +137,9 @@ bool waitForNavigateToPoseAction(
   RCLCPP_ERROR(
     node->get_logger(),
     "navigate_to_pose not available after %.0fs", timeout_sec);
+  legged_bringup::mission_log::publish(
+    *node, "mission_bt_node", "NAV2_ACTION_TIMEOUT", "ERROR",
+    "动作=navigate_to_pose 超时=" + std::to_string(static_cast<int>(timeout_sec)) + "秒");
   return false;
 }
 
@@ -159,9 +174,13 @@ int main(int argc, char ** argv)
 
   if (bt_xml_file.empty()) {
     RCLCPP_ERROR(node->get_logger(), "Parameter 'bt_xml_file' is empty.");
+    legged_bringup::mission_log::publish(
+      *node, "mission_bt_node", "BT_LOAD_FAILED", "ERROR", "行为树XML路径为空");
     return 1;
   }
 
+  legged_bringup::mission_log::publish(
+    *node, "mission_bt_node", "BT_XML_CONFIGURED", "INFO", "文件=" + bt_xml_file);
   RCLCPP_INFO(node->get_logger(), "Loading mission BT: %s", bt_xml_file.c_str());
 
   auto registry = legged_mission_bt::WaypointRegistry::create();
@@ -171,6 +190,12 @@ int main(int argc, char ** argv)
   try {
     registry->seedFromFile(waypoints_file);
     if (!waypoints_file.empty()) {
+      std::ostringstream detail;
+      detail << "文件=" << waypoints_file
+             << " 导航航点=" << registry->navCount()
+             << " 机械臂航点=" << registry->armCount();
+      legged_bringup::mission_log::publish(
+        *node, "mission_bt_node", "WAYPOINTS_LOADED", "INFO", detail.str());
       RCLCPP_INFO(
         node->get_logger(),
         "Seeded %zu nav + %zu arm waypoints from %s",
@@ -178,6 +203,8 @@ int main(int argc, char ** argv)
     }
   } catch (const std::exception & e) {
     RCLCPP_ERROR(node->get_logger(), "%s", e.what());
+    legged_bringup::mission_log::publish(
+      *node, "mission_bt_node", "WAYPOINTS_LOAD_FAILED", "ERROR", e.what());
     return 1;
   }
 
@@ -238,8 +265,12 @@ int main(int argc, char ** argv)
   BT::Tree tree;
   try {
     tree = factory.createTreeFromFile(bt_xml_file);
+    legged_bringup::mission_log::publish(
+      *node, "mission_bt_node", "BT_LOADED", "INFO", "文件=" + bt_xml_file);
   } catch (const std::exception & e) {
     RCLCPP_ERROR(node->get_logger(), "Failed to load BT xml: %s", e.what());
+    legged_bringup::mission_log::publish(
+      *node, "mission_bt_node", "BT_XML_LOAD_FAILED", "ERROR", e.what());
     return 1;
   }
 
@@ -276,6 +307,8 @@ int main(int argc, char ** argv)
   }
 
   RCLCPP_INFO(node->get_logger(), "Starting mission BT tick loop.");
+  legged_bringup::mission_log::publish(
+    *node, "mission_bt_node", "BT_TICK_START", "INFO", "文件=" + bt_xml_file);
 
   rclcpp::Rate rate(10.0);
   while (rclcpp::ok()) {
@@ -283,10 +316,14 @@ int main(int argc, char ** argv)
 
     if (status == BT::NodeStatus::SUCCESS) {
       RCLCPP_INFO(node->get_logger(), "Mission BT finished SUCCESS");
+      legged_bringup::mission_log::publish(
+        *node, "mission_bt_node", "BT_FINISHED_SUCCESS", "INFO", "文件=" + bt_xml_file);
       break;
     }
     if (status == BT::NodeStatus::FAILURE) {
       RCLCPP_ERROR(node->get_logger(), "Mission BT finished FAILURE");
+      legged_bringup::mission_log::publish(
+        *node, "mission_bt_node", "BT_FINISHED_FAILURE", "ERROR", "文件=" + bt_xml_file);
       rclcpp::shutdown();
       return 2;
     }

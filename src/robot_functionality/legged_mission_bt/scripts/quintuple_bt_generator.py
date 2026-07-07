@@ -11,6 +11,21 @@ STATE_TRANSIT = 1
 STATE_PICK = 2
 STATE_PLACE = 3
 
+PLACE_ARM_ID_OFFSET = 8
+
+
+def arm_point_id_for_step(state: int, target_id: int) -> int:
+    """Map quintuple target_id to arm_points.yaml id.
+
+    state=2 (pick):  target_id 0~7  -> arm_point_id 0~7
+    state=3 (place): target_id 0~7  -> arm_point_id 8~15
+    """
+    if state == STATE_PICK:
+        return target_id
+    if state == STATE_PLACE:
+        return target_id + PLACE_ARM_ID_OFFSET
+    raise ValueError(f'arm_point_id mapping not defined for state {state}')
+
 
 def nav_wp_id(path: int, wp: int) -> str:
     """Stable nav waypoint id: path P, waypoint W -> nav_pP_wpW."""
@@ -108,8 +123,8 @@ def build_bt_xml(
         lines.append(f'  来源: {quintuple_path}')
     lines.extend([
         '  state=1: Nav2PoseNode',
-        '  state=2: Nav2PoseNode + ArmPickNode',
-        '  state=3: Nav2PoseNode + ArmPlaceNode',
+        '  state=2: Nav2PoseNode + ArmPickNode (target_id 0~7 -> arm_point_id 0~7)',
+        '  state=3: Nav2PoseNode + ArmPlaceNode (target_id 0~7 -> arm_point_id 8~15)',
         '-->',
         '<root BTCPP_format="4">',
         '  <BehaviorTree ID="MissionHardcoded">',
@@ -127,14 +142,21 @@ def build_bt_xml(
 
         lines.append(
             f'      <!-- step {index}: path={path} wp={wp} state={state} ({label})'
-            f' target_id={target_id} -->'
+            f' target_id={target_id}'
         )
+        if state in (STATE_PICK, STATE_PLACE):
+            arm_id = arm_point_id_for_step(state, target_id)
+            lines[-1] += f' arm_point_id={arm_id} -->'
+        else:
+            lines[-1] += ' -->'
         lines.append(f'      <Nav2PoseNode wp_id="{wp_id}"/>')
 
         if state == STATE_PICK:
-            lines.append(f'      <ArmPickNode arm_point_id="{target_id}" timeout="{arm_timeout:.1f}"/>')
+            arm_id = arm_point_id_for_step(state, target_id)
+            lines.append(f'      <ArmPickNode arm_point_id="{arm_id}" timeout="{arm_timeout:.1f}"/>')
         elif state == STATE_PLACE:
-            lines.append(f'      <ArmPlaceNode arm_point_id="{target_id}" timeout="{arm_timeout:.1f}"/>')
+            arm_id = arm_point_id_for_step(state, target_id)
+            lines.append(f'      <ArmPlaceNode arm_point_id="{arm_id}" timeout="{arm_timeout:.1f}"/>')
         elif state != STATE_TRANSIT:
             raise ValueError(f'Unsupported state {state} at sequence index {index}')
         lines.append('')

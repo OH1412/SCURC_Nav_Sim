@@ -1,12 +1,15 @@
 #include "rclcpp/rclcpp.hpp"
 #include "serial_driver/serial_comm.hpp"
 #include "serial_driver/protocol_defs.hpp"
+#include "legged_bringup/mission_log.hpp"
 #include <iostream>
+#include <sstream>
 
-SerialComm::SerialComm(const std::string& port, unsigned long baudrate)
+SerialComm::SerialComm(const std::string& port, unsigned long baudrate, rclcpp::Node * log_node)
     : port_(port),
       baudrate_(baudrate),
-      running_(true) {
+      running_(true),
+      log_node_(log_node) {
     
     // 尝试初始化串口，失败也不影响程序启动
     try {
@@ -33,6 +36,11 @@ SerialComm::SerialComm(const std::string& port, unsigned long baudrate)
             RCLCPP_INFO(rclcpp::get_logger("SerialComm"), "✅ Serial Open at: %s @ %lu bps", port.c_str(), baudrate);
         }
     } catch (const std::exception& e) {
+        if (log_node_) {
+            legged_bringup::mission_log::publish(
+                *log_node_, "SerialComm", "SERIAL_OPEN_FAILED", "ERROR",
+                std::string("端口=") + port + " 错误=" + e.what());
+        }
         RCLCPP_WARN(rclcpp::get_logger("SerialComm"), "⚠️ Serial Open failed: %s, will auto-reconnect...", e.what());
     }
     
@@ -91,6 +99,11 @@ bool SerialComm::attemptReconnect() {
             } catch (...) {}
 
             RCLCPP_INFO(rclcpp::get_logger("SerialComm"), "✅ Serial reconnected: %s @ %lu bps", port_.c_str(), baudrate_);
+            if (log_node_) {
+                legged_bringup::mission_log::publish(
+                    *log_node_, "SerialComm", "SERIAL_RECONNECTED", "INFO",
+                    std::string("端口=") + port_ + " 波特率=" + std::to_string(baudrate_));
+            }
             return true;
         }
     } catch (const std::exception& e) {
@@ -251,6 +264,11 @@ bool SerialComm::sendArmTargetCommand(uint8_t control,
         size_t bytes_written = serial_port_.write(frame);
         return bytes_written == frame.size();
     } catch (const std::exception& e) {
+        if (log_node_) {
+            legged_bringup::mission_log::publish(
+                *log_node_, "SerialComm", "ARM_SEND_ERROR", "ERROR",
+                std::string("发送失败: ") + e.what());
+        }
         RCLCPP_ERROR(rclcpp::get_logger("SerialComm"), "Arm send error: %s", e.what());
         if (serial_port_.isOpen()) {
             serial_port_.close();
@@ -341,6 +359,11 @@ ArmAck SerialComm::readArmAck() {
             }
         }
     } catch (const std::exception& e) {
+        if (log_node_) {
+            legged_bringup::mission_log::publish(
+                *log_node_, "SerialComm", "ARM_ACK_READ_ERROR", "ERROR",
+                std::string("读取失败: ") + e.what());
+        }
         RCLCPP_ERROR(rclcpp::get_logger("SerialComm"), "readArmAck error: %s", e.what());
     }
 

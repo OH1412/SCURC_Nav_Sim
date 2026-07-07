@@ -10,6 +10,7 @@ find_package(rclcpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(yaml-cpp REQUIRED)
+find_package(legged_bringup REQUIRED)
 
 add_executable(cmd_vel_udp_bridge_node
   src/cmd_vel_udp_bridge_node.cpp
@@ -19,6 +20,7 @@ ament_target_dependencies(cmd_vel_udp_bridge_node
   rclcpp
   geometry_msgs
   std_msgs
+  legged_bringup
 )
 
 target_link_libraries(cmd_vel_udp_bridge_node yaml-cpp)
