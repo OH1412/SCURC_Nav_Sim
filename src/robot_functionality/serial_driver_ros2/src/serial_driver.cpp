@@ -365,6 +365,10 @@ ArmAck SerialComm::readArmAck() {
                 std::string("读取失败: ") + e.what());
         }
         RCLCPP_ERROR(rclcpp::get_logger("SerialComm"), "readArmAck error: %s", e.what());
+        // 关闭串口以触发自动重连（与 sendFloatArrayCommand / readFloatArrayResponse 保持一致）
+        if (serial_port_.isOpen()) {
+            serial_port_.close();
+        }
     }
 
     return ack;

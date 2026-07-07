@@ -7,7 +7,7 @@
   <BehaviorTree ID="ArmOnlyDemo">
     <Sequence name="ArmOnlyTest">
 
-      <ArmPickNode x="550.0" y="0.0" z="-50.0" yaw="0.0" timeout="30.0"/>
+      <ArmPickNode x="650.0" y="0.0" z="-100.0" yaw="0.0" timeout="30.0"/>
 
       <WaitSecondsNode duration="5.0"/>
 

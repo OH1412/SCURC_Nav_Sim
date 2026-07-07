@@ -35,6 +35,9 @@ def generate_launch_description():
     reloc_delay = LaunchConfiguration('reloc_delay')
     enable_mission_bt = LaunchConfiguration('enable_mission_bt')
     mission_bt_delay = LaunchConfiguration('mission_bt_delay')
+    enable_start_nav_gate = LaunchConfiguration('enable_start_nav_gate')
+    start_nav_topic = LaunchConfiguration('start_nav_topic')
+    wait_for_start_nav_timeout = LaunchConfiguration('wait_for_start_nav_timeout')
     enable_arm_pose_broadcaster = LaunchConfiguration('enable_arm_pose_broadcaster')
     enable_arm_control = LaunchConfiguration('enable_arm_control')
     arm_control_delay = LaunchConfiguration('arm_control_delay')
@@ -81,8 +84,17 @@ def generate_launch_description():
         'enable_mission_bt', default_value='true',
         description='Start standalone mission_bt_node (Nav+Arm fly_step)')
     declare_mission_bt_delay = DeclareLaunchArgument(
-        'mission_bt_delay', default_value='15.0',
-        description='Delay after bringup before starting mission BT (Nav2 lifecycle needs ~30s+)')
+        'mission_bt_delay', default_value='10.0',
+        description='Delay after bringup before starting mission_bt_node (preload BT before /start_nav)')
+    declare_enable_start_nav_gate = DeclareLaunchArgument(
+        'enable_start_nav_gate', default_value='true',
+        description='Wait for /start_nav (gamepad X) before mission BT nav+arm tick loop')
+    declare_start_nav_topic = DeclareLaunchArgument(
+        'start_nav_topic', default_value='/start_nav',
+        description='Bool topic from deploy_cpp gamepad; data=true releases mission BT')
+    declare_wait_for_start_nav_timeout = DeclareLaunchArgument(
+        'wait_for_start_nav_timeout', default_value='0.0',
+        description='Seconds to wait for start_nav (0 = wait forever)')
     declare_enable_arm_pose_broadcaster = DeclareLaunchArgument(
         'enable_arm_pose_broadcaster', default_value='true',
         description='Start arm_pose_broadcaster (map_target → base_link)')
@@ -228,6 +240,9 @@ def generate_launch_description():
             'bt_xml_file': bt_xml_file,
             'waypoints_file': waypoints_file,
             'use_sim_time': use_sim_time,
+            'enable_start_nav_gate': enable_start_nav_gate,
+            'start_nav_topic': start_nav_topic,
+            'wait_for_start_nav_timeout': wait_for_start_nav_timeout,
         }],
     )
     delayed_mission_bt = TimerAction(
@@ -271,6 +286,9 @@ def generate_launch_description():
     ld.add_action(declare_reloc_delay)
     ld.add_action(declare_enable_mission_bt)
     ld.add_action(declare_mission_bt_delay)
+    ld.add_action(declare_enable_start_nav_gate)
+    ld.add_action(declare_start_nav_topic)
+    ld.add_action(declare_wait_for_start_nav_timeout)
     ld.add_action(declare_enable_arm_pose_broadcaster)
     ld.add_action(declare_enable_arm_control)
     ld.add_action(declare_arm_control_delay)
