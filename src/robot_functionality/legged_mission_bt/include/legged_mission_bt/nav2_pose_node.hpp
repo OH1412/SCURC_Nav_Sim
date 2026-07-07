@@ -10,6 +10,7 @@
 #include <nav_msgs/msg/odometry.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp_action/rclcpp_action.hpp>
+#include <std_msgs/msg/string.hpp>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
 
@@ -38,6 +39,7 @@ private:
   bool resolveGoal(std::string & frame_id, double & x, double & y, double & yaw);
   bool sendGoal(const std::string & frame_id, double x, double y, double yaw);
   void publishNavReached(const std::string & nav_id);
+  void publishNavZone(const std::string & zone);
   void resetNavProgressLogSchedule();
   void maybeLogNavProgress();
   bool getCurrentStateInGoalFrame(
@@ -51,6 +53,7 @@ private:
   std::shared_ptr<legged_mission_bt::WaypointRegistry> registry_;
   rclcpp_action::Client<NavigateToPose>::SharedPtr client_;
   rclcpp::Publisher<legged_mission_bt::msg::NavReached>::SharedPtr nav_reached_pub_;
+  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr nav_zone_pub_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
   std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
   std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
@@ -74,6 +77,7 @@ private:
   bool result_ready_{false};
   bool waiting_for_wp_{false};
   std::string wp_id_;
+  bool limit_yaw_{false};
   rclcpp::Time resolve_start_;
   double waypoint_wait_timeout_{120.0};
 };

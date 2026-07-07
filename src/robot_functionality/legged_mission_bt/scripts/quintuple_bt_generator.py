@@ -140,16 +140,19 @@ def build_bt_xml(
         wp_id = nav_wp_id(path, wp)
         label = state_label(state)
 
+        limit_yaw = bool(step.get('limit_yaw', False))
+        zone = 'middle' if limit_yaw else 'edge'
+
         lines.append(
             f'      <!-- step {index}: path={path} wp={wp} state={state} ({label})'
-            f' target_id={target_id}'
+            f' target_id={target_id} limit_yaw={limit_yaw} zone={zone}'
         )
         if state in (STATE_PICK, STATE_PLACE):
             arm_id = arm_point_id_for_step(state, target_id)
             lines[-1] += f' arm_point_id={arm_id} -->'
         else:
             lines[-1] += ' -->'
-        lines.append(f'      <Nav2PoseNode wp_id="{wp_id}"/>')
+        lines.append(f'      <Nav2PoseNode wp_id="{wp_id}" limit_yaw="{str(limit_yaw).lower()}"/>')
 
         if state == STATE_PICK:
             arm_id = arm_point_id_for_step(state, target_id)

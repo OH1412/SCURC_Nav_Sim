@@ -46,6 +46,12 @@ Nav2PoseNode::Nav2PoseNode(
   const auto nav_reached_topic = node_->get_parameter("nav_reached_topic").as_string();
   nav_reached_pub_ = node_->create_publisher<legged_mission_bt::msg::NavReached>(
     nav_reached_topic, rclcpp::QoS(rclcpp::KeepLast(10)).reliable());
+  if (!node_->has_parameter("nav_zone_topic")) {
+    node_->declare_parameter("nav_zone_topic", "/mission_bt/nav_zone");
+  }
+  const auto nav_zone_topic = node_->get_parameter("nav_zone_topic").as_string();
+  nav_zone_pub_ = node_->create_publisher<std_msgs::msg::String>(
+    nav_zone_topic, rclcpp::QoS(rclcpp::KeepLast(10)).reliable());
   client_ = rclcpp_action::create_client<NavigateToPose>(node_, "navigate_to_pose");
 
   if (!node_->has_parameter("odom_topic")) {
@@ -78,6 +84,7 @@ BT::PortsList Nav2PoseNode::providedPorts()
     BT::InputPort<double>("x", "Goal X (inline mode)"),
     BT::InputPort<double>("y", "Goal Y (inline mode)"),
     BT::InputPort<double>("yaw", 0.0, "Yaw in radians (inline mode)"),
+    BT::InputPort<bool>("limit_yaw", false, "true=middle zone (yaw locked), false=edge zone (rotation allowed)"),
   };
 }
 
@@ -161,6 +168,20 @@ void Nav2PoseNode::publishNavReached(const std::string & nav_id)
   nav_reached_pub_->publish(msg);
   legged_bringup::mission_log::publish(
     *node_, "Nav2PoseNode", "NAV_REACHED_PUBLISHED", "INFO", "导航点=" + nav_id);
+}
+
+void Nav2PoseNode::publishNavZone(const std::string & zone)
+{
+  std_msgs::msg::String msg;
+  msg.data = zone;
+  nav_zone_pub_->publish(msg);
+  RCLCPP_INFO(node_->get_logger(),
+    "Nav2PoseNode: published nav_zone='%s' for wp_id='%s' (limit_yaw=%s)",
+    zone.c_str(), wp_id_.c_str(), limit_yaw_ ? "true" : "false");
+  legged_bringup::mission_log::publish(
+    *node_, "Nav2PoseNode", "NAV_ZONE_PUBLISHED", "INFO",
+    "区域=" + zone + " 导航点=" + wp_id_ +
+    " limit_yaw=" + (limit_yaw_ ? "true→middle" : "false→edge"));
 }
 
 bool Nav2PoseNode::sendGoal(const std::string & frame_id, double x, double y, double yaw)
@@ -330,10 +351,17 @@ BT::NodeStatus Nav2PoseNode::onStart()
   goal_sent_ = false;
   result_ready_ = false;
 
+  // Read limit_yaw from BT XML port; true → middle zone, false → edge zone
+  getInput("limit_yaw", limit_yaw_);
+  const std::string zone = limit_yaw_ ? "middle" : "edge";
+  publishNavZone(zone);
+
   if (resolveGoal(frame_id, x, y, yaw)) {
     std::ostringstream detail;
     detail << "导航点=" << wp_id_ << " 坐标系=" << frame_id
-           << " x=" << x << " y=" << y << " 航向=" << yaw << "弧度";
+           << " x=" << x << " y=" << y << " 航向=" << yaw << "弧度"
+           << " limit_yaw=" << (limit_yaw_ ? "true" : "false")
+           << " zone=" << zone;
     legged_bringup::mission_log::publish(
       *node_, "Nav2PoseNode", "NAV_STEP_START", "INFO", detail.str());
     return sendGoal(frame_id, x, y, yaw) ? BT::NodeStatus::RUNNING : BT::NodeStatus::FAILURE;
@@ -363,9 +391,15 @@ BT::NodeStatus Nav2PoseNode::onRunning()
     double yaw = 0.0;
     if (resolveGoal(frame_id, x, y, yaw)) {
       waiting_for_wp_ = false;
+      // Read limit_yaw now that waypoint is available
+      getInput("limit_yaw", limit_yaw_);
+      const std::string zone = limit_yaw_ ? "middle" : "edge";
+      publishNavZone(zone);
       std::ostringstream detail;
       detail << "导航点=" << wp_id_ << " 坐标系=" << frame_id
-             << " x=" << x << " y=" << y << " 航向=" << yaw << "弧度";
+             << " x=" << x << " y=" << y << " 航向=" << yaw << "弧度"
+             << " limit_yaw=" << (limit_yaw_ ? "true" : "false")
+             << " zone=" << zone;
       legged_bringup::mission_log::publish(
         *node_, "Nav2PoseNode", "NAV_STEP_START", "INFO", detail.str());
       return sendGoal(frame_id, x, y, yaw) ? BT::NodeStatus::RUNNING : BT::NodeStatus::FAILURE;

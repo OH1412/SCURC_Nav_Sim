@@ -353,10 +353,13 @@ def generate_launch_description():
     ld.add_action(load_nodes)
     ld.add_action(load_composable_nodes)
 
-    # Position-based parameter switcher: monitors robot x position
-    # and dynamically sets DWB critic scales + goal checker tolerance.
-    # Zones: 0-1.35m edge | 1.35-3.35m middle | 3.35-6.30m edge
-    # Delayed 5s to let controller_server finish activation first.
+    # Nav zone parameter switcher: listens to /mission_bt/nav_zone
+    # (published by Nav2PoseNode) and dynamically sets DWB critic
+    # scales + goal checker tolerance via ros2 param set.
+    # Zone is driven by limit_yaw from mission YAML:
+    #   limit_yaw: true  → "middle" (yaw locked, no rotation)
+    #   limit_yaw: false → "edge"   (rotation allowed)
+    # Delayed 8s to let controller_server finish activation first.
     position_switcher_node = Node(
         package='legged_bringup',
         executable='position_based_param_switcher.py',

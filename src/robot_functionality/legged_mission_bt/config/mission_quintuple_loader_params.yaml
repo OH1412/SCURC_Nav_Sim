@@ -2,6 +2,7 @@ mission_quintuple_loader:
   ros__parameters:
     plan_ready_topic: /mission/plan_ready
     bt_config_ready_topic: /mission/bt_config_ready
+    wait_for_trigger: false           # true=等待 /mission/plan_ready 话题触发才转换, false=启动即转换
     quintuple_yaml: /home/dog12/SCURC_Nav_Sim/src/legged_mission_planner_f_r/tmp/mission_quintuple.yaml
     bt_xml_output: /home/dog12/SCURC_Nav_Sim/src/robot_functionality/legged_mission_bt/behavior_trees/mission_hardcoded.xml
     waypoints_yaml_output: ""

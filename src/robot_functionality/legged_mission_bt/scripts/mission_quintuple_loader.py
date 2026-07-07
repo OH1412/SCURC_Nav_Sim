@@ -30,6 +30,7 @@ class MissionQuintupleLoader(Node):
 
         self.declare_parameter('plan_ready_topic', '/mission/plan_ready')
         self.declare_parameter('bt_config_ready_topic', '/mission/bt_config_ready')
+        self.declare_parameter('wait_for_trigger', False)
         self.declare_parameter('quintuple_yaml', str(default_quintuple))
         self.declare_parameter('bt_xml_output', str(default_bt_xml))
         self.declare_parameter('waypoints_yaml_output', '')
@@ -40,6 +41,7 @@ class MissionQuintupleLoader(Node):
 
         self._plan_ready_topic = self.get_parameter('plan_ready_topic').value
         self._bt_config_ready_topic = self.get_parameter('bt_config_ready_topic').value
+        self._wait_for_trigger = bool(self.get_parameter('wait_for_trigger').value)
         self._quintuple_yaml = Path(self.get_parameter('quintuple_yaml').value)
         self._bt_xml_output = Path(self.get_parameter('bt_xml_output').value)
         waypoints_yaml_output = str(self.get_parameter('waypoints_yaml_output').value).strip()
@@ -51,18 +53,28 @@ class MissionQuintupleLoader(Node):
 
         qos = QoSProfile(depth=10, reliability=ReliabilityPolicy.RELIABLE)
         self._ready_pub = self.create_publisher(Bool, self._bt_config_ready_topic, qos)
-        self.create_subscription(Bool, self._plan_ready_topic, self._on_plan_ready, qos)
 
-        self.get_logger().info(f'Waiting for plan ready on {self._plan_ready_topic}')
+        if self._wait_for_trigger:
+            self.create_subscription(Bool, self._plan_ready_topic, self._on_plan_ready, qos)
+            self.get_logger().info(f'Waiting for plan ready on {self._plan_ready_topic}')
+        else:
+            self.get_logger().info('wait_for_trigger=false, converting immediately...')
+
         self.get_logger().info(f'Quintuple input: {self._quintuple_yaml}')
         self.get_logger().info(f'BT XML output: {self._bt_xml_output}')
         if self._waypoints_yaml_output:
             self.get_logger().info(f'Waypoints output: {self._waypoints_yaml_output}')
         self.get_logger().info(f'Will publish bt config ready on {self._bt_config_ready_topic}')
 
+        if not self._wait_for_trigger:
+            self._convert_and_publish()
+
     def _on_plan_ready(self, msg: Bool) -> None:
         if not msg.data:
             return
+        self._convert_and_publish()
+
+    def _convert_and_publish(self) -> None:
         try:
             summary = self._convert()
         except Exception as exc:

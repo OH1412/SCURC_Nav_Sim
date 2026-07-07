@@ -1,16 +1,13 @@
 #!/usr/bin/env python3
 """
-Position-based Nav2 Parameter Switcher Node (Plan C — dynamic param set).
+Nav2 Parameter Switcher Node — zone-driven by mission BT (limit_yaw).
 
-Monitors the robot's x coordinate from odometry and dynamically switches
-DWB critic scales + goal checker tolerance via ros2 param set — zero downtime.
+Listens to /mission_bt/nav_zone for zone commands published by Nav2PoseNode.
+Each Nav2PoseNode carries a limit_yaw attribute from the mission YAML:
+  - limit_yaw: true  → zone = "middle" (yaw locked to 0, no rotation, lateral vy allowed)
+  - limit_yaw: false → zone = "edge"   (rotation allowed, yaw unlocked, single-axis preferred)
 
-Zones:
-  - 0 ≤ x < 1.35m   → edge  zone (rotation allowed, yaw unlocked, single-axis preferred)
-  - 1.35m ≤ x ≤ 4.0m → middle zone (yaw locked to 0, allow lateral vy)
-  - 4.0m < x ≤ 6.30m → edge  zone (rotation allowed, yaw unlocked, single-axis preferred)
-
-Hysteresis: ±0.1m around boundaries to prevent rapid oscillation.
+Switches DWB critic scales + goal checker tolerance via ros2 param set — zero downtime.
 
 All 8 critics are pre-loaded in nav2_params.yaml; this node only toggles
 their scale values between 0 (disabled) and active weight.
@@ -18,7 +15,7 @@ their scale values between 0 (disabled) and active weight.
 
 import rclpy
 from rclpy.node import Node
-from nav_msgs.msg import Odometry
+from std_msgs.msg import String
 from rcl_interfaces.srv import SetParameters
 from rcl_interfaces.msg import Parameter, ParameterValue
 
@@ -30,7 +27,8 @@ from rcl_interfaces.msg import Parameter, ParameterValue
 # ---------------------------------------------------------------------------
 
 MIDDLE_PARAMS = {
-    # 中间区：不检查朝向（只要 xy 到位即视为完成）
+    # 中间区 (middle)：不检查朝向（只要 xy 到位即视为完成）
+    # limit_yaw: true → yaw 锁定为 0，禁止旋转，允许横向 vy
     # x/y 容差与 nav2_params.yaml general_goal_checker / FollowPath 一致
     'general_goal_checker.x_goal_tolerance': 0.08,
     'general_goal_checker.y_goal_tolerance': 0.15,
@@ -47,7 +45,8 @@ MIDDLE_PARAMS = {
 }
 
 EDGE_PARAMS = {
-    # 边缘区：允许旋转对齐朝向，允许横向移动
+    # 边缘区 (edge)：允许旋转对齐朝向，允许横向移动
+    # limit_yaw: false → 解除 yaw 限制，允许旋转对齐目标朝向
     'general_goal_checker.x_goal_tolerance': 0.08,
     'general_goal_checker.y_goal_tolerance': 0.15,
     'general_goal_checker.yaw_goal_tolerance': 0.17453,
@@ -73,22 +72,15 @@ def _make_param(name: str, value: float) -> Parameter:
 
 
 class PositionBasedParamSwitcher(Node):
-    """Switches Nav2 controller params dynamically based on robot x position."""
+    """Switches Nav2 controller params dynamically based on mission BT zone commands."""
 
     def __init__(self):
         super().__init__('position_based_param_switcher')
 
-        # Zone boundaries
-        self.declare_parameter('lower_boundary', 1.35)
-        self.declare_parameter('upper_boundary', 4.0)
-        self.declare_parameter('hysteresis_margin', 0.1)
-        self.declare_parameter('odom_topic', 'state_estimation')
+        self.declare_parameter('nav_zone_topic', '/mission_bt/nav_zone')
         self.declare_parameter('target_node', 'controller_server')
 
-        self.lower_boundary = self.get_parameter('lower_boundary').value
-        self.upper_boundary = self.get_parameter('upper_boundary').value
-        self.hysteresis = self.get_parameter('hysteresis_margin').value
-        self.odom_topic: str = self.get_parameter('odom_topic').value  # type: ignore
+        self.nav_zone_topic: str = self.get_parameter('nav_zone_topic').value  # type: ignore
         self.target_node: str = self.get_parameter('target_node').value  # type: ignore
 
         # State
@@ -99,65 +91,40 @@ class PositionBasedParamSwitcher(Node):
         srv_name = f'/{self.target_node}/set_parameters'
         self.param_client = self.create_client(SetParameters, srv_name)
 
-        # Subscribe to odometry
+        # Subscribe to nav_zone topic (published by Nav2PoseNode BT plugin)
         self.sub = self.create_subscription(
-            Odometry, self.odom_topic, self.odom_callback, 10)
-
+            String, self.nav_zone_topic, self.nav_zone_callback, 10)
 
         self.get_logger().info(
             '============================================================\n'
-            f'  PositionBasedParamSwitcher (Plan C — dynamic param set)\n'
-            f'  Edge  zone: x < {self.lower_boundary}  or  x > {self.upper_boundary}\n'
-            f'  Middle zone: {self.lower_boundary} ≤ x ≤ {self.upper_boundary}\n'
-            f'  Hysteresis: ±{self.hysteresis}m\n'
+            '  PositionBasedParamSwitcher — zone-driven by limit_yaw\n'
+            '  Zone "middle": limit_yaw=true  (yaw locked to 0, no rotation)\n'
+            '  Zone "edge":   limit_yaw=false (rotation allowed, yaw unlocked)\n'
+            f'  Listening on: {self.nav_zone_topic}\n'
             f'  Target node: /{self.target_node}\n'
             '============================================================'
         )
 
     # ------------------------------------------------------------------
-    # Zone logic
+    # Zone callback — zone is determined by mission BT, not x-coordinate
     # ------------------------------------------------------------------
 
-    def _determine_zone(self, x: float) -> str:
-        """Hysteresis-aware zone classification."""
-        if self.current_zone == 'edge':
-            lo = self.lower_boundary + self.hysteresis
-            hi = self.upper_boundary - self.hysteresis
-            if lo <= x <= hi:
-                return 'middle'
-            return 'edge'
-        elif self.current_zone == 'middle':
-            if x < self.lower_boundary - self.hysteresis:
-                return 'edge'
-            if x > self.upper_boundary + self.hysteresis:
-                return 'edge'
-            return 'middle'
-        else:
-            # First reading — no hysteresis
-            if self.lower_boundary <= x <= self.upper_boundary:
-                return 'middle'
-            return 'edge'
-
-    # ------------------------------------------------------------------
-    # Periodic status dump
-    # ------------------------------------------------------------------
-
-    # ------------------------------------------------------------------
-    # Odometry → zone check
-    # ------------------------------------------------------------------
-
-    def odom_callback(self, msg: Odometry):
+    def nav_zone_callback(self, msg: String):
         if self.switch_in_progress:
             return
 
-        x = msg.pose.pose.position.x
-        new_zone = self._determine_zone(x)
+        new_zone = msg.data.strip()
+        if new_zone not in ('middle', 'edge'):
+            self.get_logger().warning(
+                f'Unknown zone "{new_zone}" received (expected "middle" or "edge"), ignoring'
+            )
+            return
 
         if new_zone != self.current_zone:
             old = self.current_zone
             self.current_zone = new_zone
             self.get_logger().info(
-                f'Zone change: x={x:.3f}m | {old} → {new_zone}'
+                f'Zone change: {old} → {new_zone} (from {self.nav_zone_topic})'
             )
             self._apply_zone_params(new_zone)
 
@@ -169,7 +136,7 @@ class PositionBasedParamSwitcher(Node):
         """
         Push the zone's parameter set to controller_server atomically.
 
-        All 8 parameters are set in one service call — the controller
+        All parameters are set in one service call — the controller
         picks up new scale values on the very next control cycle (10 Hz).
         """
         self.switch_in_progress = True
@@ -188,9 +155,6 @@ class PositionBasedParamSwitcher(Node):
         req = SetParameters.Request(parameters=params)
         try:
             future = self.param_client.call_async(req)
-            # rclpy.spin_until_future_complete is not used here because
-            # this callback runs inside rclpy.spin; we rely on the async
-            # callback instead.
             future.add_done_callback(self._set_params_callback)
         except Exception as e:
             self.get_logger().error(f'Failed to call set_parameters: {e}')
@@ -217,7 +181,7 @@ class PositionBasedParamSwitcher(Node):
             )
         else:
             self.get_logger().info(
-                f'✓ Switched to {self.current_zone} zone params (OK)'
+                f'Switched to "{self.current_zone}" zone params — OK'
             )
 
 

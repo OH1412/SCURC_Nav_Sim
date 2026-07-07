@@ -293,54 +293,56 @@ controller_server:
       short_circuit_trajectory_evaluation: True
       stateful: True
       # ═══════════════════════════════════════════════════════════════
-      # 方案C：所有 8 个 critic 预加载，运行时 param set 切换
-      # 当前默认 = 中间区 (yaw锁0，禁止旋转)
-      # 切边缘区 = 注释中间区值，取消边缘区值注释，重启 switcher
+      # 所有 8 个 critic 预加载，运行时由 position_based_param_switcher 动态切换
+      # 切换依据：mission YAML 中 limit_yaw 字段 → Nav2PoseNode 发布 zone
+      #   limit_yaw: true  → zone = "middle" (yaw 锁定为 0，禁止旋转)
+      #   limit_yaw: false → zone = "edge"   (允许旋转对齐朝向)
+      # 当前默认 = middle (yaw锁0，禁止旋转) — 安全 fallback
       # ═══════════════════════════════════════════════════════════════
       critics: ["dwb_yaw_constraint::RotateToGoalXY", "Oscillation", "ObstacleFootprint", "GoalAlign", "PathAlign", "PathDist", "GoalDist", "dwb_yaw_constraint::MaintainYawCritic", "dwb_yaw_constraint::DecouplingCritic"]
-      # --- 共有参数（两区相同）---
+      # --- 共有参数（middle / edge 两区相同）---
       ObstacleFootprint.scale: 20.0
       PathDist.scale: 32.0
       GoalDist.scale: 16.0
       # ═══════════════════════════════════════════════════════════════
-      # 默认中间区 (yaw锁0，禁止旋转) — 安全fallback
-      # 运行时由 position_based_param_switcher 动态切换
+      # 默认 middle 区 (limit_yaw=true, yaw锁0，禁止旋转) — 安全 fallback
+      # 运行时由 position_based_param_switcher 根据 zone 动态切换
       # ═══════════════════════════════════════════════════════════════
       # --- 旋转 critic（矩形 x/y 窗口，配套 SimpleGoalCheckerXY）---
-      "dwb_yaw_constraint::RotateToGoalXY.scale": 0.0           # 中间区=0.0 | 边缘区=32.0
+      "dwb_yaw_constraint::RotateToGoalXY.scale": 0.0           # middle=0.0 | edge=32.0
       "dwb_yaw_constraint::RotateToGoalXY.slowing_factor": 5.0
       "dwb_yaw_constraint::RotateToGoalXY.lookahead_time": -1.0
-      GoalAlign.scale: 0.0              # 中间区=0.0 | 边缘区=24.0
+      GoalAlign.scale: 0.0              # middle=0.0 | edge=24.0
       GoalAlign.forward_point_distance: 0.1
-      PathAlign.scale: 0.0              # 中间区=0.0 | 边缘区=32.0
+      PathAlign.scale: 0.0              # middle=0.0 | edge=32.0
       PathAlign.forward_point_distance: 0.1
       # --- yaw 锁定 critic ---
-      "dwb_yaw_constraint::MaintainYawCritic.scale": 5000.0   # 中间区=5000 | 边缘区=0.0
+      "dwb_yaw_constraint::MaintainYawCritic.scale": 5000.0   # middle=5000 | edge=0.0
       "dwb_yaw_constraint::MaintainYawCritic.desired_yaw": 0.0
       "dwb_yaw_constraint::MaintainYawCritic.reference_frame": "map"
-      # --- 解耦 critic (中间区禁用) ---
-      "dwb_yaw_constraint::DecouplingCritic.scale": 0.0       # 中间区=0.0 | 边缘区=30.0
+      # --- 解耦 critic (middle 区禁用) ---
+      "dwb_yaw_constraint::DecouplingCritic.scale": 0.0       # middle=0.0 | edge=30.0
       "dwb_yaw_constraint::DecouplingCritic.max_vx": 2.0
       "dwb_yaw_constraint::DecouplingCritic.max_vy": 1.4
       "dwb_yaw_constraint::DecouplingCritic.max_vtheta": 1.2
       # ═══════════════════════════════════════════════════════════════
-      # 边缘区 (解除yaw限制，允许旋转)
-      # 由 position_based_param_switcher 动态设置
+      # edge 区 (limit_yaw=false, 解除 yaw 限制，允许旋转)
+      # 由 position_based_param_switcher 动态设置，下方为参考值（已注释）
       # ═══════════════════════════════════════════════════════════════
       # # --- 旋转 critic ---
-      # RotateToGoal.scale: 32.0           # 中间区=0.0 | 边缘区=32.0
+      # RotateToGoal.scale: 32.0           # middle=0.0 | edge=32.0
       # RotateToGoal.slowing_factor: 5.0
       # RotateToGoal.lookahead_time: -1.0
-      # GoalAlign.scale: 24.0              # 中间区=0.0 | 边缘区=24.0
+      # GoalAlign.scale: 24.0              # middle=0.0 | edge=24.0
       # GoalAlign.forward_point_distance: 0.1
-      # PathAlign.scale: 32.0              # 中间区=0.0 | 边缘区=32.0
+      # PathAlign.scale: 32.0              # middle=0.0 | edge=32.0
       # PathAlign.forward_point_distance: 0.1
       # # --- yaw 锁定 critic ---
-      # "dwb_yaw_constraint::MaintainYawCritic.scale": 0.0   # 中间区=5000 | 边缘区=0.0
+      # "dwb_yaw_constraint::MaintainYawCritic.scale": 0.0   # middle=5000 | edge=0.0
       # "dwb_yaw_constraint::MaintainYawCritic.desired_yaw": 0.0
       # "dwb_yaw_constraint::MaintainYawCritic.reference_frame": "map"
-      # # --- 解耦 critic (边缘区启用) ---
-      # "dwb_yaw_constraint::DecouplingCritic.scale": 30.0       # 中间区=0.0 | 边缘区=30.0
+      # # --- 解耦 critic (edge 区启用) ---
+      # "dwb_yaw_constraint::DecouplingCritic.scale": 30.0       # middle=0.0 | edge=30.0
 
 local_costmap:
   local_costmap:
@@ -585,14 +587,14 @@ velocity_smoother:
 # 这些不是 Nav2 原生节点，而是项目自定义节点。集中管理便于调参。
 # ═══════════════════════════════════════════════════════════════
 
-# 区域切换器：根据机器人 x 坐标动态切换 DWB critic 参数
-# 注意：代码默认值 lower=1.35, upper=4.0，launch 文件覆盖同值
+# 区域切换器：根据 mission YAML 中 limit_yaw 字段动态切换 DWB critic 参数
+# Nav2PoseNode 从 BT XML 读取 limit_yaw，发布 zone 到 /mission_bt/nav_zone
+#   limit_yaw: true  → zone = "middle" (yaw 锁定为 0，禁止旋转，允许横向 vy)
+#   limit_yaw: false → zone = "edge"   (允许旋转对齐目标朝向，允许横向移动)
+# 不再使用 x 坐标判断区域。
 position_based_param_switcher:
   ros__parameters:
-    lower_boundary: 1.35         # 中间区下边界 (x<1.35 → 边缘区，允许旋转和横向移动)
-    upper_boundary: 4.0          # 中间区上边界 (x>4.0 → 边缘区，允许旋转和横向移动)
-    hysteresis_margin: 0.1       # 迟滞边界 (±0.1m)，防止在边界附近来回振荡
-    odom_topic: "state_estimation"
+    nav_zone_topic: "/mission_bt/nav_zone"  # Nav2PoseNode 发布的 zone 话题
     target_node: "controller_server"
 
 # 障碍物尺度控制器：当致命障碍物侵入机器人 footprint 时降低 ObstacleFootprint.scale
