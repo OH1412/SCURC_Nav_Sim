@@ -39,7 +39,7 @@ nav:
 
   "nav_p2_wp2":
     frame_id: "map"
-    x: 3.4115
+    x: 3.3615
     y: -1.2750
     yaw: 0.0000
 
@@ -57,7 +57,7 @@ nav:
 
   "nav_p3_wp2":
     frame_id: "map"
-    x: 3.4115
+    x: 3.3615
     y: -0.4250
     yaw: 0.0000
 
@@ -75,7 +75,7 @@ nav:
 
   "nav_p4_wp2":
     frame_id: "map"
-    x: 3.4115
+    x: 3.3615
     y: 0.4250
     yaw: 0.0000
 
@@ -93,7 +93,7 @@ nav:
 
   "nav_p5_wp2":
     frame_id: "map"
-    x: 3.4115
+    x: 3.3615
     y: 1.2750
     yaw: 0.0000
 

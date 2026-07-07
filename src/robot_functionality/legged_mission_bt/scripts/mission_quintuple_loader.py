@@ -27,13 +27,12 @@ class MissionQuintupleLoader(Node):
         default_quintuple = ws_root / 'src/legged_mission_planner_f_r/tmp/mission_quintuple.yaml'
         pkg_root = Path(__file__).resolve().parents[1]
         default_bt_xml = pkg_root / 'behavior_trees/mission_hardcoded.xml'
-        default_waypoints = pkg_root / 'config/mission_hardcoded.yaml'
 
         self.declare_parameter('plan_ready_topic', '/mission/plan_ready')
         self.declare_parameter('bt_config_ready_topic', '/mission/bt_config_ready')
         self.declare_parameter('quintuple_yaml', str(default_quintuple))
         self.declare_parameter('bt_xml_output', str(default_bt_xml))
-        self.declare_parameter('waypoints_yaml_output', str(default_waypoints))
+        self.declare_parameter('waypoints_yaml_output', '')
         self.declare_parameter('path_count', 6)
         self.declare_parameter('wp_count', 4)
         self.declare_parameter('arm_timeout', 30.0)
@@ -43,7 +42,8 @@ class MissionQuintupleLoader(Node):
         self._bt_config_ready_topic = self.get_parameter('bt_config_ready_topic').value
         self._quintuple_yaml = Path(self.get_parameter('quintuple_yaml').value)
         self._bt_xml_output = Path(self.get_parameter('bt_xml_output').value)
-        self._waypoints_yaml_output = Path(self.get_parameter('waypoints_yaml_output').value)
+        waypoints_yaml_output = str(self.get_parameter('waypoints_yaml_output').value).strip()
+        self._waypoints_yaml_output = waypoints_yaml_output or None
         self._path_count = int(self.get_parameter('path_count').value)
         self._wp_count = int(self.get_parameter('wp_count').value)
         self._arm_timeout = float(self.get_parameter('arm_timeout').value)
@@ -56,7 +56,8 @@ class MissionQuintupleLoader(Node):
         self.get_logger().info(f'Waiting for plan ready on {self._plan_ready_topic}')
         self.get_logger().info(f'Quintuple input: {self._quintuple_yaml}')
         self.get_logger().info(f'BT XML output: {self._bt_xml_output}')
-        self.get_logger().info(f'Waypoints output: {self._waypoints_yaml_output}')
+        if self._waypoints_yaml_output:
+            self.get_logger().info(f'Waypoints output: {self._waypoints_yaml_output}')
         self.get_logger().info(f'Will publish bt config ready on {self._bt_config_ready_topic}')
 
     def _on_plan_ready(self, msg: Bool) -> None:
@@ -112,7 +113,8 @@ def _run_once(args: argparse.Namespace) -> None:
         f'{summary["waypoint_count"]} waypoints'
     )
     print(f'  BT XML: {summary["bt_xml_output"]}')
-    print(f'  Nav YAML: {summary["waypoints_yaml_output"]}')
+    if summary['waypoints_yaml_output']:
+        print(f'  Nav YAML: {summary["waypoints_yaml_output"]}')
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -138,9 +140,6 @@ def main(argv: list[str] | None = None) -> None:
         )
         args.bt_xml_output = args.bt_xml_output or str(
             pkg_root / 'behavior_trees/mission_hardcoded.xml'
-        )
-        args.waypoints_yaml_output = args.waypoints_yaml_output or str(
-            pkg_root / 'config/mission_hardcoded.yaml'
         )
         _run_once(args)
         return

@@ -173,7 +173,7 @@ def build_bt_xml(
 def generate_bt_artifacts(
     quintuple_path: str | Path,
     bt_xml_output: str | Path,
-    waypoints_yaml_output: str | Path,
+    waypoints_yaml_output: str | Path | None = None,
     *,
     path_count: int = 6,
     wp_count: int = 4,
@@ -185,11 +185,6 @@ def generate_bt_artifacts(
     sequence = data['sequence']
 
     waypoint_ids = collect_waypoint_ids(sequence, path_count=path_count, wp_count=wp_count)
-    waypoints_text = build_waypoints_yaml(
-        waypoint_ids,
-        frame_id=frame_id,
-        quintuple_path=quintuple_path,
-    )
     bt_xml_text = build_bt_xml(
         sequence,
         arm_timeout=arm_timeout,
@@ -197,17 +192,26 @@ def generate_bt_artifacts(
     )
 
     bt_xml_output = Path(bt_xml_output)
-    waypoints_yaml_output = Path(waypoints_yaml_output)
     bt_xml_output.parent.mkdir(parents=True, exist_ok=True)
-    waypoints_yaml_output.parent.mkdir(parents=True, exist_ok=True)
     bt_xml_output.write_text(bt_xml_text, encoding='utf-8')
-    waypoints_yaml_output.write_text(waypoints_text, encoding='utf-8')
+
+    waypoints_output: str | None = None
+    if waypoints_yaml_output:
+        waypoints_text = build_waypoints_yaml(
+            waypoint_ids,
+            frame_id=frame_id,
+            quintuple_path=quintuple_path,
+        )
+        waypoints_yaml_output = Path(waypoints_yaml_output)
+        waypoints_yaml_output.parent.mkdir(parents=True, exist_ok=True)
+        waypoints_yaml_output.write_text(waypoints_text, encoding='utf-8')
+        waypoints_output = str(waypoints_yaml_output)
 
     return {
         'step_count': len(sequence),
         'waypoint_count': len(waypoint_ids),
         'bt_xml_output': str(bt_xml_output),
-        'waypoints_yaml_output': str(waypoints_yaml_output),
+        'waypoints_yaml_output': waypoints_output,
         'switch_mode': data.get('switch_mode'),
         'planner_variant': data.get('planner_variant'),
     }
