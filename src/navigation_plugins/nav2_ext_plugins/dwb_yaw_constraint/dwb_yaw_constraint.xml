@@ -33,5 +33,14 @@
         the optimizer is forced toward pure forward (X-only) motion.
       </description>
     </class>
+    <class type="dwb_yaw_constraint::RotateToPathCritic"
+           base_class_type="dwb_core::TrajectoryCritic">
+      <description>
+        DWB critic that penalizes trajectories whose heading deviates from the
+        path tangent direction. Encourages the robot to face along the planned
+        path, producing smoother and more predictable motion. Uses a configurable
+        path_lookahead_dist to determine the tangent ahead of the robot.
+      </description>
+    </class>
   </library>
 </class_libraries>

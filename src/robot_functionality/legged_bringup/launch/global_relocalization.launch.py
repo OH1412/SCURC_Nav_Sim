@@ -36,7 +36,7 @@ def generate_launch_description():
     amcl_config_path = os.path.join(config_path, 'amcl_params.yaml')
     fast_livo_config = os.path.join(config_path, 'avia_minimal.yaml')  # 精简配置：关闭建图/保存
     camera_config = os.path.join(fast_livo_config_dir, "camera_MARS_LVIG.yaml")
-    rviz_config = os.path.join(bringup_dir, 'rviz', 'loam_livox.rviz')
+    # rviz_config = os.path.join(bringup_dir, 'rviz', 'loam_livox.rviz')  # RViz disabled
 
     # 通用重映射 (TF)
     tf_remappings = [('/tf', 'tf'), ('/tf_static', 'tf_static')]
@@ -146,13 +146,13 @@ def generate_launch_description():
         }]
     )
 
-    # RViz
-    rviz_node = Node(
-        package='rviz2',
-        executable='rviz2',
-        arguments=['-d', rviz_config, '--ros-args', '--log-level', 'rviz:=error'],
-        output='screen'
-    )
+    # RViz (disabled)
+    # rviz_node = Node(
+    #     package='rviz2',
+    #     executable='rviz2',
+    #     arguments=['-d', rviz_config, '--ros-args', '--log-level', 'rviz:=error'],
+    #     output='screen'
+    # )
 
     # ========================================================================
     # 4. 启动逻辑
@@ -204,7 +204,7 @@ def generate_launch_description():
         condition=IfCondition(enable_relocalization)
     ))
 
-    # 5. RViz
-    ld.add_action(rviz_node)
+    # 5. RViz (disabled)
+    # ld.add_action(rviz_node)
 
     return ld

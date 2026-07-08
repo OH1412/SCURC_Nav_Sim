@@ -281,7 +281,7 @@ controller_server:
       decel_lim_theta: -20.0
       vx_samples: 10
       vy_samples: 10
-      vtheta_samples: 10
+      vtheta_samples: 20
       sim_time: 0.8
       linear_granularity: 0.05
       angular_granularity: 0.025
@@ -293,13 +293,13 @@ controller_server:
       short_circuit_trajectory_evaluation: True
       stateful: True
       # ═══════════════════════════════════════════════════════════════
-      # 所有 8 个 critic 预加载，运行时由 position_based_param_switcher 动态切换
+      # 所有 9 个 critic 预加载，运行时由 position_based_param_switcher 动态切换
       # 切换依据：mission YAML 中 limit_yaw 字段 → Nav2PoseNode 发布 zone
       #   limit_yaw: true  → zone = "middle" (yaw 锁定为 0，禁止旋转)
       #   limit_yaw: false → zone = "edge"   (允许旋转对齐朝向)
       # 当前默认 = middle (yaw锁0，禁止旋转) — 安全 fallback
       # ═══════════════════════════════════════════════════════════════
-      critics: ["dwb_yaw_constraint::RotateToGoalXY", "Oscillation", "ObstacleFootprint", "GoalAlign", "PathAlign", "PathDist", "GoalDist", "dwb_yaw_constraint::MaintainYawCritic", "dwb_yaw_constraint::DecouplingCritic"]
+      critics: ["dwb_yaw_constraint::RotateToGoalXYCritic", "dwb_yaw_constraint::RotateToPathCritic", "Oscillation", "ObstacleFootprint", "GoalAlign", "PathAlign", "PathDist", "GoalDist", "dwb_yaw_constraint::MaintainYawCritic", "dwb_yaw_constraint::DecouplingCritic"]
       # --- 共有参数（middle / edge 两区相同）---
       ObstacleFootprint.scale: 20.0
       PathDist.scale: 32.0
@@ -309,9 +309,13 @@ controller_server:
       # 运行时由 position_based_param_switcher 根据 zone 动态切换
       # ═══════════════════════════════════════════════════════════════
       # --- 旋转 critic（矩形 x/y 窗口，配套 SimpleGoalCheckerXY）---
-      "dwb_yaw_constraint::RotateToGoalXY.scale": 0.0           # middle=0.0 | edge=32.0
-      "dwb_yaw_constraint::RotateToGoalXY.slowing_factor": 5.0
-      "dwb_yaw_constraint::RotateToGoalXY.lookahead_time": -1.0
+      "dwb_yaw_constraint::RotateToGoalXYCritic.scale": 0.0           # middle=0.0 | edge=32.0
+      "dwb_yaw_constraint::RotateToGoalXYCritic.slowing_factor": 5.0
+      "dwb_yaw_constraint::RotateToGoalXYCritic.lookahead_time": -1.0
+      "dwb_yaw_constraint::RotateToPathCritic.scale": 0.0             # middle=0.0 | edge=48.0
+      "dwb_yaw_constraint::RotateToPathCritic.path_lookahead_dist": 0.5
+      "dwb_yaw_constraint::RotateToPathCritic.lookahead_time": -1.0
+      "dwb_yaw_constraint::RotateToPathCritic.yaw_error_threshold": 0.087  # 5 degrees
       GoalAlign.scale: 0.0              # middle=0.0 | edge=24.0
       GoalAlign.forward_point_distance: 0.1
       PathAlign.scale: 0.0              # middle=0.0 | edge=32.0
@@ -330,9 +334,13 @@ controller_server:
       # 由 position_based_param_switcher 动态设置，下方为参考值（已注释）
       # ═══════════════════════════════════════════════════════════════
       # # --- 旋转 critic ---
-      # RotateToGoal.scale: 32.0           # middle=0.0 | edge=32.0
-      # RotateToGoal.slowing_factor: 5.0
-      # RotateToGoal.lookahead_time: -1.0
+      # RotateToGoalXYCritic.scale: 32.0           # middle=0.0 | edge=32.0
+      # RotateToGoalXYCritic.slowing_factor: 5.0
+      # RotateToGoalXYCritic.lookahead_time: -1.0
+      # RotateToPathCritic.scale: 48.0             # middle=0.0 | edge=48.0
+      # RotateToPathCritic.path_lookahead_dist: 0.5
+      # RotateToPathCritic.lookahead_time: -1.0
+      # RotateToPathCritic.yaw_error_threshold: 0.087  # 5 degrees
       # GoalAlign.scale: 24.0              # middle=0.0 | edge=24.0
       # GoalAlign.forward_point_distance: 0.1
       # PathAlign.scale: 32.0              # middle=0.0 | edge=32.0

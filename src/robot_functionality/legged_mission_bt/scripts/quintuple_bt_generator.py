@@ -210,8 +210,10 @@ def generate_bt_artifacts(
         waypoints_yaml_output.write_text(waypoints_text, encoding='utf-8')
         waypoints_output = str(waypoints_yaml_output)
 
+    step_count = len(sequence)
+
     return {
-        'step_count': len(sequence),
+        'step_count': step_count,
         'waypoint_count': len(waypoint_ids),
         'bt_xml_output': str(bt_xml_output),
         'waypoints_yaml_output': waypoints_output,

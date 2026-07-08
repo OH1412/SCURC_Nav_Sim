@@ -114,11 +114,10 @@ class MissionPathPlanner:
         return (quiz_rank, direct_rank, distance, task['box_id'])
 
     @staticmethod
-    def _task_rank_fast(task: dict, current_path: int, quiz_type: int | None, placed_types: Set[int]) -> tuple:
+    def _task_rank_fast(task: dict, current_path: int, quiz_type: int | None, _placed: Set[int]) -> tuple:
         quiz_rank = 0 if quiz_type is not None and task['box_type'] == quiz_type else 1
-        unplaced_rank = 0 if task['box_type'] not in placed_types else 1
         distance = FieldModel.path_distance(current_path, task['pick_path'])
-        return (quiz_rank, unplaced_rank, distance, task['box_id'])
+        return (quiz_rank, distance, task['box_id'])
 
 
 class _SequenceBuilder:

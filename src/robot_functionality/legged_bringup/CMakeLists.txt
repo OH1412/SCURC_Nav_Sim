@@ -43,6 +43,8 @@ install(PROGRAMS
   nodes/arm_control_server.py
   nodes/arm_mission_trigger.py
   nodes/arm_pose_broadcaster.py
+  nodes/interactive_arm_pick.py
+  nodes/arm_coord_monitor.py
   nodes/wait_for_ros_condition.py
   nodes/mission_session_logger.py
   nodes/mission_log_client.py

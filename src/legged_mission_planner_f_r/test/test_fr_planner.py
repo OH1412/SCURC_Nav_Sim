@@ -195,18 +195,20 @@ def test_fast_mode_same_path_skips_intermediate():
     assert between == []
 
 
-def test_fast_mode_unplaced_type_before_distance():
+def test_fast_mode_nearest_path_over_unplaced_type():
     wp_config = _wp_config()
     planner = MissionPathPlanner(waypoint_config=wp_config)
-    # fallback type 3 -> zone 1 (path 3); upper picks prefer unplaced types, then nearest path
-    box_types = [0, 1, 2, 0, 3, 1, 2, 3]
-    zone_types = [0, 3, 2, 1]
+    # fallback type 2 -> zone 2 (path 4); placed_types={2} after fallback
+    # box2 on path4 (type2 already placed, dist=0) vs box1 on path3 (type1 unplaced, dist=1)
+    # old logic picked unplaced type first (box1); new logic picks nearest path (box2)
+    box_types = [0, 1, 2, 3, 2, 1, 0, 3]
+    zone_types = [0, 1, 2, 3]
     seq = planner.plan(box_types, zone_types, 'fast_mode')
     upper_picks = [
         s.target_box for s in seq
         if s.state == MissionState.PICK and s.target_box in (0, 1, 2, 3)
     ]
-    assert upper_picks[0] == 1
+    assert upper_picks[0] == 2
 
 
 def test_fast_mode_quintuple_export():
