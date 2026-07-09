@@ -104,6 +104,15 @@ private:
   CorridorPhase corridor_phase_{CorridorPhase::APPROACH};
   bool corridor_phase_active_{false};  ///< True when multi-phase logic is active this nav step
 
+  /// ── Yaw alignment between corridor phases ──────────────────────────
+  /// When a phase transition occurs, the robot first stops and rotates yaw
+  /// to within 30° of the new phase's target before sending the position goal.
+  bool corridor_aligning_{false};       ///< True during yaw-alignment sub-step
+  double corridor_align_yaw_{0.0};      ///< Target yaw for the active alignment
+  double corridor_pending_x_{0.0};      ///< Deferred position goal x (applied after alignment)
+  double corridor_pending_y_{0.0};      ///< Deferred position goal y
+  double corridor_pending_yaw_{0.0};    ///< Deferred position goal yaw
+
   /// Determine current phase from robot position and publish zone / segment_yaw as needed.
   /// When phase changes, cancels the current navigate_to_pose goal and sends a new one
   /// toward the region's target waypoint.

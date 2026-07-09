@@ -439,6 +439,7 @@ BT::NodeStatus Nav2PoseNode::onStart()
     // ── Determine zone / multi-phase mode from resolved goal coordinates ──
     limit_yaw_ = (motion_planner_ == 0);
     corridor_phase_active_ = false;
+    corridor_aligning_ = false;
     corridor_phase_ = CorridorPhase::APPROACH;
     middle_zone_applied_ = false;
 
@@ -573,6 +574,25 @@ BT::NodeStatus Nav2PoseNode::onRunning()
     // ── Multi-phase corridor navigation (motion_planner_ == 0) ──────────
     if (corridor_phase_active_) {
       updateCorridorPhase();
+
+      // ── Yaw alignment monitoring between phases ───────────────────
+      if (corridor_aligning_) {
+        double cur_x = 0.0, cur_y = 0.0, cur_yaw = 0.0, vx = 0.0, vy = 0.0, wz = 0.0;
+        if (getCurrentStateInGoalFrame(cur_x, cur_y, cur_yaw, vx, vy, wz)) {
+          const double yaw_err = std::abs(normalizeAngle(cur_yaw - corridor_align_yaw_));
+          if (yaw_err < M_PI / 6.0) {  // Within 30 degrees
+            RCLCPP_INFO(node_->get_logger(),
+              "Nav2PoseNode: corridor yaw aligned (err=%.1f°), sending position goal",
+              yaw_err * 180.0 / M_PI);
+            corridor_aligning_ = false;
+            // Restore actual position goal and send it
+            resolved_x_ = corridor_pending_x_;
+            resolved_y_ = corridor_pending_y_;
+            resolved_yaw_ = corridor_pending_yaw_;
+            resendNavGoal();
+          }
+        }
+      }
     }
 
     // Distance-based zone switching: when starting from EDGE mode and approaching
@@ -596,6 +616,30 @@ BT::NodeStatus Nav2PoseNode::onRunning()
 
   switch (result_.code) {
     case rclcpp_action::ResultCode::SUCCEEDED:
+      // ── Yaw alignment goal completed ──────────────────────────────────
+      if (corridor_aligning_) {
+        double cur_x = 0.0, cur_y = 0.0, cur_yaw = 0.0, vx = 0.0, vy = 0.0, wz = 0.0;
+        if (getCurrentStateInGoalFrame(cur_x, cur_y, cur_yaw, vx, vy, wz)) {
+          const double yaw_err = std::abs(normalizeAngle(cur_yaw - corridor_align_yaw_));
+          if (yaw_err < M_PI / 6.0) {
+            RCLCPP_INFO(node_->get_logger(),
+              "Nav2PoseNode: corridor alignment goal succeeded (yaw_err=%.1f°), sending position goal",
+              yaw_err * 180.0 / M_PI);
+            corridor_aligning_ = false;
+            resolved_x_ = corridor_pending_x_;
+            resolved_y_ = corridor_pending_y_;
+            resolved_yaw_ = corridor_pending_yaw_;
+            resendNavGoal();
+            result_ready_ = false;
+            return BT::NodeStatus::RUNNING;
+          }
+        }
+        // Yaw still not aligned, re-send rotation goal
+        resendNavGoal();
+        result_ready_ = false;
+        return BT::NodeStatus::RUNNING;
+      }
+
       // ── Multi-phase corridor: intermediate goal reached → advance phase ──
       if (corridor_phase_active_ && corridor_phase_ != CorridorPhase::FINAL) {
         RCLCPP_INFO(node_->get_logger(),
@@ -661,25 +705,42 @@ bool Nav2PoseNode::updateCorridorPhase()
     return false;
   }
 
-  // Distance to *final* goal (original), for FINAL-phase determination
+  // Distance to *final* goal (original), for EXIT→FINAL determination
   const double dx_final = original_goal_x_ - cur_x;
   const double dy_final = original_goal_y_ - cur_y;
   const double dist_to_final = std::hypot(dx_final, dy_final);
 
+  // ── One-directional phase transitions (never go backward) ──────────
   CorridorPhase new_phase = corridor_phase_;
 
-  if (dist_to_final < middle_zone_distance_) {
-    // Close to final goal → FINAL (middle zone, yaw=0)
-    new_phase = CorridorPhase::FINAL;
-  } else if (cur_x >= corridor_exit_x_) {
-    // Past corridor exit → EXIT (edge zone, heading toward final goal)
-    new_phase = CorridorPhase::EXIT;
-  } else if (cur_x >= corridor_entry_x_ && cur_y <= corridor_entry_y_) {
-    // Inside corridor → CORRIDOR (middle zone, yaw=0)
-    new_phase = CorridorPhase::CORRIDOR;
-  } else {
-    // Before corridor entry → APPROACH (edge zone, heading toward entry)
-    new_phase = CorridorPhase::APPROACH;
+  switch (corridor_phase_) {
+    case CorridorPhase::APPROACH:
+      // 向 (corridor_entry_x_, corridor_entry_y_) 走
+      // 第一次 x>=入口x 且 y<=入口y → 切入 CORRIDOR
+      if (cur_x >= corridor_entry_x_ && cur_y <= corridor_entry_y_) {
+        new_phase = CorridorPhase::CORRIDOR;
+      }
+      break;
+
+    case CorridorPhase::CORRIDOR:
+      // 向 (corridor_exit_x_, corridor_entry_y_) 走
+      // 第一次 x>=出口x → 切入 EXIT
+      if (cur_x >= corridor_exit_x_) {
+        new_phase = CorridorPhase::EXIT;
+      }
+      break;
+
+    case CorridorPhase::EXIT:
+      // 向原始最终目标走
+      // 第一次 距目标 < middle_zone_distance → 切入 FINAL
+      if (dist_to_final < middle_zone_distance_) {
+        new_phase = CorridorPhase::FINAL;
+      }
+      break;
+
+    case CorridorPhase::FINAL:
+      // 保持在 FINAL，不再切换
+      break;
   }
 
   if (new_phase == corridor_phase_) {
@@ -737,8 +798,40 @@ bool Nav2PoseNode::updateCorridorPhase()
       break;
   }
 
-  // Cancel current nav goal and send the new one
-  resendNavGoal();
+  // ── Enter yaw alignment: stop → rotate yaw → then send position goal ──
+  // Compute target yaw: segment-tangent direction from current to new goal
+  double align_yaw = resolved_yaw_;
+  {
+    const double seg_dx = resolved_x_ - cur_x;
+    const double seg_dy = resolved_y_ - cur_y;
+    if (std::hypot(seg_dx, seg_dy) >= 0.05) {
+      align_yaw = std::atan2(seg_dy, seg_dx);
+    }
+    // motion_planner=0 → no rear-bearing flip (unlike mp=2)
+  }
+
+  const double yaw_err = std::abs(normalizeAngle(cur_yaw - align_yaw));
+  if (yaw_err < M_PI / 6.0) {
+    // Already within 30° — send position goal directly, no alignment needed
+    resendNavGoal();
+  } else {
+    // Need yaw alignment first: send rotation-only goal at current position
+    RCLCPP_INFO(node_->get_logger(),
+      "Nav2PoseNode: corridor phase %s → %s, yaw_err=%.1f°, entering alignment (target=%.2f°)",
+      old_name, new_name, yaw_err * 180.0 / M_PI, align_yaw * 180.0 / M_PI);
+
+    corridor_aligning_ = true;
+    corridor_align_yaw_ = align_yaw;
+    // Save the actual position goal for after alignment completes
+    corridor_pending_x_ = resolved_x_;
+    corridor_pending_y_ = resolved_y_;
+    corridor_pending_yaw_ = resolved_yaw_;
+    // Override to current position (rotation only, no linear motion)
+    resolved_x_ = cur_x;
+    resolved_y_ = cur_y;
+    resolved_yaw_ = align_yaw;
+    resendNavGoal();
+  }
 
   RCLCPP_INFO(node_->get_logger(),
     "Nav2PoseNode: corridor phase %s → %s (pos=%.3f,%.3f newGoal=%.3f,%.3f distToFinal=%.2f)",
