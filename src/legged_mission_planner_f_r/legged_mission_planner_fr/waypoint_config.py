@@ -8,9 +8,7 @@ from .package_paths import resolve_config_path
 from .state_definitions import MissionState
 from .waypoint_yaml_exporter import WaypointUI, load_ui_points
 
-UI_POINTS_FILES = {
-    'fast_mode': 'ui_points_fast_mode.yaml',
-}
+UI_POINTS_FILE = 'ui_points_fast_mode.yaml'
 
 
 @dataclass(frozen=True)
@@ -19,13 +17,13 @@ class StepMeta:
     wp: int
     state: int
     target_id: int
-    limit_yaw: bool
+    motion_planner: int
     norm_x: float
     norm_y: float
 
 
 class WaypointConfig:
-    """Calibrated waypoint layout loaded from ui_points_*.yaml."""
+    """Calibrated waypoint layout loaded from ui_points_fast_mode.yaml."""
 
     def __init__(self, paths: Mapping[int, list[WaypointUI]]) -> None:
         self._paths = dict(paths)
@@ -40,11 +38,8 @@ class WaypointConfig:
         return cls(load_ui_points(path))
 
     @classmethod
-    def for_mode(cls, switch_mode: str) -> 'WaypointConfig | None':
-        filename = UI_POINTS_FILES.get(switch_mode)
-        if filename is None:
-            return None
-        config_path = resolve_config_path(filename)
+    def load_default(cls) -> 'WaypointConfig | None':
+        config_path = resolve_config_path(UI_POINTS_FILE)
         if not config_path.exists():
             return None
         return cls.from_yaml(config_path)
@@ -59,7 +54,7 @@ class WaypointConfig:
                     wp=wp.wp_index,
                     state=wp.state,
                     target_id=wp.target_id,
-                    limit_yaw=wp.limit_yaw,
+                    motion_planner=wp.motion_planner,
                     norm_x=wp.norm_x,
                     norm_y=wp.norm_y,
                 )

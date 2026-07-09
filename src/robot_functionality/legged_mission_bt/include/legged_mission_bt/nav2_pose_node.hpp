@@ -90,9 +90,9 @@ private:
 
   // ── Multi-phase corridor navigation (motion_planner_ == 0) ────────────
   /// Corridor waypoints (configurable via ROS params, defaults match p1 geometry)
-  double corridor_entry_x_{2.3395};
+  double corridor_entry_x_{2.1695};
   double corridor_entry_y_{-1.7000};
-  double corridor_exit_x_{3.8315};
+  double corridor_exit_x_{3.6615};
 
   /// Navigation phases for corridor traversal
   enum class CorridorPhase {

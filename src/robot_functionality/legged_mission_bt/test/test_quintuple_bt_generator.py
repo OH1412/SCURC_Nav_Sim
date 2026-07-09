@@ -30,12 +30,12 @@ def test_arm_point_id_mapping():
 
 def test_build_bt_xml_pick_and_place():
     sequence = [
-        {'path': 0, 'wp': 0, 'state': 1, 'target_id': -1},
-        {'path': 1, 'wp': 1, 'state': 2, 'target_id': 4},
-        {'path': 2, 'wp': 2, 'state': 3, 'target_id': 0},
+        {'path': 1, 'wp': 1, 'state': 2, 'target_id': 4, 'motion_planner': 1},
+        {'path': 2, 'wp': 2, 'state': 3, 'target_id': 0, 'motion_planner': 1},
     ]
     xml = build_bt_xml(sequence, arm_timeout=30.0)
-    assert '<Nav2PoseNode wp_id="nav_p0_wp0" limit_yaw="false"/>' in xml
+    assert '<Nav2PoseNode wp_id="nav_p1_wp1" motion_planner="1"/>' in xml
+    assert '<Nav2PoseNode wp_id="nav_p2_wp2" motion_planner="1"/>' in xml
     assert '<ArmPickNode arm_point_id="4" timeout="30.0"/>' in xml
     assert '<ArmPlaceNode arm_point_id="8" timeout="30.0"/>' in xml
 

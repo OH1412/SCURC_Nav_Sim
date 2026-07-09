@@ -5,7 +5,6 @@ from launch.substitutions import PathJoinSubstitution
 
 
 def generate_launch_description():
-    """Alias for base_plan.launch.py (backward compatible)."""
     config = PathJoinSubstitution([
         FindPackageShare('legged_mission_planner_f_r'),
         'config',

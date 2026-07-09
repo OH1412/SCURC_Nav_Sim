@@ -9,7 +9,7 @@ from pathlib import Path
 
 import rclpy
 from rclpy.node import Node
-from rclpy.qos import QoSProfile, ReliabilityPolicy
+from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from std_msgs.msg import Bool
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -63,11 +63,18 @@ class MissionQuintupleLoader(Node):
         self._nav_frame_id = str(self.get_parameter('nav_frame_id').value)
         self._send_p0_wp0 = bool(self.get_parameter('send_p0_wp0').value)
 
-        qos = QoSProfile(depth=10, reliability=ReliabilityPolicy.RELIABLE)
-        self._ready_pub = self.create_publisher(Bool, self._bt_config_ready_topic, qos)
+        mission_qos = QoSProfile(
+            depth=10,
+            reliability=ReliabilityPolicy.RELIABLE,
+            durability=DurabilityPolicy.VOLATILE,
+        )
+        self._ready_pub = self.create_publisher(Bool, self._bt_config_ready_topic, mission_qos)
+        self._ready_timer = None
 
         if self._wait_for_trigger:
-            self.create_subscription(Bool, self._plan_ready_topic, self._on_plan_ready, qos)
+            self.create_subscription(
+                Bool, self._plan_ready_topic, self._on_plan_ready, mission_qos,
+            )
             self.get_logger().info(f'Waiting for plan ready on {self._plan_ready_topic}')
         else:
             self.get_logger().info('wait_for_trigger=false, converting immediately...')
@@ -93,15 +100,22 @@ class MissionQuintupleLoader(Node):
             self.get_logger().error(f'Failed to convert quintuple plan: {exc}')
             return
 
-        ready = Bool()
-        ready.data = True
-        self._ready_pub.publish(ready)
         self.get_logger().info(
             'Published bt config ready: '
             f'{summary["step_count"]} steps, '
             f'{summary["waypoint_count"]} nav waypoints -> '
             f'{summary["bt_xml_output"]}'
         )
+
+        # 定时反复发送，确保 bt_install 无论何时订阅都能收到
+        if self._ready_timer is None:
+            self._ready_timer = self.create_timer(0.5, self._publish_ready)
+        self._publish_ready()
+
+    def _publish_ready(self) -> None:
+        ready = Bool()
+        ready.data = True
+        self._ready_pub.publish(ready)
 
     def _convert(self) -> dict:
         if not self._quintuple_yaml.is_file():

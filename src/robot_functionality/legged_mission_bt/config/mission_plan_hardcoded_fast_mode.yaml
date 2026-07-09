@@ -6,72 +6,72 @@ sequence:
   wp: 1
   state: 2
   target_id: 4
-  limit_yaw: false
+  motion_planner: 1
 - path: 1
   wp: 2
   state: 1
   target_id: -1
-  limit_yaw: false
+  motion_planner: 0
 - path: 1
   wp: 3
   state: 1
   target_id: -1
-  limit_yaw: false
+  motion_planner: 0
 - path: 2
   wp: 1
   state: 2
   target_id: 0
-  limit_yaw: false
+  motion_planner: 2
 - path: 2
   wp: 2
   state: 3
   target_id: 0
-  limit_yaw: false
+  motion_planner: 1
 - path: 3
   wp: 1
   state: 2
   target_id: 5
-  limit_yaw: false
+  motion_planner: 2
 - path: 3
   wp: 2
   state: 2
   target_id: 1
-  limit_yaw: false
+  motion_planner: 2
 - path: 3
   wp: 3
   state: 3
   target_id: 1
-  limit_yaw: false
+  motion_planner: 1
 - path: 4
   wp: 1
   state: 2
   target_id: 6
-  limit_yaw: false
+  motion_planner: 2
 - path: 4
   wp: 2
   state: 2
   target_id: 2
-  limit_yaw: false
+  motion_planner: 2
 - path: 4
   wp: 3
   state: 3
   target_id: 2
-  limit_yaw: false
+  motion_planner: 1
 - path: 5
   wp: 1
   state: 2
   target_id: 7
-  limit_yaw: false
+  motion_planner: 2
 - path: 5
   wp: 2
   state: 2
   target_id: 3
-  limit_yaw: false
+  motion_planner: 2
 - path: 5
   wp: 3
   state: 3
   target_id: 3
-  limit_yaw: false
+  motion_planner: 1
 nav:
   1-1:
     frame_id: map

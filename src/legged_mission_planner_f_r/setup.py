@@ -24,7 +24,9 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'mission_ui_fr = legged_mission_planner_fr.ui_labeling:main',
+            'mission_base_plan_fr = legged_mission_planner_fr.ui_base_plan:main',
+            'mission_quiz_plan_fr = legged_mission_planner_fr.ui_quiz_plan:main',
+            'mission_ui_fr = legged_mission_planner_fr.ui_base_plan:main',
             'waypoint_editor_fr = legged_mission_planner_fr.ui_waypoint_editor:main',
             'export_scenarios_fr = legged_mission_planner_fr.path_enumerator:main',
         ],

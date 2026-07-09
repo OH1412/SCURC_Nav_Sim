@@ -246,10 +246,7 @@ def render_path_on_field(
     scenario = plan.get('scenario', {})
     box_types = scenario.get('box_types', [i % 4 for i in range(8)])
     zone_types = scenario.get('zone_types', [0, 1, 2, 3])
-    use_ui_points = (
-        waypoint_config is not None
-        and plan.get('switch_mode') == 'fast_mode'
-    )
+    use_ui_points = waypoint_config is not None
 
     canvas = field_background_image(display_width)
     canvas = overlay_boxes_and_zones(canvas, box_types, zone_types, display_width)

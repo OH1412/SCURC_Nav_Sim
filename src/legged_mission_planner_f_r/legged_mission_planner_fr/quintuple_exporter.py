@@ -5,6 +5,8 @@ from typing import Mapping, Sequence
 
 import yaml
 
+from .motion_planner import derive_motion_planner, is_bt_export_step
+from .path_planner import SWITCH_MODE
 from .state_definitions import MissionState, MissionStep
 from .waypoint_config import WaypointConfig
 from .waypoint_yaml_exporter import FORMAT_VERSION, PLANNER_VARIANT
@@ -20,18 +22,15 @@ def target_id_for_step(step: MissionStep) -> int:
 
 def build_quintuple_plan(
     sequence: Sequence[MissionStep],
-    switch_mode: str,
     *,
     waypoint_config: WaypointConfig | None = None,
 ) -> dict:
+    del waypoint_config  # motion_planner is derived from step state/path
     quintuple_sequence: list[dict] = []
     zone_visit_count: dict[int, int] = {}
     for step in sequence:
-        limit_yaw = False
-        if waypoint_config is not None:
-            meta = waypoint_config.get_meta(step.path, step.wp)
-            if meta is not None:
-                limit_yaw = meta.limit_yaw
+        if not is_bt_export_step(int(step.state)):
+            continue
 
         tid = target_id_for_step(step)
 
@@ -48,12 +47,12 @@ def build_quintuple_plan(
             'wp': step.wp,
             'state': int(step.state),
             'target_id': tid,
-            'limit_yaw': limit_yaw,
+            'motion_planner': derive_motion_planner(step.path, step.wp, int(step.state)),
         })
     return {
         'format_version': FORMAT_VERSION,
         'planner_variant': PLANNER_VARIANT,
-        'switch_mode': switch_mode,
+        'switch_mode': SWITCH_MODE,
         'sequence': quintuple_sequence,
     }
 
@@ -69,11 +68,10 @@ def write_quintuple_yaml(plan: Mapping, path: str | Path) -> Path:
 
 def export_quintuple(
     sequence: Sequence[MissionStep],
-    switch_mode: str,
     output_path: str | Path,
     *,
     waypoint_config: WaypointConfig | None = None,
 ) -> dict:
-    plan = build_quintuple_plan(sequence, switch_mode, waypoint_config=waypoint_config)
+    plan = build_quintuple_plan(sequence, waypoint_config=waypoint_config)
     write_quintuple_yaml(plan, output_path)
     return plan

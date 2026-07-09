@@ -1,5 +1,5 @@
+# 智力题二次规划专用参数（由 quiz_plan.launch.py 加载）
 include_quiz_state: false
-start_state: 1
 
 ui_points:
   file: ui_points_fast_mode.yaml
@@ -15,8 +15,3 @@ plan_ready_type: std_msgs/msg/Bool
 
 planner_variant: front_back
 max_waypoint: 4
-
-ranking:
-  prefer_direct_path_weight: 10.0
-  cross_path_penalty: 5.0
-  path_change_penalty: 1.0

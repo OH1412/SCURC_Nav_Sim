@@ -24,6 +24,7 @@ def find_workspace_src() -> Path:
 WS_SRC = find_workspace_src()
 
 DEFAULT_OUTPUT_DIR = WS_SRC / 'legged_mission_planner_f_r' / 'tmp'
+DEFAULT_SCENARIO_FILE = DEFAULT_OUTPUT_DIR / 'base_scenario.yaml'
 
 
 def resolve_package_share() -> Path:

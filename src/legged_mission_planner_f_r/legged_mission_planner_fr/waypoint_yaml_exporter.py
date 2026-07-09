@@ -6,6 +6,7 @@ from typing import Mapping, Sequence
 
 import yaml
 
+from .motion_planner import derive_motion_planner
 from .ui_assets import FIELD_IMAGE
 
 FORMAT_VERSION = 1
@@ -21,7 +22,7 @@ class WaypointUI:
     norm_y: float
     state: int = 0           # 0=QUIZ, 1=TRANSIT, 2=PICK, 3=PLACE
     target_id: int = -1      # PICK: box 0-7, PLACE: zone 0-3, 其他: -1
-    limit_yaw: bool = False  # 是否限制yaw角
+    motion_planner: int = 0  # 0=corridor, 1=forward, 2=backward
 
     @property
     def waypoint_id(self) -> str:
@@ -30,6 +31,19 @@ class WaypointUI:
 
 def waypoint_id(path_id: int, wp_index: int) -> str:
     return f'{path_id}-{wp_index}'
+
+
+def _motion_planner_from_entry(
+    path_id: int,
+    wp_index: int,
+    state: int,
+    entry: dict,
+) -> int:
+    if 'motion_planner' in entry:
+        return int(entry['motion_planner'])
+    if 'limit_yaw' in entry:
+        return derive_motion_planner(path_id, wp_index, state)
+    return derive_motion_planner(path_id, wp_index, state)
 
 
 def build_ui_points_yaml(paths: Mapping[int, Sequence[WaypointUI]]) -> dict:
@@ -45,7 +59,7 @@ def build_ui_points_yaml(paths: Mapping[int, Sequence[WaypointUI]]) -> dict:
                 'norm_y': round(wp.norm_y, 6),
                 'state': wp.state,
                 'target_id': wp.target_id,
-                'limit_yaw': wp.limit_yaw,
+                'motion_planner': wp.motion_planner,
             }
             for wp in sorted(waypoints, key=lambda w: w.wp_index)
         ]
@@ -59,7 +73,6 @@ def build_ui_points_yaml(paths: Mapping[int, Sequence[WaypointUI]]) -> dict:
 
 
 def build_mission_plan_hardcoded_yaml(paths: Mapping[int, Sequence[WaypointUI]]) -> dict:
-    # 构建五元组序列 (path, wp, state, target_id, limit_yaw)
     sequence: list[dict] = []
     for path_id in sorted(paths.keys()):
         for wp in sorted(paths[path_id], key=lambda w: w.wp_index):
@@ -68,10 +81,9 @@ def build_mission_plan_hardcoded_yaml(paths: Mapping[int, Sequence[WaypointUI]])
                 'wp': wp.wp_index,
                 'state': wp.state,
                 'target_id': wp.target_id,
-                'limit_yaw': wp.limit_yaw,
+                'motion_planner': wp.motion_planner,
             })
 
-    # 构建 nav 航点模板（供后续坐标采集脚本填写 map 坐标）
     nav: dict[str, dict] = {}
     for path_id in sorted(paths.keys()):
         for wp in sorted(paths[path_id], key=lambda w: w.wp_index):
@@ -127,15 +139,17 @@ def load_ui_points(path: str | Path) -> dict[int, list[WaypointUI]]:
         for entry in entries or []:
             wp_id = str(entry['id'])
             _, wp_str = wp_id.split('-', 1)
+            wp_index = int(wp_str)
+            state = int(entry.get('state', 0))
             waypoints.append(
                 WaypointUI(
                     path_id=path_id,
-                    wp_index=int(wp_str),
+                    wp_index=wp_index,
                     norm_x=float(entry['norm_x']),
                     norm_y=float(entry['norm_y']),
-                    state=int(entry.get('state', 0)),
+                    state=state,
                     target_id=int(entry.get('target_id', -1)),
-                    limit_yaw=bool(entry.get('limit_yaw', False)),
+                    motion_planner=_motion_planner_from_entry(path_id, wp_index, state, entry),
                 )
             )
         result[path_id] = sorted(waypoints, key=lambda w: w.wp_index)

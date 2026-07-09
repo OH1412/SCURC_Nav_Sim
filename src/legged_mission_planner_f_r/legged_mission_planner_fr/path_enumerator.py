@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import itertools
 from pathlib import Path
-from typing import Iterator, Sequence
+from typing import Iterator
 
 from .package_paths import DEFAULT_OUTPUT_DIR
 from .path_planner import MissionPathPlanner
@@ -17,22 +17,19 @@ def valid_box_type_permutations() -> Iterator[list[int]]:
 
 
 def enumerate_scenarios(
-    switch_modes: Sequence[str] = ('safe_mode', 'fast_mode'),
-    zone_types: Sequence[int] = (0, 1, 2, 3),
+    zone_types: tuple[int, ...] = (0, 1, 2, 3),
     limit: int | None = None,
 ) -> Iterator[dict]:
     count = 0
     for box_types in valid_box_type_permutations():
-        for switch_mode in switch_modes:
-            yield {
-                'switch_mode': switch_mode,
-                'box_types': box_types,
-                'zone_types': list(zone_types),
-                'include_quiz_state': False,
-            }
-            count += 1
-            if limit is not None and count >= limit:
-                return
+        yield {
+            'box_types': box_types,
+            'zone_types': list(zone_types),
+            'include_quiz_state': False,
+        }
+        count += 1
+        if limit is not None and count >= limit:
+            return
 
 
 def export_enumerated(
@@ -48,12 +45,11 @@ def export_enumerated(
         sequence = planner.plan(
             box_types=scenario['box_types'],
             zone_types=scenario['zone_types'],
-            switch_mode=scenario['switch_mode'],
             include_quiz_state=scenario.get('include_quiz_state', False),
         )
-        name = f"scenario_{index:04d}_{scenario['switch_mode']}"
+        name = f'scenario_{index:04d}'
         base = output_dir / name
-        exporter.export(sequence, scenario, scenario['switch_mode'], base)
+        exporter.export(sequence, scenario, base)
         exported.append(base)
     return exported
 

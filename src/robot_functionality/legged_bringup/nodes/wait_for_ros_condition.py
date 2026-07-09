@@ -71,11 +71,18 @@ class WaitForRosCondition(Node):
 
         if args.bt_config_ready_topic:
             self._checks.append(f'行为树配置就绪({args.bt_config_ready_topic})')
+            from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
+
+            bt_qos = QoSProfile(
+                depth=10,
+                reliability=ReliabilityPolicy.RELIABLE,
+                durability=DurabilityPolicy.VOLATILE,
+            )
             self.create_subscription(
                 self._import_bool(),
                 args.bt_config_ready_topic,
                 self._on_bt_config_ready,
-                10,
+                bt_qos,
             )
 
         self._stand_up_done = args.skip_stand_up
@@ -204,7 +211,6 @@ class WaitForRosCondition(Node):
             )
         self._done = True
         self._exit_code = code
-        rclpy.shutdown()
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -225,6 +231,8 @@ def _build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> None:
     args = _build_parser().parse_args(argv)
+    if args.topic == '':
+        args.topic = None
     if args.reloc_ready_topic == '':
         args.reloc_ready_topic = None
     if args.bt_config_ready_topic == '':
@@ -234,7 +242,8 @@ def main(argv: list[str] | None = None) -> None:
     node = WaitForRosCondition(args)
     exit_code = 1
     try:
-        rclpy.spin(node)
+        while rclpy.ok() and not node._done:
+            rclpy.spin_once(node, timeout_sec=0.1)
     except KeyboardInterrupt:
         exit_code = 1
     finally:

@@ -12,6 +12,7 @@ from .state_definitions import MissionStep
 FORMAT_VERSION = 2
 PLANNER_VARIANT = 'front_back'
 MAX_WAYPOINT = 4
+SWITCH_MODE = 'fast_mode'
 
 
 class PlanExporter:
@@ -21,7 +22,6 @@ class PlanExporter:
         self,
         sequence: Sequence[MissionStep],
         scenario: Mapping,
-        switch_mode: str,
         *,
         quiz_type: int | None = None,
         quiz_received: bool = False,
@@ -33,7 +33,7 @@ class PlanExporter:
             'planner_variant': PLANNER_VARIANT,
             'max_waypoint': MAX_WAYPOINT,
             'generated_at': datetime.now(timezone.utc).isoformat(),
-            'switch_mode': switch_mode,
+            'switch_mode': SWITCH_MODE,
             'scenario': dict(scenario),
             'quiz_type': quiz_type,
             'quiz_received': quiz_received,
@@ -69,11 +69,10 @@ class PlanExporter:
         self,
         sequence: Sequence[MissionStep],
         scenario: Mapping,
-        switch_mode: str,
         output_base: str | Path,
         **quiz_meta,
     ) -> dict:
-        plan = self.build_plan(sequence, scenario, switch_mode, **quiz_meta)
+        plan = self.build_plan(sequence, scenario, **quiz_meta)
         output_base = Path(output_base)
         self.write_yaml(plan, output_base.with_suffix('.yaml'))
         self.write_json(plan, output_base.with_suffix('.json'))

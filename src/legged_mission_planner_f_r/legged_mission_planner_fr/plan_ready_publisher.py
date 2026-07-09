@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import time
+
+_MISSION_QOS_DEPTH = 10
+
 
 class PlanReadyPublisher:
     """Publish a ROS signal when mission plan export completes."""
@@ -24,9 +28,15 @@ class PlanReadyPublisher:
             return False
         from std_msgs.msg import Bool
 
+        import rclpy
+
         msg = Bool()
         msg.data = True
-        self._publisher.publish(msg)
+        # Tk 主线程无 spin 时单次 publish 常发不出去；连发几次并 spin_once 确保送达
+        for _ in range(5):
+            self._publisher.publish(msg)
+            rclpy.spin_once(self._node, timeout_sec=0.05)
+            time.sleep(0.05)
         self._node.get_logger().info(
             f'Published plan ready on {self.topic} (plan_source={plan_source})'
         )
@@ -40,6 +50,7 @@ class PlanReadyPublisher:
         try:
             import rclpy
             from rclpy.node import Node
+            from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
             from std_msgs.msg import Bool
         except ImportError:
             self._error = 'rclpy not available'
@@ -50,11 +61,16 @@ class PlanReadyPublisher:
             if not rclpy.ok():
                 rclpy.init()
             topic = self.topic
+            qos = QoSProfile(
+                depth=_MISSION_QOS_DEPTH,
+                reliability=ReliabilityPolicy.RELIABLE,
+                durability=DurabilityPolicy.VOLATILE,
+            )
 
             class _PlanReadyNode(Node):
                 def __init__(self) -> None:
                     super().__init__('legged_mission_planner_fr_plan_ready')
-                    self._pub = self.create_publisher(Bool, topic, 10)
+                    self._pub = self.create_publisher(Bool, topic, qos)
 
             self._node = _PlanReadyNode()
             self._publisher = self._node._pub

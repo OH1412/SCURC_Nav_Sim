@@ -22,43 +22,43 @@ arm_points:
   "0":
     role: pick
     label: "抓取点 1"
-    map_target: {x: 2.7615, y: -1.2750, z: 0.0160, yaw: 0.0000}
+    map_target: {x: 2.5915, y: -1.2750, z: 0.0160, yaw: 0.0000}
     base_link_target: {x: 550.0, y: 0.0, z: -50.0, yaw: 0.0}
 
   "1":
     role: pick
     label: "抓取点 2"
-    map_target: {x: 2.7615, y: -0.4250, z: 0.0160, yaw: 0.0000}
+    map_target: {x: 2.5915, y: -0.4250, z: 0.0160, yaw: 0.0000}
 
   "2":
     role: pick
     label: "抓取点 3"
-    map_target: {x: 2.7615, y: 0.4250, z: 0.0160, yaw: 0.0000}
+    map_target: {x: 2.5915, y: 0.4250, z: 0.0160, yaw: 0.0000}
 
   "3":
     role: pick
     label: "抓取点 4"
-    map_target: {x: 2.7615, y: 1.2750, z: 0.0160, yaw: 0.0000}
+    map_target: {x: 2.5915, y: 1.2750, z: 0.0160, yaw: 0.0000}
 
   "4":
     role: pick
     label: "抓取点 5"
-    map_target: {x: 1.9115, y: -1.2750, z: 0.0160, yaw: 0.0000}
+    map_target: {x: 1.7415, y: -1.2750, z: 0.0160, yaw: 0.0000}
 
   "5":
     role: pick
     label: "抓取点 6"
-    map_target: {x: 1.9115, y: -0.4250, z: 0.0160, yaw: 0.0000}
+    map_target: {x: 1.7415, y: -0.4250, z: 0.0160, yaw: 0.0000}
 
   "6":
     role: pick
     label: "抓取点 7"
-    map_target: {x: 1.9115, y: 0.4250, z: 0.0160, yaw: 0.0000}
+    map_target: {x: 1.7415, y: 0.4250, z: 0.0160, yaw: 0.0000}
 
   "7":
     role: pick
     label: "抓取点 8"
-    map_target: {x: 1.9115, y: 1.2750, z: 0.0160, yaw: 0.0000}
+    map_target: {x: 1.7415, y: 1.2750, z: 0.0160, yaw: 0.0000}
 
   "8":
     role: place

@@ -7,6 +7,7 @@ from tkinter import messagebox, simpledialog, ttk
 
 from .package_paths import WS_SRC
 from .ui_assets import FIELD_REF_HEIGHT, FIELD_REF_WIDTH, field_background_image, photo_image
+from .motion_planner import derive_motion_planner
 from .waypoint_yaml_exporter import (
     WaypointUI,
     export_waypoint_yamls,
@@ -153,6 +154,11 @@ class WaypointEditorCanvas(tk.Canvas):
                 norm_y=norm_y,
                 state=state,
                 target_id=target_id,
+                motion_planner=derive_motion_planner(
+                    self._current_path_id,
+                    wp_index,
+                    state,
+                ),
             )
         )
         self._draw_waypoint(

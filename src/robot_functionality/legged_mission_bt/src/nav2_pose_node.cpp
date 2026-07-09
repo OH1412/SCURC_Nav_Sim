@@ -82,13 +82,13 @@ Nav2PoseNode::Nav2PoseNode(
   middle_zone_distance_ = node_->get_parameter("middle_zone_distance").as_double();
 
   if (!node_->has_parameter("corridor_entry_x")) {
-    node_->declare_parameter("corridor_entry_x", 2.3395);
+    node_->declare_parameter("corridor_entry_x", 2.1695);
   }
   if (!node_->has_parameter("corridor_entry_y")) {
     node_->declare_parameter("corridor_entry_y", -1.7000);
   }
   if (!node_->has_parameter("corridor_exit_x")) {
-    node_->declare_parameter("corridor_exit_x", 3.8315);
+    node_->declare_parameter("corridor_exit_x", 3.6615);
   }
   corridor_entry_x_ = node_->get_parameter("corridor_entry_x").as_double();
   corridor_entry_y_ = node_->get_parameter("corridor_entry_y").as_double();

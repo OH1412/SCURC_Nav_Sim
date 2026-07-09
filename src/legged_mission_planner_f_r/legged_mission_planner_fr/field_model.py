@@ -49,10 +49,6 @@ class FieldModel:
             3: PlacementZone(3, 3, 5),
         }
 
-    @staticmethod
-    def switch_modes() -> set[str]:
-        return {'safe_mode', 'fast_mode'}
-
     PATH_NEIGHBORS: Dict[int, tuple[int, ...]] = {
         1: (2,),
         2: (1, 3),

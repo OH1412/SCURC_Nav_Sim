@@ -7,6 +7,8 @@ from .state_definitions import MissionState, MissionStep
 from .validation import validate_box_types, validate_sequence, validate_zone_types
 from .waypoint_config import WaypointConfig
 
+SWITCH_MODE = 'fast_mode'
+
 
 class MissionPathPlanner:
     """Generate logical (path, waypoint, state) sequences for front/back suction plans."""
@@ -17,13 +19,17 @@ class MissionPathPlanner:
         waypoint_config: Optional[WaypointConfig] = None,
     ) -> None:
         self.field = field or FieldModel()
-        self.waypoint_config = waypoint_config
+        self.waypoint_config = waypoint_config or WaypointConfig.load_default()
+        if self.waypoint_config is None:
+            raise FileNotFoundError(
+                '规划需要 ui_points_fast_mode.yaml，但未在 package share/config 中找到。'
+                '请确认已 colcon build 且 config/ui_points_fast_mode.yaml 已安装。'
+            )
 
     def plan(
         self,
         box_types: Sequence[int],
         zone_types: Sequence[int] = (0, 1, 2, 3),
-        switch_mode: str = 'safe_mode',
         include_quiz_state: bool = False,
         quiz_type: int | None = None,
         *,
@@ -33,22 +39,20 @@ class MissionPathPlanner:
         del strategy  # kept for API compatibility with shared UI helpers
         validate_box_types(box_types)
         validate_zone_types(zone_types)
-        if switch_mode not in self.field.switch_modes():
-            raise ValueError(f'Unknown switch_mode {switch_mode!r}')
         if quiz_type is not None and quiz_type not in range(4):
             raise ValueError(f'quiz_type must be 0~3, got {quiz_type!r}')
 
         wp_config = waypoint_config or self.waypoint_config
-        if switch_mode == 'fast_mode' and wp_config is None:
-            wp_config = WaypointConfig.for_mode('fast_mode')
-        if switch_mode == 'fast_mode' and wp_config is None:
+        if wp_config is None:
+            wp_config = WaypointConfig.load_default()
+        if wp_config is None:
             raise FileNotFoundError(
-                'fast_mode 需要 ui_points_fast_mode.yaml，但未在 package share/config 中找到。'
+                '规划需要 ui_points_fast_mode.yaml，但未在 package share/config 中找到。'
                 '请确认已 colcon build 且 config/ui_points_fast_mode.yaml 已安装。'
             )
 
         sequence: List[MissionStep] = []
-        navigator = _SequenceBuilder(sequence, switch_mode, wp_config)
+        navigator = _SequenceBuilder(sequence, wp_config)
 
         start_state = MissionState.QUIZ_RECOGNITION if include_quiz_state else MissionState.TRANSIT
         navigator.append(0, 0, start_state, note='start')
@@ -70,7 +74,6 @@ class MissionPathPlanner:
             tasks,
             navigator.current_path,
             quiz_type,
-            switch_mode=switch_mode,
             placed_types={fallback_box_type},
         )
         navigator.build_main_tasks(ordered)
@@ -84,7 +87,6 @@ class MissionPathPlanner:
         start_path: int,
         quiz_type: int | None,
         *,
-        switch_mode: str,
         placed_types: Set[int],
     ) -> List[dict]:
         upper = [t for t in tasks if t['row'] == 'upper']
@@ -92,13 +94,12 @@ class MissionPathPlanner:
         ordered: List[dict] = []
         current_path = start_path
         placed = set(placed_types)
-        rank_fn = self._task_rank_fast if switch_mode == 'fast_mode' else self._task_rank_safe
         for group in (upper, lower):
             remaining = list(group)
             while remaining:
                 best = min(
                     remaining,
-                    key=lambda t: rank_fn(t, current_path, quiz_type, placed),
+                    key=lambda t: self._task_rank(t, current_path, quiz_type, placed),
                 )
                 ordered.append(best)
                 remaining.remove(best)
@@ -107,14 +108,7 @@ class MissionPathPlanner:
         return ordered
 
     @staticmethod
-    def _task_rank_safe(task: dict, current_path: int, quiz_type: int | None, _placed: Set[int]) -> tuple:
-        quiz_rank = 0 if quiz_type is not None and task['box_type'] == quiz_type else 1
-        direct_rank = 0 if task['direct'] else 1
-        distance = FieldModel.path_distance(current_path, task['pick_path'])
-        return (quiz_rank, direct_rank, distance, task['box_id'])
-
-    @staticmethod
-    def _task_rank_fast(task: dict, current_path: int, quiz_type: int | None, _placed: Set[int]) -> tuple:
+    def _task_rank(task: dict, current_path: int, quiz_type: int | None, _placed: Set[int]) -> tuple:
         quiz_rank = 0 if quiz_type is not None and task['box_type'] == quiz_type else 1
         distance = FieldModel.path_distance(current_path, task['pick_path'])
         return (quiz_rank, distance, task['box_id'])
@@ -124,19 +118,15 @@ class _SequenceBuilder:
     def __init__(
         self,
         sequence: List[MissionStep],
-        switch_mode: str,
-        waypoint_config: WaypointConfig | None = None,
+        waypoint_config: WaypointConfig,
     ) -> None:
         self.sequence = sequence
-        self.switch_mode = switch_mode
         self.waypoint_config = waypoint_config
         self.current_path = 0
         self.current_wp = 0
 
     def _path_max_wp(self, path: int) -> int:
-        if self.waypoint_config is not None:
-            return self.waypoint_config.max_wp(path)
-        return MAX_WAYPOINT
+        return self.waypoint_config.max_wp(path)
 
     def append(
         self,
@@ -220,27 +210,10 @@ class _SequenceBuilder:
             return
 
         if self.current_path == path:
-            if self.switch_mode == 'fast_mode':
-                self._append_task_step(path, target_wp, final_state, task, note)
-                return
-            self.move_within_path(path, target_wp, final_state, task=task, note=note)
-            return
-
-        if self.switch_mode == 'fast_mode':
             self._append_task_step(path, target_wp, final_state, task, note)
             return
 
-        # safe_mode cross-path
-        if target_wp == MAX_WAYPOINT:
-            if self.current_wp != MAX_WAYPOINT:
-                self.move_within_path(self.current_path, MAX_WAYPOINT)
-            self._append_task_step(path, MAX_WAYPOINT, final_state, task, note)
-            return
-
-        if self.current_wp != MAX_WAYPOINT:
-            self.move_within_path(self.current_path, MAX_WAYPOINT)
-        self.append(path, MAX_WAYPOINT, MissionState.TRANSIT, note=f'switch to path {path}')
-        self.move_within_path(path, target_wp, final_state, task=task, note=note)
+        self._append_task_step(path, target_wp, final_state, task, note)
 
     def _append_task_step(
         self,
@@ -287,13 +260,7 @@ class _SequenceBuilder:
             'zone_id': zone_id,
             'zone_type': zone_type,
         }
-        if self.waypoint_config is not None:
-            place_wp = self.waypoint_config.place_for_zone(zone_id).wp
-        else:
-            place_wp = MAX_WAYPOINT
-
-        if self.switch_mode == 'safe_mode' and place_path != self.current_path:
-            self.move_to(place_path, 3, MissionState.TRANSIT, note='fallback place align')
+        place_wp = self.waypoint_config.place_for_zone(zone_id).wp
         self.move_to(
             place_path,
             place_wp,

@@ -29,6 +29,7 @@ class FieldCanvas(tk.Canvas):
         on_zone_change: Callable[[int, int], None],
         width: int = 560,
         layout: dict | None = None,
+        readonly: bool = False,
         **kwargs,
     ) -> None:
         super().__init__(master, highlightthickness=0, bg='#f4f1de', **kwargs)
@@ -39,9 +40,11 @@ class FieldCanvas(tk.Canvas):
         self.display_width = width
         self.layout = layout or {}
         self.selected_brush = 0
+        self.readonly = readonly
         self._photo = None
         self.bind('<Configure>', self._on_resize)
-        self.bind('<Button-1>', self._on_click)
+        if not self.readonly:
+            self.bind('<Button-1>', self._on_click)
         self._redraw()
 
     def set_brush(self, type_id: int) -> None:
@@ -73,6 +76,8 @@ class FieldCanvas(tk.Canvas):
         self.create_image(0, 0, image=self._photo, anchor='nw')
 
     def _on_click(self, event) -> None:
+        if self.readonly:
+            return
         zone_px, box_px = field_overlay_sizes(self.display_width)
         zone_hit = zone_px // 2 + 6
         box_hit = box_px // 2 + 6
