@@ -42,11 +42,7 @@ LATCHED_QOS = QoSProfile(
 # ---------------------------------------------------------------------------
 
 MIDDLE_PARAMS = {
-    'general_goal_checker.x_goal_tolerance': 0.08,
-    'general_goal_checker.y_goal_tolerance': 0.15,
     'general_goal_checker.yaw_goal_tolerance': 6.28,
-    'FollowPath.x_goal_tolerance': 0.08,
-    'FollowPath.y_goal_tolerance': 0.15,
     'FollowPath.dwb_yaw_constraint::RotateToGoalXYCritic.scale': 0.0,
     'FollowPath.dwb_yaw_constraint::RotateToPathCritic.scale': 0.0,
     'FollowPath.GoalAlign.scale': 0.0,
@@ -58,11 +54,7 @@ MIDDLE_PARAMS = {
 }
 
 EDGE_PARAMS = {
-    'general_goal_checker.x_goal_tolerance': 0.08,
-    'general_goal_checker.y_goal_tolerance': 0.15,
     'general_goal_checker.yaw_goal_tolerance': 0.17453,
-    'FollowPath.x_goal_tolerance': 0.08,
-    'FollowPath.y_goal_tolerance': 0.15,
     'FollowPath.dwb_yaw_constraint::RotateToGoalXYCritic.scale': 32.0,
     'FollowPath.dwb_yaw_constraint::RotateToPathCritic.scale': 96.0,
     'FollowPath.GoalAlign.scale': 24.0,

@@ -16,7 +16,17 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from quintuple_bt_generator import generate_bt_artifacts
+from quintuple_bt_generator import (
+    STATE_PICK,
+    STATE_PLACE,
+    STATE_TRANSIT,
+    arm_point_id_for_step,
+    build_waypoints_yaml,
+    collect_waypoint_ids,
+    generate_bt_artifacts,
+    load_quintuple,
+    nav_wp_id,
+)
 
 
 class MissionQuintupleLoader(Node):
@@ -38,6 +48,7 @@ class MissionQuintupleLoader(Node):
         self.declare_parameter('wp_count', 4)
         self.declare_parameter('arm_timeout', 30.0)
         self.declare_parameter('nav_frame_id', 'map')
+        self.declare_parameter('send_p0_wp0', False)  # false=过滤掉 nav_p0_wp0
 
         self._plan_ready_topic = self.get_parameter('plan_ready_topic').value
         self._bt_config_ready_topic = self.get_parameter('bt_config_ready_topic').value
@@ -50,6 +61,7 @@ class MissionQuintupleLoader(Node):
         self._wp_count = int(self.get_parameter('wp_count').value)
         self._arm_timeout = float(self.get_parameter('arm_timeout').value)
         self._nav_frame_id = str(self.get_parameter('nav_frame_id').value)
+        self._send_p0_wp0 = bool(self.get_parameter('send_p0_wp0').value)
 
         qos = QoSProfile(depth=10, reliability=ReliabilityPolicy.RELIABLE)
         self._ready_pub = self.create_publisher(Bool, self._bt_config_ready_topic, qos)
@@ -95,20 +107,134 @@ class MissionQuintupleLoader(Node):
         if not self._quintuple_yaml.is_file():
             raise FileNotFoundError(f'Quintuple YAML not found: {self._quintuple_yaml}')
 
-        summary = generate_bt_artifacts(
-            self._quintuple_yaml,
-            self._bt_xml_output,
-            self._waypoints_yaml_output,
-            path_count=self._path_count,
-            wp_count=self._wp_count,
-            arm_timeout=self._arm_timeout,
-            frame_id=self._nav_frame_id,
+        data = load_quintuple(self._quintuple_yaml)
+        sequence: list[dict] = list(data['sequence'])
+
+        # ── Filter nav_p0_wp0 ──────────────────────────────────────────
+        p0_wp0_count = sum(
+            1 for s in sequence if int(s['path']) == 0 and int(s['wp']) == 0
         )
+        if not self._send_p0_wp0:
+            sequence = [
+                s for s in sequence
+                if not (int(s['path']) == 0 and int(s['wp']) == 0)
+            ]
+            if p0_wp0_count:
+                self.get_logger().info(
+                    f'send_p0_wp0=false: filtered {p0_wp0_count} nav_p0_wp0 step(s)'
+                )
+        else:
+            self.get_logger().info(
+                f'send_p0_wp0=true: keeping {p0_wp0_count} nav_p0_wp0 step(s)'
+            )
+
+        waypoint_ids = collect_waypoint_ids(
+            sequence, path_count=self._path_count, wp_count=self._wp_count,
+        )
+        # Filter waypoint list to match sequence filtering
+        if not self._send_p0_wp0:
+            waypoint_ids = [w for w in waypoint_ids if w != 'nav_p0_wp0']
+
+        # ── BT XML ─────────────────────────────────────────────────────
+        bt_xml_text = self._build_bt_xml(sequence)
+        self._bt_xml_output.parent.mkdir(parents=True, exist_ok=True)
+        self._bt_xml_output.write_text(bt_xml_text, encoding='utf-8')
+
+        # ── Waypoints YAML ─────────────────────────────────────────────
+        waypoints_output: str | None = None
+        if self._waypoints_yaml_output:
+            waypoints_text = build_waypoints_yaml(
+                waypoint_ids,
+                frame_id=self._nav_frame_id,
+                quintuple_path=self._quintuple_yaml,
+            )
+            waypoints_yaml_path = Path(self._waypoints_yaml_output)
+            waypoints_yaml_path.parent.mkdir(parents=True, exist_ok=True)
+            waypoints_yaml_path.write_text(waypoints_text, encoding='utf-8')
+            waypoints_output = str(waypoints_yaml_path)
+
+        step_count = len(sequence)
         self.get_logger().info(
             f'Generated BT from {self._quintuple_yaml} '
-            f'({summary.get("planner_variant")}, {summary.get("switch_mode")})'
+            f'({data.get("planner_variant")}, {data.get("switch_mode")})'
         )
-        return summary
+        return {
+            'step_count': step_count,
+            'waypoint_count': len(waypoint_ids),
+            'bt_xml_output': str(self._bt_xml_output),
+            'waypoints_yaml_output': waypoints_output,
+            'switch_mode': data.get('switch_mode'),
+            'planner_variant': data.get('planner_variant'),
+        }
+
+    # ── BT XML generation (reads motion_planner, not limit_yaw) ────────
+    def _build_bt_xml(self, sequence: list[dict]) -> str:
+        lines = [
+            '<?xml version="1.0" encoding="UTF-8"?>',
+            '<!--',
+            '  由 mission_quintuple_loader 根据 mission_quintuple.yaml 自动生成。',
+        ]
+        lines.append(f'  来源: {self._quintuple_yaml}')
+        lines.extend([
+            '  state=1: Nav2PoseNode',
+            '  state=2: Nav2PoseNode + ArmPickNode (target_id 0~7 -> arm_point_id 0~7)',
+            '  state=3: Nav2PoseNode + ArmPlaceNode (target_id 0~7 -> arm_point_id 8~15)',
+            '-->',
+            '<root BTCPP_format="4">',
+            '  <BehaviorTree ID="MissionHardcoded">',
+            '    <Sequence name="HardcodedMission">',
+            '',
+        ])
+
+        for index, step in enumerate(sequence, start=1):
+            path = int(step['path'])
+            wp = int(step['wp'])
+            state = int(step['state'])
+            target_id = int(step.get('target_id', -1))
+            wp_id = nav_wp_id(path, wp)
+            motion_planner = int(step.get('motion_planner', 1))
+            zone = 'middle' if motion_planner == 0 else 'edge'
+            label = {STATE_TRANSIT: 'transit', STATE_PICK: 'pick',
+                     STATE_PLACE: 'place'}.get(state, f'state{state}')
+
+            lines.append(
+                f'      <!-- step {index}: path={path} wp={wp} state={state} ({label})'
+                f' target_id={target_id} motion_planner={motion_planner} zone={zone}'
+            )
+            if state in (STATE_PICK, STATE_PLACE):
+                arm_id = arm_point_id_for_step(state, target_id)
+                lines[-1] += f' arm_point_id={arm_id} -->'
+            else:
+                lines[-1] += ' -->'
+            lines.append(
+                f'      <Nav2PoseNode wp_id="{wp_id}" motion_planner="{motion_planner}"/>'
+            )
+
+            if state == STATE_PICK:
+                arm_id = arm_point_id_for_step(state, target_id)
+                lines.append(
+                    f'      <ArmPickNode arm_point_id="{arm_id}"'
+                    f' timeout="{self._arm_timeout:.1f}"/>'
+                )
+            elif state == STATE_PLACE:
+                arm_id = arm_point_id_for_step(state, target_id)
+                lines.append(
+                    f'      <ArmPlaceNode arm_point_id="{arm_id}"'
+                    f' timeout="{self._arm_timeout:.1f}"/>'
+                )
+            elif state != STATE_TRANSIT:
+                raise ValueError(
+                    f'Unsupported state {state} at sequence index {index}'
+                )
+            lines.append('')
+
+        lines.extend([
+            '    </Sequence>',
+            '  </BehaviorTree>',
+            '</root>',
+            '',
+        ])
+        return '\n'.join(lines)
 
 
 def _run_once(args: argparse.Namespace) -> None:

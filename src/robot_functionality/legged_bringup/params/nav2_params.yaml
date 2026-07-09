@@ -150,8 +150,8 @@ controller_server:
       stateful: False
       plugin: "behavior_ext_plugins::SimpleGoalCheckerXY"
       # xy_goal_tolerance: 0.10             # 兜底值（未设置 x/y 时默认使用此值）
-      x_goal_tolerance: 0.08                # x 方向独立容差 (m)
-      y_goal_tolerance: 0.15                # y 方向独立容差 (m)
+      x_goal_tolerance: 0.15                # x 方向独立容差 (m)
+      y_goal_tolerance: 0.30                # y 方向独立容差 (m)
       # yaw_goal_tolerance: 6.28             # 中间区=6.28(360°) | 边缘区=0.17453(10°)
       yaw_goal_tolerance: 0.17453             # edge=10° | middle 由 switcher 切为 6.28
     FollowPath:    
@@ -287,8 +287,8 @@ controller_server:
       angular_granularity: 0.025
       transform_tolerance: 0.2
       xy_goal_tolerance: 0.30             # 兜底（未设 x/y 时 RotateToGoalXY 使用）
-      x_goal_tolerance: 0.08              # 与 general_goal_checker 一致
-      y_goal_tolerance: 0.15
+      x_goal_tolerance: 0.15              # 与 general_goal_checker 一致
+      y_goal_tolerance: 0.30
       trans_stopped_velocity: 0.08
       short_circuit_trajectory_evaluation: True
       stateful: True

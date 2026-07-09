@@ -10,3 +10,4 @@ mission_quintuple_loader:
     wp_count: 4
     arm_timeout: 30.0
     nav_frame_id: map
+    send_p0_wp0: false              # true=保留 nav_p0_wp0, false=过滤掉

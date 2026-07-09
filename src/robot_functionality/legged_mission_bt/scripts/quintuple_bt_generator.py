@@ -125,6 +125,7 @@ def build_bt_xml(
         '  state=1: Nav2PoseNode',
         '  state=2: Nav2PoseNode + ArmPickNode (target_id 0~7 -> arm_point_id 0~7)',
         '  state=3: Nav2PoseNode + ArmPlaceNode (target_id 0~7 -> arm_point_id 8~15)',
+        '  motion_planner: 0=corridor multi-phase, 1=edge front-tangent, 2=edge rear-tangent',
         '-->',
         '<root BTCPP_format="4">',
         '  <BehaviorTree ID="MissionHardcoded">',
@@ -140,19 +141,19 @@ def build_bt_xml(
         wp_id = nav_wp_id(path, wp)
         label = state_label(state)
 
-        limit_yaw = bool(step.get('limit_yaw', False))
-        zone = 'middle' if limit_yaw else 'edge'
+        motion_planner = int(step.get('motion_planner', 1))
+        zone = 'middle' if motion_planner == 0 else 'edge'
 
         lines.append(
             f'      <!-- step {index}: path={path} wp={wp} state={state} ({label})'
-            f' target_id={target_id} limit_yaw={limit_yaw} zone={zone}'
+            f' target_id={target_id} motion_planner={motion_planner} zone={zone}'
         )
         if state in (STATE_PICK, STATE_PLACE):
             arm_id = arm_point_id_for_step(state, target_id)
             lines[-1] += f' arm_point_id={arm_id} -->'
         else:
             lines[-1] += ' -->'
-        lines.append(f'      <Nav2PoseNode wp_id="{wp_id}" limit_yaw="{str(limit_yaw).lower()}"/>')
+        lines.append(f'      <Nav2PoseNode wp_id="{wp_id}" motion_planner="{motion_planner}"/>')
 
         if state == STATE_PICK:
             arm_id = arm_point_id_for_step(state, target_id)
