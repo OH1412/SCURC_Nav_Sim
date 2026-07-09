@@ -14,8 +14,10 @@
 #ifndef DWB_YAW_CONSTRAINT__MAINTAIN_YAW_CRITIC_HPP_
 #define DWB_YAW_CONSTRAINT__MAINTAIN_YAW_CRITIC_HPP_
 
+#include <memory>
 #include <string>
 #include "dwb_core/trajectory_critic.hpp"
+#include "rclcpp/rclcpp.hpp"
 
 namespace dwb_yaw_constraint
 {
@@ -34,9 +36,22 @@ namespace dwb_yaw_constraint
  * planning). This ensures yaw correction is properly integrated into DWB's
  * trajectory optimization.
  *
+ * Two-phase behavior when current yaw error exceeds yaw_error_threshold:
+ *   Phase 1 (correction): Heavily penalizes xy motion to force pure rotation
+ *                         toward the target yaw.
+ *   Phase 2 (normal):     Only penalizes yaw deviation, allowing free xy
+ *                         motion while maintaining the target yaw.
+ * This allows mid-navigation planner switches (e.g. edge→middle at 1m from
+ * goal) without the robot trying to move sideways while the yaw is still
+ * far from the desired orientation.
+ *
  * Parameters:
  *   - desired_yaw (double, default 0.0): Desired yaw in reference_frame [rad].
  *   - reference_frame (string, default "map"): Frame in which desired_yaw is defined.
+ *   - yaw_error_threshold (double, default 0.5236): Max yaw error [rad] before
+ *     entering correction phase. Default ~30 degrees.
+ *   - xy_penalty_factor (double, default 5.0): Multiplier for xy speed penalty
+ *     during correction phase. Higher = more aggressive rotation-first behavior.
  */
 class MaintainYawCritic : public dwb_core::TrajectoryCritic
 {
@@ -61,6 +76,22 @@ private:
 
   /// Whether target_yaw_ was successfully computed from TF
   bool target_valid_;
+
+  /// Current yaw error (pose.theta vs target_yaw_), computed in prepare()
+  double current_yaw_error_{0.0};
+
+  /// Threshold [rad] above which correction phase is active (default ~30°)
+  double yaw_error_threshold_{0.5236};
+
+  /// Multiplier for xy speed penalty during correction phase
+  double xy_penalty_factor_{5.0};
+
+  /// Cached parameter names for the dynamic callback
+  std::string scale_param_name_;
+  std::string threshold_param_name_;
+  std::string xy_penalty_param_name_;
+
+  rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr dyn_params_handler_;
 };
 
 }  // namespace dwb_yaw_constraint

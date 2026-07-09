@@ -37,9 +37,7 @@
            base_class_type="dwb_core::TrajectoryCritic">
       <description>
         DWB critic that penalizes trajectories whose heading deviates from the
-        path tangent direction. Encourages the robot to face along the planned
-        path, producing smoother and more predictable motion. Uses a configurable
-        path_lookahead_dist to determine the tangent ahead of the robot.
+        start→goal bearing published by Nav2PoseNode for the current nav step.
       </description>
     </class>
   </library>

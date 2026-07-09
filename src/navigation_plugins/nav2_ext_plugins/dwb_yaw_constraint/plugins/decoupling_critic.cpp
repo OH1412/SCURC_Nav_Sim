@@ -7,6 +7,7 @@
 #include "dwb_yaw_constraint/decoupling_critic.hpp"
 #include <algorithm>
 #include <cmath>
+#include "dwb_yaw_constraint/critic_dynamic_scale.hpp"
 #include "nav2_util/node_utils.hpp"
 #include "pluginlib/class_list_macros.hpp"
 
@@ -40,6 +41,10 @@ void DecouplingCritic::onInit()
     rclcpp::ParameterValue(5.0));
   node->get_parameter(
     dwb_plugin_name_ + "." + name_ + ".max_vtheta", max_vtheta_);
+
+  const std::string scale_param = dwb_plugin_name_ + "." + name_ + ".scale";
+  registerScaleDynamicCallback(
+    node, scale_param, [this](double s) { setScale(s); }, dyn_params_handler_);
 }
 
 bool DecouplingCritic::prepare(

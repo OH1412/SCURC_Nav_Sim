@@ -7,8 +7,10 @@
 #ifndef DWB_YAW_CONSTRAINT__DECOUPLING_CRITIC_HPP_
 #define DWB_YAW_CONSTRAINT__DECOUPLING_CRITIC_HPP_
 
+#include <memory>
 #include <string>
 #include "dwb_core/trajectory_critic.hpp"
+#include "rclcpp/rclcpp.hpp"
 
 namespace dwb_yaw_constraint
 {
@@ -46,6 +48,8 @@ private:
   double max_vx_;
   double max_vy_;
   double max_vtheta_;
+
+  rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr dyn_params_handler_;
 };
 
 }  // namespace dwb_yaw_constraint

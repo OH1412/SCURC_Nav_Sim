@@ -8,6 +8,7 @@
 #include "angles/angles.h"
 #include "dwb_core/exceptions.hpp"
 #include "dwb_core/trajectory_utils.hpp"
+#include "dwb_yaw_constraint/critic_dynamic_scale.hpp"
 #include "nav2_util/node_utils.hpp"
 #include "pluginlib/class_list_macros.hpp"
 
@@ -57,6 +58,10 @@ void RotateToGoalXYCritic::onInit()
     node->get_logger(),
     "RotateToGoalXY [%s] x_tol=%.3f m, y_tol=%.3f m, slowing_factor=%.1f",
     name_.c_str(), x_goal_tolerance_, y_goal_tolerance_, slowing_factor_);
+
+  const std::string scale_param = prefix + name_ + ".scale";
+  registerScaleDynamicCallback(
+    node, scale_param, [this](double s) { setScale(s); }, dyn_params_handler_);
 
   reset();
 }

@@ -10,6 +10,7 @@ find_package(angles REQUIRED)
 find_package(dwb_core REQUIRED)
 find_package(dwb_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
 find_package(nav2_costmap_2d REQUIRED)
 find_package(nav2_util REQUIRED)
 find_package(nav_2d_msgs REQUIRED)
@@ -27,6 +28,7 @@ set(dependencies
   dwb_core
   dwb_msgs
   geometry_msgs
+  std_msgs
   nav2_costmap_2d
   nav2_util
   nav_2d_msgs

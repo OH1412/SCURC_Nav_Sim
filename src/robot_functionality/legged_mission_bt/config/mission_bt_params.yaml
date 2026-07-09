@@ -12,6 +12,8 @@ mission_bt_node:
     nav_waypoint_topic: "/mission_bt/nav_waypoint"
     arm_waypoint_topic: "/mission_bt/arm_waypoint"
     nav_reached_topic: "/mission_bt/nav_reached"
+    nav_zone_topic: "/mission_bt/nav_zone"
+    nav_segment_yaw_topic: "/mission_bt/nav_segment_yaw"
     arm_pose_request_topic: "/mission_bt/arm_pose_request"
     clear_waypoints_topic: "/mission_bt/clear_waypoints"
     nav_progress_log_interval: 5.0

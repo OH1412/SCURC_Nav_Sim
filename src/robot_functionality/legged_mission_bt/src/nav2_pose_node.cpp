@@ -7,6 +7,7 @@
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+#include <std_msgs/msg/float64.hpp>
 #include "legged_bringup/mission_log.hpp"
 
 using namespace std::chrono_literals;
@@ -51,7 +52,16 @@ Nav2PoseNode::Nav2PoseNode(
   }
   const auto nav_zone_topic = node_->get_parameter("nav_zone_topic").as_string();
   nav_zone_pub_ = node_->create_publisher<std_msgs::msg::String>(
-    nav_zone_topic, rclcpp::QoS(rclcpp::KeepLast(10)).reliable());
+    nav_zone_topic,
+    rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable());
+  if (!node_->has_parameter("nav_segment_yaw_topic")) {
+    node_->declare_parameter("nav_segment_yaw_topic", "/mission_bt/nav_segment_yaw");
+  }
+  const auto nav_segment_yaw_topic =
+    node_->get_parameter("nav_segment_yaw_topic").as_string();
+  nav_segment_yaw_pub_ = node_->create_publisher<std_msgs::msg::Float64>(
+    nav_segment_yaw_topic,
+    rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable());
   client_ = rclcpp_action::create_client<NavigateToPose>(node_, "navigate_to_pose");
 
   if (!node_->has_parameter("odom_topic")) {
@@ -63,9 +73,13 @@ Nav2PoseNode::Nav2PoseNode(
   if (!node_->has_parameter("nav_progress_log_interval")) {
     node_->declare_parameter("nav_progress_log_interval", 5.0);
   }
+  if (!node_->has_parameter("middle_zone_distance")) {
+    node_->declare_parameter("middle_zone_distance", 1.0);
+  }
   odom_topic_ = node_->get_parameter("odom_topic").as_string();
   base_frame_ = node_->get_parameter("base_frame").as_string();
   nav_progress_log_interval_ = node_->get_parameter("nav_progress_log_interval").as_double();
+  middle_zone_distance_ = node_->get_parameter("middle_zone_distance").as_double();
 
   tf_buffer_ = std::make_shared<tf2_ros::Buffer>(node_->get_clock());
   tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_, node_, false);
@@ -84,7 +98,7 @@ BT::PortsList Nav2PoseNode::providedPorts()
     BT::InputPort<double>("x", "Goal X (inline mode)"),
     BT::InputPort<double>("y", "Goal Y (inline mode)"),
     BT::InputPort<double>("yaw", 0.0, "Yaw in radians (inline mode)"),
-    BT::InputPort<bool>("limit_yaw", false, "true=middle zone (yaw locked), false=edge zone (rotation allowed)"),
+    BT::InputPort<int>("motion_planner", 0, "0=always middle, 1=edge front-tangent, 2=edge rear-tangent"),
   };
 }
 
@@ -170,18 +184,68 @@ void Nav2PoseNode::publishNavReached(const std::string & nav_id)
     *node_, "Nav2PoseNode", "NAV_REACHED_PUBLISHED", "INFO", "导航点=" + nav_id);
 }
 
-void Nav2PoseNode::publishNavZone(const std::string & zone)
+void Nav2PoseNode::publishNavZone(const std::string & zone, const std::string & reason)
 {
   std_msgs::msg::String msg;
   msg.data = zone;
   nav_zone_pub_->publish(msg);
   RCLCPP_INFO(node_->get_logger(),
-    "Nav2PoseNode: published nav_zone='%s' for wp_id='%s' (limit_yaw=%s)",
-    zone.c_str(), wp_id_.c_str(), limit_yaw_ ? "true" : "false");
+    "Nav2PoseNode: published nav_zone='%s' for wp_id='%s' (motion_planner=%d, reason=%s)",
+    zone.c_str(), wp_id_.c_str(), motion_planner_, reason.c_str());
   legged_bringup::mission_log::publish(
     *node_, "Nav2PoseNode", "NAV_ZONE_PUBLISHED", "INFO",
     "区域=" + zone + " 导航点=" + wp_id_ +
-    " limit_yaw=" + (limit_yaw_ ? "true→middle" : "false→edge"));
+    " motion_planner=" + std::to_string(motion_planner_) +
+    " 原因=" + reason);
+}
+
+void Nav2PoseNode::publishNavSegmentYaw(
+  const std::string & frame_id, double goal_x, double goal_y, double goal_yaw)
+{
+  resolved_frame_id_ = frame_id;
+
+  double start_x = 0.0;
+  double start_y = 0.0;
+  double start_yaw = 0.0;
+  double vx = 0.0;
+  double vy = 0.0;
+  double wz = 0.0;
+
+  double segment_yaw = goal_yaw;
+  if (getCurrentStateInGoalFrame(start_x, start_y, start_yaw, vx, vy, wz)) {
+    const double dx = goal_x - start_x;
+    const double dy = goal_y - start_y;
+    if (std::hypot(dx, dy) >= 0.05) {
+      segment_yaw = std::atan2(dy, dx);
+    }
+  }
+
+  // motion_planner=2: rear of vehicle tracks segment direction (yaw + 180°)
+  if (motion_planner_ == 2) {
+    segment_yaw = normalizeAngle(segment_yaw + M_PI);
+  }
+
+  std_msgs::msg::Float64 msg;
+  msg.data = segment_yaw;
+  nav_segment_yaw_pub_->publish(msg);
+
+  RCLCPP_INFO(
+    node_->get_logger(),
+    "Nav2PoseNode: published nav_segment_yaw=%.3f rad (%s bearing) "
+    "for wp_id='%s' start=(%.3f,%.3f) goal=(%.3f,%.3f)",
+    segment_yaw, motion_planner_ == 2 ? "rear" : "front",
+    wp_id_.c_str(), start_x, start_y, goal_x, goal_y);
+
+  std::ostringstream detail;
+  detail << "航段方位=" << segment_yaw << "弧度"
+         << " 朝向=" << (motion_planner_ == 2 ? "车尾" : "车头")
+         << " 起点=(" << start_x << ',' << start_y << ")"
+         << " 终点=(" << goal_x << ',' << goal_y << ")";
+  if (!resolved_nav_id_.empty()) {
+    detail << " 导航点=" << resolved_nav_id_;
+  }
+  legged_bringup::mission_log::publish(
+    *node_, "Nav2PoseNode", "NAV_SEGMENT_YAW_PUBLISHED", "INFO", detail.str());
 }
 
 bool Nav2PoseNode::sendGoal(const std::string & frame_id, double x, double y, double yaw)
@@ -207,6 +271,8 @@ bool Nav2PoseNode::sendGoal(const std::string & frame_id, double x, double y, do
   }
   legged_bringup::mission_log::publish(
     *node_, "Nav2PoseNode", "NAV_GOAL_SENT", "INFO", detail.str());
+
+  publishNavSegmentYaw(frame_id, x, y, yaw);
 
   auto future_goal_handle = client_->async_send_goal(goal, send_goal_options);
   if (rclcpp::spin_until_future_complete(node_, future_goal_handle, 5s) !=
@@ -351,16 +417,19 @@ BT::NodeStatus Nav2PoseNode::onStart()
   goal_sent_ = false;
   result_ready_ = false;
 
-  // Read limit_yaw from BT XML port; true → middle zone, false → edge zone
-  getInput("limit_yaw", limit_yaw_);
+  // motion_planner: 0=always middle, 1=edge front-tangent, 2=edge rear-tangent
+  // limit_yaw_ derived: 0→true (always middle), 1/2→false (edge→middle)
+  getInput("motion_planner", motion_planner_);
+  limit_yaw_ = (motion_planner_ == 0);
+  middle_zone_applied_ = limit_yaw_;
   const std::string zone = limit_yaw_ ? "middle" : "edge";
-  publishNavZone(zone);
+  publishNavZone(zone, limit_yaw_ ? "always_middle(mp=0)" : "startup(mp=" + std::to_string(motion_planner_) + ")");
 
   if (resolveGoal(frame_id, x, y, yaw)) {
     std::ostringstream detail;
     detail << "导航点=" << wp_id_ << " 坐标系=" << frame_id
            << " x=" << x << " y=" << y << " 航向=" << yaw << "弧度"
-           << " limit_yaw=" << (limit_yaw_ ? "true" : "false")
+           << " motion_planner=" << motion_planner_
            << " zone=" << zone;
     legged_bringup::mission_log::publish(
       *node_, "Nav2PoseNode", "NAV_STEP_START", "INFO", detail.str());
@@ -391,14 +460,15 @@ BT::NodeStatus Nav2PoseNode::onRunning()
     double yaw = 0.0;
     if (resolveGoal(frame_id, x, y, yaw)) {
       waiting_for_wp_ = false;
-      // Read limit_yaw now that waypoint is available
-      getInput("limit_yaw", limit_yaw_);
+      getInput("motion_planner", motion_planner_);
+      limit_yaw_ = (motion_planner_ == 0);
+      middle_zone_applied_ = limit_yaw_;
       const std::string zone = limit_yaw_ ? "middle" : "edge";
-      publishNavZone(zone);
+      publishNavZone(zone, limit_yaw_ ? "always_middle(mp=0)" : "startup(mp=" + std::to_string(motion_planner_) + ")");
       std::ostringstream detail;
       detail << "导航点=" << wp_id_ << " 坐标系=" << frame_id
              << " x=" << x << " y=" << y << " 航向=" << yaw << "弧度"
-             << " limit_yaw=" << (limit_yaw_ ? "true" : "false")
+             << " motion_planner=" << motion_planner_
              << " zone=" << zone;
       legged_bringup::mission_log::publish(
         *node_, "Nav2PoseNode", "NAV_STEP_START", "INFO", detail.str());
@@ -426,6 +496,22 @@ BT::NodeStatus Nav2PoseNode::onRunning()
   if (!result_ready_) {
     rclcpp::spin_some(node_);
     maybeLogNavProgress();
+
+    // Distance-based zone switching: when starting from EDGE mode and approaching
+    // within middle_zone_distance_ of the goal, switch to MIDDLE for final approach.
+    if (!middle_zone_applied_) {
+      double cur_x = 0.0, cur_y = 0.0, cur_yaw = 0.0, vx = 0.0, vy = 0.0, wz = 0.0;
+      if (getCurrentStateInGoalFrame(cur_x, cur_y, cur_yaw, vx, vy, wz)) {
+        const double dx = resolved_x_ - cur_x;
+        const double dy = resolved_y_ - cur_y;
+        const double dist = std::hypot(dx, dy);
+        if (dist < middle_zone_distance_) {
+          middle_zone_applied_ = true;
+          publishNavZone("middle", "dist=" + std::to_string(static_cast<int>(dist * 100) / 100.0) + "m < " + std::to_string(middle_zone_distance_) + "m");
+        }
+      }
+    }
+
     return BT::NodeStatus::RUNNING;
   }
 

@@ -21,6 +21,8 @@ void MaintainYawCritic::onInit()
     throw std::runtime_error("MaintainYawCritic: Failed to lock lifecycle node");
   }
 
+  const std::string prefix = dwb_plugin_name_ + "." + name_ + ".";
+
   nav2_util::declare_parameter_if_not_declared(
     node,
     dwb_plugin_name_ + "." + name_ + ".desired_yaw",
@@ -35,8 +37,56 @@ void MaintainYawCritic::onInit()
   node->get_parameter(
     dwb_plugin_name_ + "." + name_ + ".reference_frame", reference_frame_);
 
+  nav2_util::declare_parameter_if_not_declared(
+    node,
+    prefix + "yaw_error_threshold",
+    rclcpp::ParameterValue(0.5236));  // ~30 degrees
+  node->get_parameter(prefix + "yaw_error_threshold", yaw_error_threshold_);
+
+  nav2_util::declare_parameter_if_not_declared(
+    node,
+    prefix + "xy_penalty_factor",
+    rclcpp::ParameterValue(5.0));
+  node->get_parameter(prefix + "xy_penalty_factor", xy_penalty_factor_);
+
   target_valid_ = false;
   target_yaw_ = 0.0;
+
+  // Cache parameter names for the combined dynamic callback
+  scale_param_name_ = prefix + "scale";
+  threshold_param_name_ = prefix + "yaw_error_threshold";
+  xy_penalty_param_name_ = prefix + "xy_penalty_factor";
+
+  // Single callback handles all three runtime-updateable parameters
+  dyn_params_handler_ = node->add_on_set_parameters_callback(
+    [this](const std::vector<rclcpp::Parameter> & parameters) {
+      rcl_interfaces::msg::SetParametersResult result;
+      result.successful = true;
+      for (const auto & param : parameters) {
+        if (param.get_name() == scale_param_name_ &&
+          param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE)
+        {
+          setScale(param.as_double());
+        } else if (param.get_name() == threshold_param_name_ &&
+          param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE)
+        {
+          yaw_error_threshold_ = param.as_double();
+        } else if (param.get_name() == xy_penalty_param_name_ &&
+          param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE)
+        {
+          xy_penalty_factor_ = param.as_double();
+        }
+      }
+      return result;
+    });
+
+  RCLCPP_INFO(
+    node->get_logger(),
+    "MaintainYawCritic [%s]: desired_yaw=%.2f rad, ref_frame=%s, "
+    "yaw_err_thresh=%.2f rad (%.0f deg), xy_penalty=%.1f",
+    name_.c_str(), desired_yaw_, reference_frame_.c_str(),
+    yaw_error_threshold_, yaw_error_threshold_ * 180.0 / M_PI,
+    xy_penalty_factor_);
 }
 
 bool MaintainYawCritic::prepare(
@@ -51,6 +101,7 @@ bool MaintainYawCritic::prepare(
   if (costmap_frame == reference_frame_) {
     target_yaw_ = desired_yaw_;
     target_valid_ = true;
+    current_yaw_error_ = angles::shortest_angular_distance(pose.theta, target_yaw_);
     return true;
   }
 
@@ -63,6 +114,7 @@ bool MaintainYawCritic::prepare(
       "Falling back to current yaw.");
     target_yaw_ = pose.theta;
     target_valid_ = false;
+    current_yaw_error_ = 0.0;  // fallback: using current yaw as target
     return true;
   }
 
@@ -99,6 +151,7 @@ bool MaintainYawCritic::prepare(
     target_valid_ = false;
   }
 
+  current_yaw_error_ = angles::shortest_angular_distance(pose.theta, target_yaw_);
   return true;
 }
 
@@ -108,13 +161,21 @@ double MaintainYawCritic::scoreTrajectory(const dwb_msgs::msg::Trajectory2D & tr
     return 0.0;
   }
 
-  // Score the final pose's yaw deviation from the target.
-  // Linear penalty so even small deviations produce meaningful cost.
-  // With scale=5000, a 1° error gives ~87, which dominates over
-  // PathDist (~100-300) and GoalDist (~tens to hundreds).
   double final_yaw = traj.poses.back().theta;
   double yaw_error = angles::shortest_angular_distance(final_yaw, target_yaw_);
 
+  // Two-phase behavior for mid-navigation planner switches (e.g. edge→middle):
+  //   Phase 1 (correction): current yaw error > threshold → force pure rotation
+  //   Phase 2 (normal):      current yaw error ≤ threshold → allow xy motion
+  if (std::fabs(current_yaw_error_) > yaw_error_threshold_) {
+    // Correction phase: penalize xy motion heavily to force pure rotation first.
+    // Once yaw is within threshold, the critic automatically transitions to
+    // Phase 2, where xy motion is free and only yaw deviation is penalized.
+    double xy_speed = std::hypot(traj.velocity.x, traj.velocity.y);
+    return scale_ * (std::fabs(yaw_error) + xy_penalty_factor_ * xy_speed);
+  }
+
+  // Normal phase: maintain yaw while allowing free xy motion.
   return scale_ * std::fabs(yaw_error);
 }
 

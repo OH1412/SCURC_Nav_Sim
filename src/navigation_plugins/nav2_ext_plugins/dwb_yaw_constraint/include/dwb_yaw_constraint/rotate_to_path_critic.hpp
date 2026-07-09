@@ -1,17 +1,16 @@
 /*
- * RotateToPath — DWB critic that penalizes trajectories whose heading deviates
- * from the path tangent direction at the robot's current position.
- *
- * When the robot is far from the path or approaching from an angle, this critic
- * strongly encourages rotating to face along the path before/while moving,
- * resulting in smoother, more natural motion along the planned route.
+ * RotateToPath — align yaw to the start→goal bearing published by Nav2PoseNode
+ * for the current navigation step (direct walk to waypoint).
  */
 
 #ifndef DWB_YAW_CONSTRAINT__ROTATE_TO_PATH_CRITIC_HPP_
 #define DWB_YAW_CONSTRAINT__ROTATE_TO_PATH_CRITIC_HPP_
 
+#include <memory>
 #include <string>
 #include "dwb_core/trajectory_critic.hpp"
+#include "rclcpp/rclcpp.hpp"
+#include "std_msgs/msg/float64.hpp"
 
 namespace dwb_yaw_constraint
 {
@@ -28,26 +27,26 @@ public:
   double scoreTrajectory(const dwb_msgs::msg::Trajectory2D & traj) override;
 
 private:
-  /// Compute path tangent yaw at the given pose
-  double computeTangentYaw(
+  void navSegmentYawCallback(const std_msgs::msg::Float64::SharedPtr msg);
+
+  /// Fallback when no segment yaw message is available yet.
+  double computeGoalBearingYaw(
     const geometry_msgs::msg::Pose2D & pose,
-    const nav_2d_msgs::msg::Path2D & global_plan);
+    const geometry_msgs::msg::Pose2D & goal) const;
 
-  /// Target yaw from path tangent [rad]
   double target_yaw_{0.0};
-
-  /// Whether a valid tangent was computed
   bool tangent_valid_{false};
 
-  /// Distance along the path to look ahead for tangent computation [m]
-  double path_lookahead_dist_{0.5};
+  bool use_segment_yaw_{true};
+  std::string nav_segment_yaw_topic_{"/mission_bt/nav_segment_yaw"};
+  double segment_yaw_{0.0};
+  bool segment_yaw_valid_{false};
+  rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr segment_yaw_sub_;
 
-  /// Which point along the trajectory to evaluate yaw (-1 = last pose)
   double lookahead_time_{-1.0};
+  double yaw_error_threshold_{0.087};
 
-  /// Yaw error threshold [rad] — above this, reject trajectories with
-  /// significant linear velocity to force rotation before translation.
-  double yaw_error_threshold_{0.087};  // 5 degrees
+  rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr dyn_params_handler_;
 };
 
 }  // namespace dwb_yaw_constraint
