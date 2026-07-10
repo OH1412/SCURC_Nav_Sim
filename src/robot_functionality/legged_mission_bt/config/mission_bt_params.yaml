@@ -24,6 +24,6 @@ mission_bt_node:
     wait_for_start_nav_timeout: 0.0
     middle_zone_distance: 1.0           # 距目标多少米切 MIDDLE zone
     # ── 多阶段走廊导航（motion_planner=0）──────────────────────────
-    corridor_entry_x: 2.1695            # 走廊入口 x (nav_p1_wp2)
-    corridor_entry_y: -1.7000           # 走廊入口 y
+    corridor_entry_x: 1.9695            # 走廊入口 x (nav_p1_wp2)
+    corridor_entry_y: -1.5000           # 走廊入口 y
     corridor_exit_x: 3.6615             # 走廊出口 x (nav_p1_wp3)

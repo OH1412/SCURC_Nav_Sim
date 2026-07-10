@@ -157,10 +157,16 @@ class MissionQuintupleLoader(Node):
         # ── Waypoints YAML ─────────────────────────────────────────────
         waypoints_output: str | None = None
         if self._waypoints_yaml_output:
+            # Fixed coordinates for intermediate waypoints after first pick
+            waypoint_overrides = {
+                'nav_p1_wp2': {'x': 2.1695, 'y': -1.7000, 'yaw': 0.0000},
+                'nav_p1_wp3': {'x': 3.8315, 'y': -1.7000, 'yaw': 0.0000},
+            }
             waypoints_text = build_waypoints_yaml(
                 waypoint_ids,
                 frame_id=self._nav_frame_id,
                 quintuple_path=self._quintuple_yaml,
+                waypoint_overrides=waypoint_overrides,
             )
             waypoints_yaml_path = Path(self._waypoints_yaml_output)
             waypoints_yaml_path.parent.mkdir(parents=True, exist_ok=True)
@@ -241,6 +247,20 @@ class MissionQuintupleLoader(Node):
                     f'Unsupported state {state} at sequence index {index}'
                 )
             lines.append('')
+
+            # ── Fixed: after the first step, always insert two intermediate transit waypoints ──
+            if index == 1:
+                lines.append(
+                    '      <!-- Fixed intermediate waypoints after first pick (nav_p1_wp2, nav_p1_wp3) -->'
+                )
+                lines.append(
+                    '      <Nav2PoseNode wp_id="nav_p1_wp2" motion_planner="1"/>'
+                )
+                lines.append('')
+                lines.append(
+                    '      <Nav2PoseNode wp_id="nav_p1_wp3" motion_planner="1"/>'
+                )
+                lines.append('')
 
         lines.extend([
             '    </Sequence>',

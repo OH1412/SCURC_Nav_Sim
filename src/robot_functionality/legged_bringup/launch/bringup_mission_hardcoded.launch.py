@@ -41,6 +41,8 @@ def generate_launch_description():
     enable_arm_pose_broadcaster = LaunchConfiguration('enable_arm_pose_broadcaster')
     enable_arm_control = LaunchConfiguration('enable_arm_control')
     arm_control_delay = LaunchConfiguration('arm_control_delay')
+    enable_base_link_odom = LaunchConfiguration('enable_base_link_odom')
+    base_link_odom_topic = LaunchConfiguration('base_link_odom_topic')
     bt_xml_file = LaunchConfiguration('bt_xml_file')
     waypoints_file = LaunchConfiguration('waypoints_file')
     arm_points_file = LaunchConfiguration('arm_points_file')
@@ -103,6 +105,12 @@ def generate_launch_description():
         description='ArmControl Action Server (不需要串口直发模式)')
     declare_arm_control_delay = DeclareLaunchArgument(
         'arm_control_delay', default_value='12.0')
+    declare_enable_base_link_odom = DeclareLaunchArgument(
+        'enable_base_link_odom', default_value='false',
+        description='Publish base_link→map Odometry via TF (替代 /aft_mapped_to_init)')
+    declare_base_link_odom_topic = DeclareLaunchArgument(
+        'base_link_odom_topic', default_value='/base_link_in_map',
+        description='Topic for base_link odometry. /aft_mapped_to_init to replace Fast-LIVO.')
     declare_bt_xml_file = DeclareLaunchArgument(
         'bt_xml_file', default_value=default_bt_xml,
         description='Mission BT XML (Nav+Arm sequence)')
@@ -202,6 +210,26 @@ def generate_launch_description():
     delayed_aft_pose_offset = TimerAction(
         period=start_delay, actions=[aft_to_pose_offset_node])
 
+    # ---- 5.5) base_link → map Odometry 发布 (可替代 /aft_mapped_to_init) ----
+    base_link_odom_node = Node(
+        package='legged_bringup',
+        executable='base_link_odom_publisher.py',
+        name='base_link_odom_publisher',
+        output='screen',
+        condition=IfCondition(enable_base_link_odom),
+        parameters=[{
+            'target_topic': base_link_odom_topic,
+            'publish_rate': 50.0,
+            'base_frame': 'base_link',
+            'map_frame': 'map',
+        }],
+    )
+    delayed_base_link_odom = TimerAction(
+        period=start_delay,
+        actions=[base_link_odom_node],
+        condition=IfCondition(enable_base_link_odom),
+    )
+
     # ---- 6) Stand-up ----
     stand_up_sender_node = Node(
         package='legged_bringup',
@@ -292,6 +320,8 @@ def generate_launch_description():
     ld.add_action(declare_enable_arm_pose_broadcaster)
     ld.add_action(declare_enable_arm_control)
     ld.add_action(declare_arm_control_delay)
+    ld.add_action(declare_enable_base_link_odom)
+    ld.add_action(declare_base_link_odom_topic)
     ld.add_action(declare_bt_xml_file)
     ld.add_action(declare_waypoints_file)
     ld.add_action(declare_arm_points_file)
@@ -308,6 +338,7 @@ def generate_launch_description():
     ld.add_action(cmd_vel_udp_bridge)
     ld.add_action(delayed_bringup)
     ld.add_action(delayed_aft_pose_offset)
+    ld.add_action(delayed_base_link_odom)
     ld.add_action(delayed_stand_up_sender)
     ld.add_action(arm_pose_broadcaster_node)
     ld.add_action(delayed_mission_bt)

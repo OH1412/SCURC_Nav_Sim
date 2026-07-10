@@ -49,6 +49,7 @@ install(PROGRAMS
   nodes/mission_session_logger.py
   nodes/mission_log_client.py
   nodes/mission_log_labels.py
+  nodes/base_link_odom_publisher.py
   nodes/pointcloud_range_filter.py
   test/path1_nav_test.py
   test/record_waypoints.py

@@ -27,6 +27,8 @@ def generate_launch_description():
     waypoint_start_delay = LaunchConfiguration('waypoint_start_delay')
     enable_stand_up = LaunchConfiguration('enable_stand_up')
     stand_up_delay = LaunchConfiguration('stand_up_delay')
+    enable_base_link_odom = LaunchConfiguration('enable_base_link_odom')
+    base_link_odom_topic = LaunchConfiguration('base_link_odom_topic')
     enable_arm_control = LaunchConfiguration('enable_arm_control')
     arm_control_delay = LaunchConfiguration('arm_control_delay')
     udp_ip = LaunchConfiguration('udp_ip')
@@ -105,6 +107,18 @@ def generate_launch_description():
         'reloc_delay',
         default_value='0.0',
         description='Seconds to wait AFTER relocalization signal before sending stand_up.'
+    )
+
+    declare_enable_base_link_odom = DeclareLaunchArgument(
+        'enable_base_link_odom',
+        default_value='false',
+        description='Publish base_link→map Odometry via TF (替代 /aft_mapped_to_init 当 Fast-LIVO 未运行时)'
+    )
+
+    declare_base_link_odom_topic = DeclareLaunchArgument(
+        'base_link_odom_topic',
+        default_value='/base_link_in_map',
+        description='Topic to publish base_link odometry. Set to /aft_mapped_to_init to replace Fast-LIVO output.'
     )
 
     declare_enable_arm_control = DeclareLaunchArgument(
@@ -274,6 +288,27 @@ def generate_launch_description():
         actions=[aft_to_pose_offset_node]
     )
 
+    # ── base_link → map Odometry 发布 (可替代 /aft_mapped_to_init) ────
+    base_link_odom_node = Node(
+        package='legged_bringup',
+        executable='base_link_odom_publisher.py',
+        name='base_link_odom_publisher',
+        output='screen',
+        condition=IfCondition(enable_base_link_odom),
+        parameters=[{
+            'target_topic': base_link_odom_topic,
+            'publish_rate': 50.0,
+            'base_frame': 'base_link',
+            'map_frame': 'map',
+        }],
+    )
+
+    delayed_base_link_odom = TimerAction(
+        period=start_delay,
+        actions=[base_link_odom_node],
+        condition=IfCondition(enable_base_link_odom)
+    )
+
     # Stand-up command sender (UDP to deploy_cpp, before navigation)
     stand_up_sender_node = Node(
         package='legged_bringup',
@@ -348,6 +383,8 @@ def generate_launch_description():
     ld.add_action(declare_reloc_delay)
     ld.add_action(declare_enable_arm_control)
     ld.add_action(declare_arm_control_delay)
+    ld.add_action(declare_enable_base_link_odom)
+    ld.add_action(declare_base_link_odom_topic)
     ld.add_action(declare_udp_ip)
     ld.add_action(declare_udp_port)
     ld.add_action(declare_udp_mode)
@@ -369,6 +406,8 @@ def generate_launch_description():
     ld.add_action(delayed_bringup)
     # Start aft_mapped_in_map -> LIVO2/pose_offset relay after bringup delay
     ld.add_action(delayed_aft_pose_offset)
+    # Start base_link→map Odometry publisher (替代 /aft_mapped_to_init)
+    ld.add_action(delayed_base_link_odom)
     # Stand up before navigation (UDP to deploy_cpp)
     ld.add_action(delayed_stand_up_sender)
     # Arm Control Action Server for manipulator tasks

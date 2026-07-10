@@ -80,7 +80,15 @@ def build_waypoints_yaml(
     default_y: float = 0.0,
     default_yaw: float = 0.0,
     quintuple_path: str | Path | None = None,
+    waypoint_overrides: dict[str, dict[str, float]] | None = None,
 ) -> str:
+    """Generate waypoints YAML string.
+
+    Args:
+        waypoint_ids: ordered list of wp_ids (e.g. ['nav_p1_wp1', 'nav_p1_wp2', ...])
+        waypoint_overrides: dict of wp_id -> {x, y, yaw} for specific coordinates.
+    """
+    overrides = waypoint_overrides or {}
     lines = [
         '# ============================================================================',
         '# 任务硬编码配置 — 导航航点（机器人 base_link 目标位姿，map 系）',
@@ -97,12 +105,16 @@ def build_waypoints_yaml(
     ])
 
     for wp_id in waypoint_ids:
+        ov = overrides.get(wp_id, {})
+        x = ov.get('x', default_x)
+        y = ov.get('y', default_y)
+        yaw = ov.get('yaw', default_yaw)
         lines.extend([
             f'  "{wp_id}":',
             f'    frame_id: "{frame_id}"',
-            f'    x: {default_x}',
-            f'    y: {default_y}',
-            f'    yaw: {default_yaw}',
+            f'    x: {x:.4f}',
+            f'    y: {y:.4f}',
+            f'    yaw: {yaw:.4f}',
             '',
         ])
     return '\n'.join(lines).rstrip() + '\n'
@@ -183,6 +195,7 @@ def generate_bt_artifacts(
     wp_count: int = 4,
     arm_timeout: float = 30.0,
     frame_id: str = 'map',
+    waypoint_overrides: dict[str, dict[str, float]] | None = None,
 ) -> dict[str, Any]:
     quintuple_path = Path(quintuple_path)
     data = load_quintuple(quintuple_path)
@@ -205,6 +218,7 @@ def generate_bt_artifacts(
             waypoint_ids,
             frame_id=frame_id,
             quintuple_path=quintuple_path,
+            waypoint_overrides=waypoint_overrides,
         )
         waypoints_yaml_output = Path(waypoints_yaml_output)
         waypoints_yaml_output.parent.mkdir(parents=True, exist_ok=True)
