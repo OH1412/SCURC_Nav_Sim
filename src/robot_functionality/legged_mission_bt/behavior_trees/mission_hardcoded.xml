@@ -10,15 +10,15 @@
   <BehaviorTree ID="MissionHardcoded">
     <Sequence name="HardcodedMission">
 
-      <!-- <Nav2PoseNode wp_id="nav_p0_wp0" motion_planner="1"/> -->
+      <Nav2PoseNode wp_id="nav_p0_wp0" motion_planner="1"/>
       <!-- step 1: path=1 wp=1 state=2 (pick) target_id=4 motion_planner=1 zone=edge arm_point_id=4 -->
       <Nav2PoseNode wp_id="nav_p1_wp1" motion_planner="1"/>
       <ArmPickNode arm_point_id="4" timeout="30.0"/>
 
       <!-- Fixed intermediate waypoints after first pick (nav_p1_wp2, nav_p1_wp3) -->
-      <!-- <Nav2PoseNode wp_id="nav_p1_wp2" motion_planner="1"/> -->
+      <Nav2PoseNode wp_id="nav_p1_wp2" motion_planner="1"/>
 
-      <!-- <Nav2PoseNode wp_id="nav_p1_wp3" motion_planner="1"/> -->
+      <Nav2PoseNode wp_id="nav_p1_wp3" motion_planner="1"/>
 
       <!-- step 2: path=2 wp=2 state=3 (place) target_id=0 motion_planner=1 zone=edge arm_point_id=8 -->
       <Nav2PoseNode wp_id="nav_p2_wp2" motion_planner="1"/>

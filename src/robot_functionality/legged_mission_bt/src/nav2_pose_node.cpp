@@ -81,19 +81,6 @@ Nav2PoseNode::Nav2PoseNode(
   nav_progress_log_interval_ = node_->get_parameter("nav_progress_log_interval").as_double();
   middle_zone_distance_ = node_->get_parameter("middle_zone_distance").as_double();
 
-  if (!node_->has_parameter("corridor_entry_x")) {
-    node_->declare_parameter("corridor_entry_x", 2.1695);
-  }
-  if (!node_->has_parameter("corridor_entry_y")) {
-    node_->declare_parameter("corridor_entry_y", -1.7000);
-  }
-  if (!node_->has_parameter("corridor_exit_x")) {
-    node_->declare_parameter("corridor_exit_x", 3.6615);
-  }
-  corridor_entry_x_ = node_->get_parameter("corridor_entry_x").as_double();
-  corridor_entry_y_ = node_->get_parameter("corridor_entry_y").as_double();
-  corridor_exit_x_ = node_->get_parameter("corridor_exit_x").as_double();
-
   tf_buffer_ = std::make_shared<tf2_ros::Buffer>(node_->get_clock());
   tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_, node_, false);
   odom_sub_ = node_->create_subscription<nav_msgs::msg::Odometry>(
@@ -270,13 +257,10 @@ bool Nav2PoseNode::sendGoal(const std::string & frame_id, double x, double y, do
   result_ready_ = false;
 
   auto send_goal_options = rclcpp_action::Client<NavigateToPose>::SendGoalOptions{};
-  const int my_seq = ++goal_sequence_;
   send_goal_options.result_callback =
-    [this, my_seq](const GoalHandle::WrappedResult & result) {
-      if (my_seq == goal_sequence_) {
-        result_ = result;
-        result_ready_ = true;
-      }
+    [this](const GoalHandle::WrappedResult & result) {
+      result_ = result;
+      result_ready_ = true;
     };
 
   RCLCPP_INFO(node_->get_logger(), "Nav2PoseNode: sending goal (%.3f, %.3f, yaw=%.3f)", x, y, yaw);
@@ -433,52 +417,20 @@ BT::NodeStatus Nav2PoseNode::onStart()
   goal_sent_ = false;
   result_ready_ = false;
 
+  // motion_planner: 0=always middle, 1=edge front-tangent, 2=edge rear-tangent
+  // limit_yaw_ derived: 0→true (always middle), 1/2→false (edge→middle)
   getInput("motion_planner", motion_planner_);
+  limit_yaw_ = (motion_planner_ == 0);
+  middle_zone_applied_ = limit_yaw_;
+  const std::string zone = limit_yaw_ ? "middle" : "edge";
+  publishNavZone(zone, limit_yaw_ ? "always_middle(mp=0)" : "startup(mp=" + std::to_string(motion_planner_) + ")");
 
   if (resolveGoal(frame_id, x, y, yaw)) {
-    // ── Determine zone / multi-phase mode from resolved goal coordinates ──
-    limit_yaw_ = (motion_planner_ == 0);
-    corridor_phase_active_ = false;
-    corridor_aligning_ = false;
-    corridor_phase_ = CorridorPhase::APPROACH;
-    middle_zone_applied_ = false;
-
-    // Save original final goal (may be overridden for multi-phase corridor)
-    original_goal_x_ = x;
-    original_goal_y_ = y;
-    original_goal_yaw_ = yaw;
-
-    if (motion_planner_ == 0 && x >= corridor_entry_x_) {
-      // Multi-phase corridor navigation — start by going to corridor entry
-      corridor_phase_active_ = true;
-      publishNavZone("edge", "corridor_approach(mp=0)");
-      // Override effective goal to corridor entry
-      x = corridor_entry_x_;
-      y = corridor_entry_y_;
-      yaw = 0.0;
-      resolved_x_ = x;
-      resolved_y_ = y;
-      resolved_yaw_ = yaw;
-    } else if (motion_planner_ == 0) {
-      // Target before corridor → original always-middle behaviour
-      middle_zone_applied_ = true;
-      publishNavZone("middle", "always_middle(mp=0)");
-    } else {
-      publishNavZone("edge", "startup(mp=" + std::to_string(motion_planner_) + ")");
-    }
-
-    const std::string zone = corridor_phase_active_ ? "edge"
-                           : (middle_zone_applied_ ? "middle" : "edge");
-
     std::ostringstream detail;
     detail << "导航点=" << wp_id_ << " 坐标系=" << frame_id
            << " x=" << x << " y=" << y << " 航向=" << yaw << "弧度"
            << " motion_planner=" << motion_planner_
            << " zone=" << zone;
-    if (corridor_phase_active_) {
-      detail << " original_goal=(" << original_goal_x_ << ','
-             << original_goal_y_ << ',' << original_goal_yaw_ << ')';
-    }
     legged_bringup::mission_log::publish(
       *node_, "Nav2PoseNode", "NAV_STEP_START", "INFO", detail.str());
     return sendGoal(frame_id, x, y, yaw) ? BT::NodeStatus::RUNNING : BT::NodeStatus::FAILURE;
@@ -510,40 +462,14 @@ BT::NodeStatus Nav2PoseNode::onRunning()
       waiting_for_wp_ = false;
       getInput("motion_planner", motion_planner_);
       limit_yaw_ = (motion_planner_ == 0);
-      corridor_phase_active_ = false;
-      corridor_phase_ = CorridorPhase::APPROACH;
-      middle_zone_applied_ = false;
-
-      // Save original final goal
-      original_goal_x_ = x;
-      original_goal_y_ = y;
-      original_goal_yaw_ = yaw;
-
-      if (motion_planner_ == 0 && resolved_x_ >= corridor_entry_x_) {
-        corridor_phase_active_ = true;
-        publishNavZone("edge", "corridor_approach(mp=0)");
-        x = corridor_entry_x_;
-        y = corridor_entry_y_;
-        yaw = 0.0;
-        resolved_x_ = x;
-        resolved_y_ = y;
-        resolved_yaw_ = yaw;
-      } else if (motion_planner_ == 0) {
-        middle_zone_applied_ = true;
-        publishNavZone("middle", "always_middle(mp=0)");
-      } else {
-        publishNavZone("edge", "startup(mp=" + std::to_string(motion_planner_) + ")");
-      }
-      const std::string zone = corridor_phase_active_ ? "edge" : (middle_zone_applied_ ? "middle" : "edge");
+      middle_zone_applied_ = limit_yaw_;
+      const std::string zone = limit_yaw_ ? "middle" : "edge";
+      publishNavZone(zone, limit_yaw_ ? "always_middle(mp=0)" : "startup(mp=" + std::to_string(motion_planner_) + ")");
       std::ostringstream detail;
       detail << "导航点=" << wp_id_ << " 坐标系=" << frame_id
              << " x=" << x << " y=" << y << " 航向=" << yaw << "弧度"
              << " motion_planner=" << motion_planner_
              << " zone=" << zone;
-      if (corridor_phase_active_) {
-        detail << " original_goal=(" << original_goal_x_ << ','
-               << original_goal_y_ << ',' << original_goal_yaw_ << ')';
-      }
       legged_bringup::mission_log::publish(
         *node_, "Nav2PoseNode", "NAV_STEP_START", "INFO", detail.str());
       return sendGoal(frame_id, x, y, yaw) ? BT::NodeStatus::RUNNING : BT::NodeStatus::FAILURE;
@@ -571,34 +497,9 @@ BT::NodeStatus Nav2PoseNode::onRunning()
     rclcpp::spin_some(node_);
     maybeLogNavProgress();
 
-    // ── Multi-phase corridor navigation (motion_planner_ == 0) ──────────
-    if (corridor_phase_active_) {
-      updateCorridorPhase();
-
-      // ── Yaw alignment monitoring between phases ───────────────────
-      if (corridor_aligning_) {
-        double cur_x = 0.0, cur_y = 0.0, cur_yaw = 0.0, vx = 0.0, vy = 0.0, wz = 0.0;
-        if (getCurrentStateInGoalFrame(cur_x, cur_y, cur_yaw, vx, vy, wz)) {
-          const double yaw_err = std::abs(normalizeAngle(cur_yaw - corridor_align_yaw_));
-          if (yaw_err < M_PI / 6.0) {  // Within 30 degrees
-            RCLCPP_INFO(node_->get_logger(),
-              "Nav2PoseNode: corridor yaw aligned (err=%.1f°), sending position goal",
-              yaw_err * 180.0 / M_PI);
-            corridor_aligning_ = false;
-            // Restore actual position goal and send it
-            resolved_x_ = corridor_pending_x_;
-            resolved_y_ = corridor_pending_y_;
-            resolved_yaw_ = corridor_pending_yaw_;
-            resendNavGoal();
-          }
-        }
-      }
-    }
-
     // Distance-based zone switching: when starting from EDGE mode and approaching
     // within middle_zone_distance_ of the goal, switch to MIDDLE for final approach.
-    // Only active when multi-phase corridor logic is NOT running.
-    if (!corridor_phase_active_ && !middle_zone_applied_) {
+    if (!middle_zone_applied_) {
       double cur_x = 0.0, cur_y = 0.0, cur_yaw = 0.0, vx = 0.0, vy = 0.0, wz = 0.0;
       if (getCurrentStateInGoalFrame(cur_x, cur_y, cur_yaw, vx, vy, wz)) {
         const double dx = resolved_x_ - cur_x;
@@ -616,47 +517,6 @@ BT::NodeStatus Nav2PoseNode::onRunning()
 
   switch (result_.code) {
     case rclcpp_action::ResultCode::SUCCEEDED:
-      // ── Yaw alignment goal completed ──────────────────────────────────
-      if (corridor_aligning_) {
-        double cur_x = 0.0, cur_y = 0.0, cur_yaw = 0.0, vx = 0.0, vy = 0.0, wz = 0.0;
-        if (getCurrentStateInGoalFrame(cur_x, cur_y, cur_yaw, vx, vy, wz)) {
-          const double yaw_err = std::abs(normalizeAngle(cur_yaw - corridor_align_yaw_));
-          if (yaw_err < M_PI / 6.0) {
-            RCLCPP_INFO(node_->get_logger(),
-              "Nav2PoseNode: corridor alignment goal succeeded (yaw_err=%.1f°), sending position goal",
-              yaw_err * 180.0 / M_PI);
-            corridor_aligning_ = false;
-            resolved_x_ = corridor_pending_x_;
-            resolved_y_ = corridor_pending_y_;
-            resolved_yaw_ = corridor_pending_yaw_;
-            resendNavGoal();
-            result_ready_ = false;
-            return BT::NodeStatus::RUNNING;
-          }
-        }
-        // Yaw still not aligned, re-send rotation goal
-        resendNavGoal();
-        result_ready_ = false;
-        return BT::NodeStatus::RUNNING;
-      }
-
-      // ── Multi-phase corridor: intermediate goal reached → advance phase ──
-      if (corridor_phase_active_ && corridor_phase_ != CorridorPhase::FINAL) {
-        RCLCPP_INFO(node_->get_logger(),
-          "Nav2PoseNode: intermediate goal reached in phase=%d, advancing",
-          static_cast<int>(corridor_phase_));
-        // Determine next phase from current position and re-send
-        if (updateCorridorPhase()) {
-          // Phase changed and new goal sent — continue running
-          result_ready_ = false;
-          return BT::NodeStatus::RUNNING;
-        }
-        // If phase didn't change, force-resend for current phase
-        resendNavGoal();
-        result_ready_ = false;
-        return BT::NodeStatus::RUNNING;
-      }
-
       if (!resolved_nav_id_.empty()) {
         publishNavReached(resolved_nav_id_);
       }
@@ -692,176 +552,4 @@ void Nav2PoseNode::onHalted()
   goal_sent_ = false;
   result_ready_ = false;
   waiting_for_wp_ = false;
-}
-
-bool Nav2PoseNode::updateCorridorPhase()
-{
-  if (!corridor_phase_active_) {
-    return false;
-  }
-
-  double cur_x = 0.0, cur_y = 0.0, cur_yaw = 0.0, vx = 0.0, vy = 0.0, wz = 0.0;
-  if (!getCurrentStateInGoalFrame(cur_x, cur_y, cur_yaw, vx, vy, wz)) {
-    return false;
-  }
-
-  // Distance to *final* goal (original), for EXIT→FINAL determination
-  const double dx_final = original_goal_x_ - cur_x;
-  const double dy_final = original_goal_y_ - cur_y;
-  const double dist_to_final = std::hypot(dx_final, dy_final);
-
-  // ── One-directional phase transitions (never go backward) ──────────
-  CorridorPhase new_phase = corridor_phase_;
-
-  switch (corridor_phase_) {
-    case CorridorPhase::APPROACH:
-      // 向 (corridor_entry_x_, corridor_entry_y_) 走
-      // 第一次 x>=入口x 且 y<=入口y → 切入 CORRIDOR
-      if (cur_x >= corridor_entry_x_ && cur_y <= corridor_entry_y_) {
-        new_phase = CorridorPhase::CORRIDOR;
-      }
-      break;
-
-    case CorridorPhase::CORRIDOR:
-      // 向 (corridor_exit_x_, corridor_entry_y_) 走
-      // 第一次 x>=出口x → 切入 EXIT
-      if (cur_x >= corridor_exit_x_) {
-        new_phase = CorridorPhase::EXIT;
-      }
-      break;
-
-    case CorridorPhase::EXIT:
-      // 向原始最终目标走
-      // 第一次 距目标 < middle_zone_distance → 切入 FINAL
-      if (dist_to_final < middle_zone_distance_) {
-        new_phase = CorridorPhase::FINAL;
-      }
-      break;
-
-    case CorridorPhase::FINAL:
-      // 保持在 FINAL，不再切换
-      break;
-  }
-
-  if (new_phase == corridor_phase_) {
-    return false;  // No change
-  }
-
-  // ── Phase transition: cancel old goal, send new one ──────────────────
-  const char* old_name = "UNKNOWN";
-  switch (corridor_phase_) {
-    case CorridorPhase::APPROACH: old_name = "APPROACH"; break;
-    case CorridorPhase::CORRIDOR: old_name = "CORRIDOR"; break;
-    case CorridorPhase::EXIT:     old_name = "EXIT";     break;
-    case CorridorPhase::FINAL:    old_name = "FINAL";    break;
-  }
-  const char* new_name = "UNKNOWN";
-  switch (new_phase) {
-    case CorridorPhase::APPROACH: new_name = "APPROACH"; break;
-    case CorridorPhase::CORRIDOR: new_name = "CORRIDOR"; break;
-    case CorridorPhase::EXIT:     new_name = "EXIT";     break;
-    case CorridorPhase::FINAL:    new_name = "FINAL";    break;
-  }
-
-  corridor_phase_ = new_phase;
-
-  // Publish zone for the new phase
-  switch (new_phase) {
-    case CorridorPhase::APPROACH:
-      publishNavZone("edge", "phase=APPROACH");
-      // Set effective goal to corridor entry
-      resolved_x_ = corridor_entry_x_;
-      resolved_y_ = corridor_entry_y_;
-      resolved_yaw_ = 0.0;
-      break;
-
-    case CorridorPhase::CORRIDOR:
-      publishNavZone("middle", "phase=CORRIDOR");
-      // Set effective goal to corridor exit
-      resolved_x_ = corridor_exit_x_;
-      resolved_y_ = corridor_entry_y_;
-      resolved_yaw_ = 0.0;
-      break;
-
-    case CorridorPhase::EXIT:
-      publishNavZone("edge", "phase=EXIT");
-      // Restore original final goal
-      resolved_x_ = original_goal_x_;
-      resolved_y_ = original_goal_y_;
-      resolved_yaw_ = original_goal_yaw_;
-      break;
-
-    case CorridorPhase::FINAL:
-      publishNavZone("middle", "phase=FINAL dist=" +
-                     std::to_string(static_cast<int>(dist_to_final * 100) / 100.0));
-      // Keep original final goal (should already be set from EXIT or CORRIDOR exit)
-      break;
-  }
-
-  // ── Enter yaw alignment: stop → rotate yaw → then send position goal ──
-  // Compute target yaw: segment-tangent direction from current to new goal
-  double align_yaw = resolved_yaw_;
-  {
-    const double seg_dx = resolved_x_ - cur_x;
-    const double seg_dy = resolved_y_ - cur_y;
-    if (std::hypot(seg_dx, seg_dy) >= 0.05) {
-      align_yaw = std::atan2(seg_dy, seg_dx);
-    }
-    // motion_planner=0 → no rear-bearing flip (unlike mp=2)
-  }
-
-  const double yaw_err = std::abs(normalizeAngle(cur_yaw - align_yaw));
-  if (yaw_err < M_PI / 6.0) {
-    // Already within 30° — send position goal directly, no alignment needed
-    resendNavGoal();
-  } else {
-    // Need yaw alignment first: send rotation-only goal at current position
-    RCLCPP_INFO(node_->get_logger(),
-      "Nav2PoseNode: corridor phase %s → %s, yaw_err=%.1f°, entering alignment (target=%.2f°)",
-      old_name, new_name, yaw_err * 180.0 / M_PI, align_yaw * 180.0 / M_PI);
-
-    corridor_aligning_ = true;
-    corridor_align_yaw_ = align_yaw;
-    // Save the actual position goal for after alignment completes
-    corridor_pending_x_ = resolved_x_;
-    corridor_pending_y_ = resolved_y_;
-    corridor_pending_yaw_ = resolved_yaw_;
-    // Override to current position (rotation only, no linear motion)
-    resolved_x_ = cur_x;
-    resolved_y_ = cur_y;
-    resolved_yaw_ = align_yaw;
-    resendNavGoal();
-  }
-
-  RCLCPP_INFO(node_->get_logger(),
-    "Nav2PoseNode: corridor phase %s → %s (pos=%.3f,%.3f newGoal=%.3f,%.3f distToFinal=%.2f)",
-    old_name, new_name, cur_x, cur_y, resolved_x_, resolved_y_, dist_to_final);
-
-  std::ostringstream detail;
-  detail << "阶段=" << new_name << " (原=" << old_name << ")"
-         << " 位置=(" << cur_x << ',' << cur_y << ")"
-         << " 新目标=(" << resolved_x_ << ',' << resolved_y_ << ")"
-         << " 距终点=" << dist_to_final << "米";
-  if (!resolved_nav_id_.empty()) {
-    detail << " 导航点=" << resolved_nav_id_;
-  }
-  legged_bringup::mission_log::publish(
-    *node_, "Nav2PoseNode", "CORRIDOR_PHASE_CHANGE", "INFO", detail.str());
-
-  return true;
-}
-
-bool Nav2PoseNode::resendNavGoal()
-{
-  if (goal_handle_) {
-    RCLCPP_INFO(node_->get_logger(),
-      "Nav2PoseNode: canceling current goal to switch sub-target");
-    client_->async_cancel_goal(goal_handle_);
-    goal_handle_.reset();
-  }
-
-  goal_sent_ = false;
-  result_ready_ = false;
-
-  return sendGoal(resolved_frame_id_, resolved_x_, resolved_y_, resolved_yaw_);
 }

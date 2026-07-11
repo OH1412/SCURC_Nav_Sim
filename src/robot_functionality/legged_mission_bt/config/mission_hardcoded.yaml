@@ -9,26 +9,26 @@
 nav:
   "nav_p0_wp0":
     frame_id: "map"
-    x: 0.3000
+    x: 0.3500
     y: 0.0000
     yaw: 0.0000
 
   "nav_p1_wp1":
     frame_id: "map"
-    x: 1.2415
+    x: 1.1015
     y: -1.2750
     yaw: 0.0000
 
   "nav_p1_wp2":
     frame_id: "map"
-    x: 2.1695
-    y: -1.7000
+    x: 2.0295
+    y: -1.5500
     yaw: 0.0000
 
   "nav_p1_wp3":
     frame_id: "map"
-    x: 3.8315
-    y: -1.7000
+    x: 3.6915
+    y: -1.5500
     yaw: 0.0000
 
   # "nav_p2_wp1":
@@ -51,67 +51,67 @@ nav:
 
   "nav_p2_wp1":
     frame_id: "map"
-    x: 3.2415
+    x: 3.1015
     y: -1.2750
     yaw: 0.0000
 
   "nav_p2_wp2":
     frame_id: "map"
-    x: 4.9465
+    x: 4.8065
     y: -1.2000
     yaw: 0.0000
 
   "nav_p3_wp1":
     frame_id: "map"
-    x: 2.3915
+    x: 2.2515
     y: -0.4250
     yaw: 0.0000
 
   "nav_p3_wp2":
     frame_id: "map"
-    x: 3.2415
+    x: 3.1015
     y: -0.4250
     yaw: 0.0000
 
   "nav_p3_wp3":
     frame_id: "map"
-    x: 4.9465
+    x: 4.8065
     y: -0.4000
     yaw: 0.0000
 
   "nav_p4_wp1":
     frame_id: "map"
-    x: 2.3915
+    x: 2.2515
     y: 0.4250
     yaw: 0.0000
 
   "nav_p4_wp2":
     frame_id: "map"
-    x: 3.2415
+    x: 3.1015
     y: 0.4250
     yaw: 0.0000
 
   "nav_p4_wp3":
     frame_id: "map"
-    x: 4.9465
+    x: 4.8065
     y: 0.4000
     yaw: 0.0000
 
   "nav_p5_wp1":
     frame_id: "map"
-    x: 2.3915
+    x: 2.2515
     y: 1.2750
     yaw: 0.0000
 
   "nav_p5_wp2":
     frame_id: "map"
-    x: 3.2415
+    x: 3.1015
     y: 1.2750
     yaw: 0.0000
 
   "nav_p5_wp3":
     frame_id: "map"
-    x: 4.9465
+    x: 4.8065
     y: 1.2000
     yaw: 0.0000
 
