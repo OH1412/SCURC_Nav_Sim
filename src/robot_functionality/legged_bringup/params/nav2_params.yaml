@@ -301,7 +301,7 @@ controller_server:
       #   mp=3 → zone = "straight" (仅 x 方向, vy=vtheta=0)
       # 默认 = edge — switcher 启动时应用，mp=1/2 进入 edge→middle 在近目标时切换
       # ═══════════════════════════════════════════════════════════════
-      critics: ["dwb_yaw_constraint::RotateToGoalXYCritic", "dwb_yaw_constraint::RotateToPathCritic", "Oscillation", "ObstacleFootprint", "GoalAlign", "PathAlign", "PathDist", "GoalDist", "dwb_yaw_constraint::MaintainYawCritic", "dwb_yaw_constraint::DecouplingCritic", "dwb_yaw_constraint::GoalYAlignCritic"]
+      critics: ["dwb_yaw_constraint::RotateToGoalXYCritic", "dwb_yaw_constraint::RotateToPathCritic", "Oscillation", "ObstacleFootprint", "GoalAlign", "PathAlign", "PathDist", "GoalDist", "dwb_yaw_constraint::MaintainYawCritic", "dwb_yaw_constraint::DecouplingCritic"]
       # --- 共有参数（middle / edge 两区相同）---
       ObstacleFootprint.scale: 20.0
       PathDist.scale: 32.0
@@ -334,8 +334,6 @@ controller_server:
       # 两阶段偏航修正：当前偏航误差 > 此阈值时强制纯旋转（禁止 xy），回转到位后再允许 xy
       "dwb_yaw_constraint::MaintainYawCritic.yaw_error_threshold": 0.5236   # ~30 degrees
       "dwb_yaw_constraint::MaintainYawCritic.xy_penalty_factor": 5.0        # 修正阶段 xy 惩罚系数
-      # --- Y 对齐 critic (直接惩罚 |traj_y - goal_y|) ---
-      "dwb_yaw_constraint::GoalYAlignCritic.scale": 0.0       # middle=5000 | edge=0.0
       # --- 解耦 critic ---
       "dwb_yaw_constraint::DecouplingCritic.scale": 0.0       # middle=0.0 | edge=5.0
       "dwb_yaw_constraint::DecouplingCritic.max_vx": 2.0

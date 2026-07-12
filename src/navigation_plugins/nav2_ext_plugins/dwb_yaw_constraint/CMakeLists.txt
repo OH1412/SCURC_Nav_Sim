@@ -50,7 +50,6 @@ add_library(${library_name} SHARED
   plugins/maintain_vy_critic.cpp
   plugins/rotate_to_goal_xy_critic.cpp
   plugins/rotate_to_path_critic.cpp
-  plugins/goal_y_align_critic.cpp
 )
 
 target_compile_definitions(${library_name} PUBLIC "PLUGINLIB__DISABLE_BOOST_FUNCTIONS")

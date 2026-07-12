@@ -59,7 +59,6 @@ MIDDLE_PARAMS = {
     'FollowPath.dwb_yaw_constraint::MaintainYawCritic.yaw_error_threshold': 6.28,
     'FollowPath.dwb_yaw_constraint::DecouplingCritic.scale': 0.0,
     'FollowPath.PathDist.scale': 32.0,         # mp=0 Y 追踪，与 edge 一致
-    'FollowPath.dwb_yaw_constraint::GoalYAlignCritic.scale': 5000.0,  # mp=0 Y 直接对齐目标 Y
     'FollowPath.min_vel_y': -1.0,
     'FollowPath.max_vel_y': 1.0,
     # 短接停车阈值对齐老版：速度<0.25就停车，避免近目标时微调抖动
@@ -76,7 +75,6 @@ EDGE_PARAMS = {
     'FollowPath.dwb_yaw_constraint::MaintainYawCritic.desired_yaw': 0.0,
     'FollowPath.dwb_yaw_constraint::DecouplingCritic.scale': 5.0,
     'FollowPath.PathDist.scale': 32.0,         # edge 默认路径距离权重
-    'FollowPath.dwb_yaw_constraint::GoalYAlignCritic.scale': 0.0,   # edge 不启用 Y 对齐
     'FollowPath.min_vel_y': -1.1,
     'FollowPath.max_vel_y': 1.1,
     'FollowPath.trans_stopped_velocity': 0.08,
@@ -93,7 +91,6 @@ STRAIGHT_PARAMS = {
     'FollowPath.dwb_yaw_constraint::MaintainYawCritic.yaw_error_threshold': 6.28,
     'FollowPath.dwb_yaw_constraint::DecouplingCritic.scale': 0.0,
     'FollowPath.PathDist.scale': 32.0,         # straight 默认路径距离权重
-    'FollowPath.dwb_yaw_constraint::GoalYAlignCritic.scale': 0.0,  # straight 不启用 Y 对齐
     'FollowPath.min_vel_y': 0.0,
     'FollowPath.max_vel_y': 0.0,
     'FollowPath.max_vel_theta': 0.0,

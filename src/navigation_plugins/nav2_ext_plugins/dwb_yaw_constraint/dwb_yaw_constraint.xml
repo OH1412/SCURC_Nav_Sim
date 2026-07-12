@@ -40,13 +40,5 @@
         start→goal bearing published by Nav2PoseNode for the current nav step.
       </description>
     </class>
-    <class type="dwb_yaw_constraint::GoalYAlignCritic"
-           base_class_type="dwb_core::TrajectoryCritic">
-      <description>
-        DWB critic that directly penalizes |traj_final_y - goal_y| throughout
-        navigation. Provides continuous Y tracking independent of the global path,
-        designed for mp=0 corridor transit.
-      </description>
-    </class>
   </library>
 </class_libraries>
