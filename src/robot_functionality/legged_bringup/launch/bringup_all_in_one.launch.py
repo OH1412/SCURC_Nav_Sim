@@ -98,7 +98,7 @@ def generate_launch_description():
         executable='relay',
         name='relay_state_estimation',
         output='screen',
-        arguments=['/aft_mapped_to_init', '/state_estimation'],
+        arguments=['/aft_mapped_in_map', '/state_estimation'],
     )
 
     delayed_start_navigation = TimerAction(

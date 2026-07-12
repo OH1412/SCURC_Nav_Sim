@@ -9,109 +9,119 @@
 nav:
   "nav_p0_wp0":
     frame_id: "map"
-    x: 0.3500
+    x: 1.0570
     y: 0.0000
     yaw: 0.0000
 
+  # "nav_p1_wp1":
+  #   frame_id: "map"
+  #   x: 1.8085
+  #   y: -0.4250
+  #   yaw: 3.1416
+
   "nav_p1_wp1":
     frame_id: "map"
-    x: 1.1015
-    y: -1.2750
-    yaw: 0.0000
+    x: 2.3085
+    y: 0.00
+    yaw: 3.1416
 
   "nav_p1_wp2":
     frame_id: "map"
-    x: 2.0295
-    y: -1.5500
-    yaw: 0.0000
+    x: 2.6365
+    y: 0.0000
+    yaw: 3.1416
 
   "nav_p1_wp3":
     frame_id: "map"
-    x: 3.6915
-    y: -1.5500
-    yaw: 0.0000
+    x: 4.5985
+    y: 0.0000
+    yaw: 3.1416
 
   # "nav_p2_wp1":
   #   frame_id: "map"
-  #   x: 2.3915
+  #   x: 2.9585
   #   y: -1.2750
   #   yaw: 0.0000
 
   # "nav_p2_wp2":
   #   frame_id: "map"
-  #   x: 3.2415
+  #   x: 3.8085
   #   y: -1.2750
   #   yaw: 0.0000
 
   # "nav_p2_wp3":
   #   frame_id: "map"
-  #   x: 4.9465
+  #   x: 5.4135
   #   y: -1.2000
   #   yaw: 0.0000
 
   "nav_p2_wp1":
     frame_id: "map"
-    x: 3.1015
+    x: 3.8085
     y: -1.2750
     yaw: 0.0000
 
   "nav_p2_wp2":
     frame_id: "map"
-    x: 4.8065
+    x: 5.4135
     y: -1.2000
     yaw: 0.0000
 
+  # "nav_p3_wp1":
+  #   frame_id: "map"
+  #   x: 2.9585
+  #   y: -0.4250
+  #   yaw: 0.0000
   "nav_p3_wp1":
-    frame_id: "map"
-    x: 2.2515
-    y: -0.4250
+    x: 2.9585
+    y: -1.2750
     yaw: 0.0000
 
   "nav_p3_wp2":
     frame_id: "map"
-    x: 3.1015
+    x: 3.8085
     y: -0.4250
     yaw: 0.0000
 
   "nav_p3_wp3":
     frame_id: "map"
-    x: 4.8065
+    x: 5.4135
     y: -0.4000
     yaw: 0.0000
 
   "nav_p4_wp1":
     frame_id: "map"
-    x: 2.2515
+    x: 2.9585
     y: 0.4250
     yaw: 0.0000
 
   "nav_p4_wp2":
     frame_id: "map"
-    x: 3.1015
+    x: 3.8085
     y: 0.4250
     yaw: 0.0000
 
   "nav_p4_wp3":
     frame_id: "map"
-    x: 4.8065
+    x: 5.4135
     y: 0.4000
     yaw: 0.0000
 
   "nav_p5_wp1":
     frame_id: "map"
-    x: 2.2515
+    x: 2.9585
     y: 1.2750
     yaw: 0.0000
 
   "nav_p5_wp2":
     frame_id: "map"
-    x: 3.1015
+    x: 3.8085
     y: 1.2750
     yaw: 0.0000
 
   "nav_p5_wp3":
     frame_id: "map"
-    x: 4.8065
+    x: 5.4135
     y: 1.2000
     yaw: 0.0000
 

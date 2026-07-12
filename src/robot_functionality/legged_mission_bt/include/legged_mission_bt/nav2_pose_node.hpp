@@ -81,9 +81,9 @@ private:
   bool result_ready_{false};
   bool waiting_for_wp_{false};
   std::string wp_id_;
-  int motion_planner_{0};               ///< 0=always middle, 1=edge front-tangent, 2=edge rear-tangent
-  bool limit_yaw_{false};              ///< Derived: true when motion_planner_==0
-  bool middle_zone_applied_{false};    ///< Whether distance-based MIDDLE zone switch has fired
+  int motion_planner_{0};               ///< 0=middle(y-track rear), 1=edge front, 2=edge rear, 3=straight
+  bool limit_yaw_{false};              ///< Derived: true when motion_planner_==0 (always middle)
+  bool middle_zone_applied_{false};    ///< Whether MIDDLE zone has been applied (mp=0 starts middle)
   double middle_zone_distance_{1.0};   ///< Distance [m] from goal to trigger MIDDLE switch
   rclcpp::Time resolve_start_;
   double waypoint_wait_timeout_{120.0};

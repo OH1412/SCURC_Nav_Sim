@@ -34,6 +34,9 @@ public:
   void onHalted() override;
 
 private:
+  /// Serial ACK (state=0x03): serial port confirmed command receipt → stop republishing
+  void onSerialAck(const std_msgs::msg::UInt8MultiArray::SharedPtr msg);
+  /// Arm behavior ACK (state=0x01 Pick / 0x02 Place): arm completed action → BT SUCCESS
   void onArmStatus(const std_msgs::msg::UInt8MultiArray::SharedPtr msg);
   bool waitForCommandSubscriber(double max_wait_sec);
   bool resolveCoords();
@@ -44,12 +47,14 @@ private:
   std::shared_ptr<WaypointRegistry> registry_;
   rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr cmd_pub_;
   rclcpp::Publisher<legged_mission_bt::msg::ArmPoseRequest>::SharedPtr arm_request_pub_;
+  rclcpp::Subscription<std_msgs::msg::UInt8MultiArray>::SharedPtr serial_ack_sub_;
   rclcpp::Subscription<std_msgs::msg::UInt8MultiArray>::SharedPtr status_sub_;
 
   uint8_t action_code_;
   uint8_t expected_ack_state_;
 
   std::string arm_command_topic_;
+  std::string arm_serial_ack_topic_;
   std::string arm_status_topic_;
 
   double x_mm_{0.0};
@@ -59,7 +64,10 @@ private:
   double timeout_sec_{30.0};
 
   rclcpp::Time start_time_;
+  rclcpp::Time last_publish_time_;
+  double arm_republish_interval_{0.01};
   std::mutex ack_mutex_;
+  std::atomic<bool> serial_ack_received_{false};
   std::atomic<bool> ack_received_{false};
   std::atomic<bool> ack_success_{false};
 

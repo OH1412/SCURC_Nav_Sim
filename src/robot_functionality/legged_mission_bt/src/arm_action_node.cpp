@@ -31,12 +31,20 @@ ArmActionNode::ArmActionNode(
   if (!node_->has_parameter("arm_status_topic")) {
     node_->declare_parameter("arm_status_topic", "/arm_status");
   }
+  if (!node_->has_parameter("arm_serial_ack_topic")) {
+    node_->declare_parameter("arm_serial_ack_topic", "/arm_serial_ack");
+  }
   if (!node_->has_parameter("waypoint_wait_timeout")) {
     node_->declare_parameter("waypoint_wait_timeout", 120.0);
   }
+  if (!node_->has_parameter("arm_republish_interval")) {
+    node_->declare_parameter("arm_republish_interval", 0.01);
+  }
   arm_command_topic_ = node_->get_parameter("arm_command_topic").as_string();
   arm_status_topic_ = node_->get_parameter("arm_status_topic").as_string();
+  arm_serial_ack_topic_ = node_->get_parameter("arm_serial_ack_topic").as_string();
   waypoint_wait_timeout_ = node_->get_parameter("waypoint_wait_timeout").as_double();
+  arm_republish_interval_ = node_->get_parameter("arm_republish_interval").as_double();
   if (!node_->has_parameter("arm_pose_request_topic")) {
     node_->declare_parameter("arm_pose_request_topic", "/mission_bt/arm_pose_request");
   }
@@ -46,6 +54,11 @@ ArmActionNode::ArmActionNode(
   cmd_pub_ = node_->create_publisher<std_msgs::msg::Float64MultiArray>(arm_command_topic_, qos);
   arm_request_pub_ = node_->create_publisher<legged_mission_bt::msg::ArmPoseRequest>(
     arm_request_topic, qos);
+  // Serial ACK: state=0x03 = serial port confirmed receipt → stops republishing
+  serial_ack_sub_ = node_->create_subscription<std_msgs::msg::UInt8MultiArray>(
+    arm_serial_ack_topic_, qos,
+    std::bind(&ArmActionNode::onSerialAck, this, std::placeholders::_1));
+  // Arm behavior ACK: state=0x01/0x02 = arm completed action → BT SUCCESS
   status_sub_ = node_->create_subscription<std_msgs::msg::UInt8MultiArray>(
     arm_status_topic_, qos,
     std::bind(&ArmActionNode::onArmStatus, this, std::placeholders::_1));
@@ -188,6 +201,7 @@ BT::NodeStatus ArmActionNode::onStart()
     }
     getInput("yaw", yaw_);
 
+    serial_ack_received_.store(false);
     ack_received_.store(false);
     ack_success_.store(false);
     start_time_ = node_->now();
@@ -245,6 +259,7 @@ void ArmActionNode::publishCommand()
   std_msgs::msg::Float64MultiArray msg;
   msg.data = {serial_x, serial_y, z_mm_, yaw_, static_cast<double>(action_code_)};
   cmd_pub_->publish(msg);
+  last_publish_time_ = node_->now();
 
   const char * action_name = (action_code_ == 1) ? "抓取" : "放置";
   std::ostringstream detail;
@@ -277,6 +292,7 @@ BT::NodeStatus ArmActionNode::onRunning()
     }
     if (resolveCoords()) {
       waiting_for_wp_ = false;
+      serial_ack_received_.store(false);
       ack_received_.store(false);
       ack_success_.store(false);
       start_time_ = node_->now();
@@ -307,6 +323,25 @@ BT::NodeStatus ArmActionNode::onRunning()
         return BT::NodeStatus::FAILURE;
       }
       return BT::NodeStatus::RUNNING;
+    }
+  }
+
+  // ── Periodic republish: keep sending until serial ACK (state=0x03) ──
+  if (!serial_ack_received_.load()) {
+    const double since_last_publish = (node_->now() - last_publish_time_).seconds();
+    if (since_last_publish >= arm_republish_interval_) {
+      if (cmd_pub_->get_subscription_count() > 0) {
+        publishCommand();
+        RCLCPP_DEBUG(
+          node_->get_logger(),
+          "%s: republished command (%.1fs since last publish, waiting for ACK)",
+          name().c_str(), since_last_publish);
+      } else {
+        RCLCPP_WARN_THROTTLE(
+          node_->get_logger(), *node_->get_clock(), 2000,
+          "%s: cannot republish — no subscriber on %s",
+          name().c_str(), arm_command_topic_.c_str());
+      }
     }
   }
 
@@ -347,6 +382,33 @@ void ArmActionNode::onHalted()
   waiting_for_wp_ = false;
 }
 
+void ArmActionNode::onSerialAck(const std_msgs::msg::UInt8MultiArray::SharedPtr msg)
+{
+  if (msg->data.size() < 2) {
+    return;
+  }
+
+  const uint8_t state = msg->data[0];
+
+  // Only care about state=0x03 (Serial Done)
+  if (state != 0x03) {
+    return;
+  }
+
+  if (serial_ack_received_.load()) {
+    return;
+  }
+
+  serial_ack_received_.store(true);
+  RCLCPP_INFO(
+    node_->get_logger(),
+    "%s: serial ACK received (0x03 Serial Done) — stopping republish",
+    name().c_str());
+  legged_bringup::mission_log::publish(
+    *node_, "ArmActionNode", "ARM_SERIAL_ACK", "INFO",
+    "节点=" + name() + " 串口接收完成，停止重发");
+}
+
 void ArmActionNode::onArmStatus(const std_msgs::msg::UInt8MultiArray::SharedPtr msg)
 {
   if (msg->data.size() < 2) {
@@ -356,6 +418,7 @@ void ArmActionNode::onArmStatus(const std_msgs::msg::UInt8MultiArray::SharedPtr 
   const uint8_t state = msg->data[0];
   const uint8_t result = msg->data[1];
 
+  // Only care about expected behavior state (0x01 Pick / 0x02 Place)
   if (state != expected_ack_state_) {
     return;
   }
@@ -367,10 +430,16 @@ void ArmActionNode::onArmStatus(const std_msgs::msg::UInt8MultiArray::SharedPtr 
   ack_received_.store(true);
   ack_success_.store(result == 0x00);
 
+  const char * action_name = (expected_ack_state_ == 0x01) ? "抓取" : "放置";
   RCLCPP_INFO(
     node_->get_logger(),
-    "%s: received ACK state=0x%02X result=0x%02X (%s)",
-    name().c_str(), state, result, (result == 0x00) ? "OK" : "FAIL");
+    "%s: arm behavior ACK %s state=0x%02X result=0x%02X (%s)",
+    name().c_str(), action_name, state, result, (result == 0x00) ? "OK" : "FAIL");
+  legged_bringup::mission_log::publish(
+    *node_, "ArmActionNode",
+    (result == 0x00) ? "ARM_ACK_SUCCESS" : "ARM_ACK_FAILURE",
+    (result == 0x00) ? "INFO" : "ERROR",
+    std::string("节点=") + name() + " " + action_name + "完成");
 }
 
 }  // namespace legged_mission_bt

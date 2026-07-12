@@ -50,6 +50,24 @@ Visualization Manager:
       Plane Cell Count: 10
       Reference Frame: <Fixed Frame>
       Value: true
+    - Class: rviz_common/Group
+      Displays:
+        - Class: rviz_default_plugins/MarkerArray
+          Enabled: true
+          Name: Arm Pick Points
+          Namespaces:
+            arm_point_sphere: true
+            arm_point_label: true
+            arm_point_rod: false
+          Topic:
+            Depth: 5
+            Durability Policy: Volatile
+            History Policy: Keep Last
+            Reliability Policy: Reliable
+            Value: /arm_points_viz
+          Value: true
+      Enabled: true
+      Name: Arm Points
     - Class: rviz_default_plugins/Axes
       Enabled: true
       Length: 0.30000001192092896

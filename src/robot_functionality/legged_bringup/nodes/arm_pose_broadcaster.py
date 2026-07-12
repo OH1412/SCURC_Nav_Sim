@@ -268,7 +268,7 @@ class ArmPoseBroadcaster(Node):
         default_points = os.path.join(bringup_dir, 'params', 'arm_points.yaml')
 
         self.declare_parameter('arm_points_file', default_points)
-        self.declare_parameter('odom_topic', '/aft_mapped_to_init')
+        self.declare_parameter('odom_topic', '/aft_mapped_in_map')
         self.declare_parameter('arm_pose_request_topic', '/mission_bt/arm_pose_request')
         self.declare_parameter('nav_reached_topic', '/mission_bt/nav_reached')
         self.declare_parameter('arm_waypoint_topic', '/mission_bt/arm_waypoint')

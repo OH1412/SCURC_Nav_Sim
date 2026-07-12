@@ -10,7 +10,12 @@
       "Bash(python3 -c \"import ast; ast.parse\\(open\\('/home/dog12/SCURC_Nav_Sim/src/robot_functionality/legged_bringup/launch/navigation.launch.py'\\).read\\(\\)\\); print\\('OK'\\)\")",
       "Bash(python3 -c \"import ast; ast.parse\\(open\\('/home/dog12/SCURC_Nav_Sim/src/robot_functionality/legged_bringup/launch/bringup_in_real.launch.py'\\).read\\(\\)\\); print\\('bringup_in_real: OK'\\)\")",
       "Bash(python3 -c \"import ast; ast.parse\\(open\\('/home/dog12/SCURC_Nav_Sim/src/robot_functionality/legged_bringup/launch/bringup_all_in_one.launch.py'\\).read\\(\\)\\); print\\('bringup_all_in_one: OK'\\)\")",
-      "Bash(python3 -c \"import ast; ast.parse\\(open\\('/home/dog12/SCURC_Nav_Sim/src/robot_functionality/legged_bringup/launch/navigation.launch.py'\\).read\\(\\)\\); print\\('navigation: OK'\\)\")"
+      "Bash(python3 -c \"import ast; ast.parse\\(open\\('/home/dog12/SCURC_Nav_Sim/src/robot_functionality/legged_bringup/launch/navigation.launch.py'\\).read\\(\\)\\); print\\('navigation: OK'\\)\")",
+      "Bash(ls -la /dev/ttyUSB* /dev/ttyACM* 2>/dev/null || echo \"no USB serial devices found\")",
+      "Read(//dev/**)",
+      "Bash(fuser /dev/ttyUSB2)",
+      "Bash(nm -C /home/dog12/SCURC_Nav_Sim/build/dwb_yaw_constraint/libdwb_yaw_constraint_lib.so)",
+      "Bash(echo \"Exit: $?\")"
     ]
   }
 }

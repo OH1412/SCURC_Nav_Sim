@@ -239,14 +239,6 @@ bool SerialComm::sendArmTargetCommand(uint8_t control,
 
     if (!serial_port_.isOpen()) return false;
 
-    // 发送前清空接收缓冲区，丢弃陈旧 ACK（防止上一次的重复 ACK 干扰）
-    if (serial_port_.available() > 0) {
-        std::vector<uint8_t> stale;
-        serial_port_.read(stale, serial_port_.available());
-        RCLCPP_DEBUG(rclcpp::get_logger("SerialComm"),
-            "[ARM] Flushed %zu stale bytes from receive buffer", stale.size());
-    }
-
     std::vector<uint8_t> frame = encodeArmTarget(control, x_mm, y_mm, z_mm, checksum_offset);
 
     // Debug: 打印发送的帧数据

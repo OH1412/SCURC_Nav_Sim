@@ -213,7 +213,7 @@ class MissionQuintupleLoader(Node):
             target_id = int(step.get('target_id', -1))
             wp_id = nav_wp_id(path, wp)
             motion_planner = int(step.get('motion_planner', 1))
-            zone = 'middle' if motion_planner == 0 else 'edge'
+            zone = 'straight' if motion_planner == 3 else 'edge'
             label = {STATE_TRANSIT: 'transit', STATE_PICK: 'pick',
                      STATE_PLACE: 'place'}.get(state, f'state{state}')
 

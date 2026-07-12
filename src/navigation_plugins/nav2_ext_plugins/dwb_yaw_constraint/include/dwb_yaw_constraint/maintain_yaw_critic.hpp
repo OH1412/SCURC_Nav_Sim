@@ -18,6 +18,7 @@
 #include <string>
 #include "dwb_core/trajectory_critic.hpp"
 #include "rclcpp/rclcpp.hpp"
+#include "std_msgs/msg/float64.hpp"
 
 namespace dwb_yaw_constraint
 {
@@ -71,6 +72,9 @@ private:
   /// The frame in which desired_yaw is specified (e.g., "map")
   std::string reference_frame_;
 
+  /// Callback for dynamic desired_yaw from segment yaw topic
+  void navSegmentYawCallback(const std_msgs::msg::Float64::SharedPtr msg);
+
   /// Computed target yaw in the costmap frame [rad]
   double target_yaw_;
 
@@ -85,6 +89,17 @@ private:
 
   /// Multiplier for xy speed penalty during correction phase
   double xy_penalty_factor_{5.0};
+
+  /// Whether to use nav_segment_yaw topic for dynamic desired_yaw
+  bool use_segment_yaw_{false};
+  /// Topic name for dynamic desired_yaw override
+  std::string nav_segment_yaw_topic_{"/mission_bt/nav_segment_yaw"};
+  /// Latest segment yaw from topic (NaN when not yet received)
+  double segment_yaw_{0.0};
+  /// Whether a segment yaw has been received
+  bool segment_yaw_valid_{false};
+  /// Subscriber for dynamic desired_yaw
+  rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr segment_yaw_sub_;
 
   /// Cached parameter names for the dynamic callback
   std::string scale_param_name_;

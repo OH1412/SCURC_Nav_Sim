@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """
-Nav2 Parameter Switcher Node — zone-driven by mission BT (limit_yaw).
+Nav2 Parameter Switcher Node — zone-driven by mission BT (motion_planner).
 
 Listens to /mission_bt/nav_zone for zone commands published by Nav2PoseNode.
-Each Nav2PoseNode carries a limit_yaw attribute from the mission YAML:
-  - limit_yaw: true  → zone = "middle" (yaw locked to 0, no rotation, lateral vy allowed)
-  - limit_yaw: false → zone = "edge"   (rotation allowed, yaw unlocked, single-axis preferred)
+Zone selection by motion_planner id:
+  - motion_planner=0 → zone = "middle" (yaw locked to segment dir, vy lateral, Y tracking)
+  - motion_planner=1 → zone = "edge"   (front-tangent, rotation allowed, vy lateral)
+  - motion_planner=2 → zone = "edge"   (rear-tangent, rotation allowed, vy lateral)
+  - motion_planner=3 → zone = "straight" (x-only, vy=0, vtheta=0)
+  - edge→middle transition: auto-switch when within middle_zone_distance of goal
 
 Switches DWB critic scales + goal checker tolerance via ros2 param set — zero downtime.
 
@@ -42,15 +45,25 @@ LATCHED_QOS = QoSProfile(
 # ---------------------------------------------------------------------------
 
 MIDDLE_PARAMS = {
+    # mp=0 Y-tracking: yaw locked to segment direction (via MaintainYawCritic use_segment_yaw),
+    # lateral vy enabled for Y correction, rotation critics disabled
     'general_goal_checker.yaw_goal_tolerance': 6.28,
     'FollowPath.dwb_yaw_constraint::RotateToGoalXYCritic.scale': 0.0,
     'FollowPath.dwb_yaw_constraint::RotateToPathCritic.scale': 0.0,
     'FollowPath.GoalAlign.scale': 0.0,
     'FollowPath.PathAlign.scale': 0.0,
     'FollowPath.dwb_yaw_constraint::MaintainYawCritic.scale': 5000.0,
+    # desired_yaw 由 MaintainYawCritic.use_segment_yaw 动态覆盖为航段方位
+    'FollowPath.dwb_yaw_constraint::MaintainYawCritic.desired_yaw': 3.1416,
+    # 禁用两阶段逻辑（阈值=360°→永不触发阶段1），退化为老版纯线性 MaintainYawCritic
+    'FollowPath.dwb_yaw_constraint::MaintainYawCritic.yaw_error_threshold': 6.28,
     'FollowPath.dwb_yaw_constraint::DecouplingCritic.scale': 0.0,
-    'FollowPath.min_vel_y': -1.4,
-    'FollowPath.max_vel_y': 1.4,
+    'FollowPath.PathDist.scale': 32.0,         # mp=0 Y 追踪，与 edge 一致
+    'FollowPath.dwb_yaw_constraint::GoalYAlignCritic.scale': 5000.0,  # mp=0 Y 直接对齐目标 Y
+    'FollowPath.min_vel_y': -1.0,
+    'FollowPath.max_vel_y': 1.0,
+    # 短接停车阈值对齐老版：速度<0.25就停车，避免近目标时微调抖动
+    'FollowPath.trans_stopped_velocity': 0.25,
 }
 
 EDGE_PARAMS = {
@@ -60,12 +73,34 @@ EDGE_PARAMS = {
     'FollowPath.GoalAlign.scale': 24.0,
     'FollowPath.PathAlign.scale': 32.0,
     'FollowPath.dwb_yaw_constraint::MaintainYawCritic.scale': 0.0,
+    'FollowPath.dwb_yaw_constraint::MaintainYawCritic.desired_yaw': 0.0,
     'FollowPath.dwb_yaw_constraint::DecouplingCritic.scale': 5.0,
+    'FollowPath.PathDist.scale': 32.0,         # edge 默认路径距离权重
+    'FollowPath.dwb_yaw_constraint::GoalYAlignCritic.scale': 0.0,   # edge 不启用 Y 对齐
     'FollowPath.min_vel_y': -1.1,
     'FollowPath.max_vel_y': 1.1,
+    'FollowPath.trans_stopped_velocity': 0.08,
 }
 
-ZONE_PARAMS = {'middle': MIDDLE_PARAMS, 'edge': EDGE_PARAMS}
+STRAIGHT_PARAMS = {
+    'general_goal_checker.yaw_goal_tolerance': 6.28,
+    'FollowPath.dwb_yaw_constraint::RotateToGoalXYCritic.scale': 0.0,
+    'FollowPath.dwb_yaw_constraint::RotateToPathCritic.scale': 0.0,
+    'FollowPath.GoalAlign.scale': 0.0,
+    'FollowPath.PathAlign.scale': 0.0,
+    'FollowPath.dwb_yaw_constraint::MaintainYawCritic.scale': 0.0,
+    'FollowPath.dwb_yaw_constraint::MaintainYawCritic.desired_yaw': 0.0,
+    'FollowPath.dwb_yaw_constraint::MaintainYawCritic.yaw_error_threshold': 6.28,
+    'FollowPath.dwb_yaw_constraint::DecouplingCritic.scale': 0.0,
+    'FollowPath.PathDist.scale': 32.0,         # straight 默认路径距离权重
+    'FollowPath.dwb_yaw_constraint::GoalYAlignCritic.scale': 0.0,  # straight 不启用 Y 对齐
+    'FollowPath.min_vel_y': 0.0,
+    'FollowPath.max_vel_y': 0.0,
+    'FollowPath.max_vel_theta': 0.0,
+    'FollowPath.trans_stopped_velocity': 0.25,
+}
+
+ZONE_PARAMS = {'middle': MIDDLE_PARAMS, 'edge': EDGE_PARAMS, 'straight': STRAIGHT_PARAMS}
 
 
 def _make_param(name: str, value: float) -> Parameter:
@@ -104,9 +139,10 @@ class PositionBasedParamSwitcher(Node):
 
         self.get_logger().info(
             '============================================================\n'
-            '  PositionBasedParamSwitcher — zone-driven by limit_yaw\n'
-            '  Zone "middle": limit_yaw=true  (yaw locked to 0, no rotation)\n'
-            '  Zone "edge":   limit_yaw=false (rotation allowed, yaw unlocked)\n'
+            '  PositionBasedParamSwitcher — zone-driven by motion_planner\n'
+            '  Zone "middle":   mp=0 (yaw locked to segment dir, Y tracking)\n'
+            '  Zone "edge":     mp=1/2 (rotation allowed, yaw unlocked)\n'
+            '  Zone "straight": mp=3 (x-only, vy=vtheta=0)\n'
             f'  Listening on: {self.nav_zone_topic} (latched)\n'
             f'  Default zone: {self.default_zone}\n'
             f'  Target node: /{self.target_node}\n'
@@ -115,9 +151,9 @@ class PositionBasedParamSwitcher(Node):
 
     def nav_zone_callback(self, msg: String):
         new_zone = msg.data.strip()
-        if new_zone not in ('middle', 'edge'):
+        if new_zone not in ('middle', 'edge', 'straight'):
             self.get_logger().warning(
-                f'Unknown zone "{new_zone}" received (expected "middle" or "edge"), ignoring'
+                f'Unknown zone "{new_zone}" received (expected "middle", "edge", or "straight"), ignoring'
             )
             return
 

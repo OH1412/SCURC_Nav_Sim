@@ -220,8 +220,8 @@ void Nav2PoseNode::publishNavSegmentYaw(
     }
   }
 
-  // motion_planner=2: rear of vehicle tracks segment direction (yaw + 180°)
-  if (motion_planner_ == 2) {
+  // motion_planner=0 or 2: rear of vehicle tracks segment direction (yaw + 180°)
+  if (motion_planner_ == 2 || motion_planner_ == 0) {
     segment_yaw = normalizeAngle(segment_yaw + M_PI);
   }
 
@@ -417,13 +417,17 @@ BT::NodeStatus Nav2PoseNode::onStart()
   goal_sent_ = false;
   result_ready_ = false;
 
-  // motion_planner: 0=always middle, 1=edge front-tangent, 2=edge rear-tangent
-  // limit_yaw_ derived: 0→true (always middle), 1/2→false (edge→middle)
+  // motion_planner: 0=middle(y-track rear), 1=edge front-tangent, 2=edge rear-tangent, 3=straight
+  // mp=0 starts in middle zone (yaw locked, vy enabled) for continuous Y tracking
+  // mp=1/2 start in edge zone (rotation allowed), transition to middle near goal
+  // mp=3 starts in straight zone (vy=0, vtheta=0, x-only)
   getInput("motion_planner", motion_planner_);
   limit_yaw_ = (motion_planner_ == 0);
-  middle_zone_applied_ = limit_yaw_;
-  const std::string zone = limit_yaw_ ? "middle" : "edge";
-  publishNavZone(zone, limit_yaw_ ? "always_middle(mp=0)" : "startup(mp=" + std::to_string(motion_planner_) + ")");
+  middle_zone_applied_ = (motion_planner_ == 0 || motion_planner_ == 3);  // mp=0: no edge→middle transition
+  const std::string zone = (motion_planner_ == 0) ? "middle"
+                         : (motion_planner_ == 3) ? "straight"
+                         : "edge";
+  publishNavZone(zone, "startup(mp=" + std::to_string(motion_planner_) + ")");
 
   if (resolveGoal(frame_id, x, y, yaw)) {
     std::ostringstream detail;
@@ -462,9 +466,11 @@ BT::NodeStatus Nav2PoseNode::onRunning()
       waiting_for_wp_ = false;
       getInput("motion_planner", motion_planner_);
       limit_yaw_ = (motion_planner_ == 0);
-      middle_zone_applied_ = limit_yaw_;
-      const std::string zone = limit_yaw_ ? "middle" : "edge";
-      publishNavZone(zone, limit_yaw_ ? "always_middle(mp=0)" : "startup(mp=" + std::to_string(motion_planner_) + ")");
+      middle_zone_applied_ = (motion_planner_ == 0 || motion_planner_ == 3);
+      const std::string zone = (motion_planner_ == 0) ? "middle"
+                             : (motion_planner_ == 3) ? "straight"
+                             : "edge";
+      publishNavZone(zone, "startup(mp=" + std::to_string(motion_planner_) + ")");
       std::ostringstream detail;
       detail << "导航点=" << wp_id_ << " 坐标系=" << frame_id
              << " x=" << x << " y=" << y << " 航向=" << yaw << "弧度"

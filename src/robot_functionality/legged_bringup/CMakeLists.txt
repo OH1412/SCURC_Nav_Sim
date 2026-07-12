@@ -43,13 +43,17 @@ install(PROGRAMS
   nodes/arm_control_server.py
   nodes/arm_mission_trigger.py
   nodes/arm_pose_broadcaster.py
+  nodes/arm_points_visualizer.py
   nodes/interactive_arm_pick.py
   nodes/arm_coord_monitor.py
+  nodes/arm_point_id_cli.py
+  nodes/arm_xyz_manual_test.py
   nodes/wait_for_ros_condition.py
   nodes/mission_session_logger.py
   nodes/mission_log_client.py
   nodes/mission_log_labels.py
   nodes/base_link_odom_publisher.py
+  nodes/arm_root_odom_publisher.py
   nodes/pointcloud_range_filter.py
   test/path1_nav_test.py
   test/record_waypoints.py

@@ -37,7 +37,7 @@ public:
 
         legged_bringup::mission_log::publish(
             *this, "serial_cmd_sender", "SERIAL_READY",
-            "INFO", "监听话题=/arm_command 发布话题=/arm_status");
+            "INFO", "监听话题=/arm_command 发布话题=/arm_status /arm_serial_ack");
 
         // ====================================================================
         // 订阅者
@@ -53,9 +53,13 @@ public:
         // 发布者
         // ====================================================================
 
-        // /arm_status -> ACK 状态 [state, result]
+        // /arm_status -> 机械臂行为ACK [state, result] (state=0x01 Pick / 0x02 Place)
         arm_status_pub_ = this->create_publisher<std_msgs::msg::UInt8MultiArray>(
             "/arm_status", 10);
+
+        // /arm_serial_ack -> 串口接收确认 (state=0x03 Serial Done → 停止重发)
+        arm_serial_ack_pub_ = this->create_publisher<std_msgs::msg::UInt8MultiArray>(
+            "/arm_serial_ack", 10);
 
         // ====================================================================
         // ACK 轮询定时器 (10 Hz)
@@ -66,7 +70,7 @@ public:
 
         RCLCPP_INFO(this->get_logger(),
             "Serial ready. Listening on /arm_command | "
-            "Publishing ACK on /arm_status @ 10Hz");
+            "Publishing: /arm_status (行为ACK) /arm_serial_ack (串口ACK) @ 10Hz");
     }
 
 private:
@@ -136,19 +140,36 @@ private:
             auto msg = std_msgs::msg::UInt8MultiArray();
             msg.data = {ack.state, ack.result};
 
-            const char* state_cn = (ack.state == protocol::ARM_CTRL_PICK) ? "抓取" :
-                                   (ack.state == protocol::ARM_CTRL_PLACE) ? "放置" : "未知";
-            const char* result_cn = (ack.result == protocol::ARM_ACK_OK) ? "成功" :
-                                    (ack.result == protocol::ARM_ACK_FAIL) ? "失败" : "未知";
+            // state=0x03: 串口接收完成 → 发布到 /arm_serial_ack（通知BT停止重发）
+            // state=0x01/0x02: 机械臂动作完成 → 发布到 /arm_status
+            if (ack.state == 0x03) {
+                const char* result_cn = (ack.result == protocol::ARM_ACK_OK) ? "成功" :
+                                        (ack.result == protocol::ARM_ACK_FAIL) ? "失败" : "未知";
+                std::ostringstream detail;
+                detail << "串口接收完成 结果=0x" << std::hex
+                       << static_cast<int>(ack.result) << std::dec << '(' << result_cn << ')';
+                legged_bringup::mission_log::publish(
+                    *this, "serial_cmd_sender", "ARM_SERIAL_ACK_PUBLISHED", "INFO", detail.str());
 
-            std::ostringstream detail;
-            detail << "状态=0x" << std::hex << static_cast<int>(ack.state) << std::dec
-                   << '(' << state_cn << ") 结果=0x" << std::hex
-                   << static_cast<int>(ack.result) << std::dec << '(' << result_cn << ')';
-            legged_bringup::mission_log::publish(
-                *this, "serial_cmd_sender", "ARM_STATUS_PUBLISHED", "INFO", detail.str());
+                arm_serial_ack_pub_->publish(msg);
+                RCLCPP_INFO(this->get_logger(),
+                    "[ARM SERIAL ACK] state=0x03(Serial Done) result=0x%02X(%s)",
+                    ack.result, result_cn);
+            } else {
+                const char* state_cn = (ack.state == protocol::ARM_CTRL_PICK) ? "抓取" :
+                                       (ack.state == protocol::ARM_CTRL_PLACE) ? "放置" : "未知";
+                const char* result_cn = (ack.result == protocol::ARM_ACK_OK) ? "成功" :
+                                        (ack.result == protocol::ARM_ACK_FAIL) ? "失败" : "未知";
 
-            arm_status_pub_->publish(msg);
+                std::ostringstream detail;
+                detail << "状态=0x" << std::hex << static_cast<int>(ack.state) << std::dec
+                       << '(' << state_cn << ") 结果=0x" << std::hex
+                       << static_cast<int>(ack.result) << std::dec << '(' << result_cn << ')';
+                legged_bringup::mission_log::publish(
+                    *this, "serial_cmd_sender", "ARM_STATUS_PUBLISHED", "INFO", detail.str());
+
+                arm_status_pub_->publish(msg);
+            }
         }
     }
 
@@ -159,6 +180,7 @@ private:
     uint8_t default_control_;
     rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr sub_arm_command_;
     rclcpp::Publisher<std_msgs::msg::UInt8MultiArray>::SharedPtr arm_status_pub_;
+    rclcpp::Publisher<std_msgs::msg::UInt8MultiArray>::SharedPtr arm_serial_ack_pub_;
     rclcpp::TimerBase::SharedPtr ack_poll_timer_;
     std::unique_ptr<SerialComm> comm_;
 };

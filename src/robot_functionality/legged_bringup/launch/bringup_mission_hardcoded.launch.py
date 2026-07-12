@@ -43,9 +43,12 @@ def generate_launch_description():
     arm_control_delay = LaunchConfiguration('arm_control_delay')
     enable_base_link_odom = LaunchConfiguration('enable_base_link_odom')
     base_link_odom_topic = LaunchConfiguration('base_link_odom_topic')
+    enable_arm_root_odom = LaunchConfiguration('enable_arm_root_odom')
     bt_xml_file = LaunchConfiguration('bt_xml_file')
     waypoints_file = LaunchConfiguration('waypoints_file')
     arm_points_file = LaunchConfiguration('arm_points_file')
+    arm_points_viz_frame = LaunchConfiguration('arm_points_viz_frame')
+    enable_arm_points_viz = LaunchConfiguration('enable_arm_points_viz')
     udp_ip = LaunchConfiguration('udp_ip')
     udp_port = LaunchConfiguration('udp_port')
     udp_mode = LaunchConfiguration('udp_mode')
@@ -106,11 +109,14 @@ def generate_launch_description():
     declare_arm_control_delay = DeclareLaunchArgument(
         'arm_control_delay', default_value='12.0')
     declare_enable_base_link_odom = DeclareLaunchArgument(
-        'enable_base_link_odom', default_value='false',
+        'enable_base_link_odom', default_value='true',
         description='Publish base_link→map Odometry via TF (替代 /aft_mapped_to_init)')
     declare_base_link_odom_topic = DeclareLaunchArgument(
         'base_link_odom_topic', default_value='/base_link_in_map',
         description='Topic for base_link odometry. /aft_mapped_to_init to replace Fast-LIVO.')
+    declare_enable_arm_root_odom = DeclareLaunchArgument(
+        'enable_arm_root_odom', default_value='true',
+        description='Publish arm_root→map Odometry via TF (机械臂工作空间原点在map系位姿)')
     declare_bt_xml_file = DeclareLaunchArgument(
         'bt_xml_file', default_value=default_bt_xml,
         description='Mission BT XML (Nav+Arm sequence)')
@@ -120,6 +126,12 @@ def generate_launch_description():
     declare_arm_points_file = DeclareLaunchArgument(
         'arm_points_file', default_value=default_arm_points,
         description='Arm map_target points (pick 1~8, place 9~12)')
+    declare_arm_points_viz_frame = DeclareLaunchArgument(
+        'arm_points_viz_frame', default_value='map',
+        description='Frame for RViz arm points Marker (map or camera_init)')
+    declare_enable_arm_points_viz = DeclareLaunchArgument(
+        'enable_arm_points_viz', default_value='true',
+        description='Publish arm_points to /arm_points_viz for RViz visualization')
     declare_udp_ip = DeclareLaunchArgument('udp_ip', default_value='127.0.0.1')
     declare_udp_port = DeclareLaunchArgument('udp_port', default_value='9870')
     declare_udp_mode = DeclareLaunchArgument('udp_mode', default_value='2')
@@ -230,6 +242,27 @@ def generate_launch_description():
         condition=IfCondition(enable_base_link_odom),
     )
 
+    # ---- 5.6) arm_root → map Odometry 发布 (机械臂工作空间原点) ----
+    arm_root_odom_node = Node(
+        package='legged_bringup',
+        executable='arm_root_odom_publisher.py',
+        name='arm_root_odom_publisher',
+        output='screen',
+        condition=IfCondition(enable_arm_root_odom),
+        parameters=[{
+            'target_topic': '/arm_root_in_map',
+            'publish_rate': 50.0,
+            'base_frame': 'base_link',
+            'map_frame': 'map',
+            'publish_tf': True,
+        }],
+    )
+    delayed_arm_root_odom = TimerAction(
+        period=start_delay,
+        actions=[arm_root_odom_node],
+        condition=IfCondition(enable_arm_root_odom),
+    )
+
     # ---- 6) Stand-up ----
     stand_up_sender_node = Node(
         package='legged_bringup',
@@ -255,6 +288,20 @@ def generate_launch_description():
         output='screen',
         condition=IfCondition(enable_arm_pose_broadcaster),
         parameters=[{'arm_points_file': arm_points_file}],
+    )
+
+    # ---- 7.5) Arm points RViz visualizer ----
+    arm_points_viz_node = Node(
+        package='legged_bringup',
+        executable='arm_points_visualizer.py',
+        name='arm_points_visualizer',
+        output='screen',
+        condition=IfCondition(enable_arm_points_viz),
+        parameters=[{
+            'arm_points_file': arm_points_file,
+            'frame_id': arm_points_viz_frame,
+            'publish_rate': 1.0,
+        }],
     )
 
     # ---- 8) Mission BT node (fly_step: Nav + Arm) ----
@@ -322,9 +369,12 @@ def generate_launch_description():
     ld.add_action(declare_arm_control_delay)
     ld.add_action(declare_enable_base_link_odom)
     ld.add_action(declare_base_link_odom_topic)
+    ld.add_action(declare_enable_arm_root_odom)
     ld.add_action(declare_bt_xml_file)
     ld.add_action(declare_waypoints_file)
     ld.add_action(declare_arm_points_file)
+    ld.add_action(declare_arm_points_viz_frame)
+    ld.add_action(declare_enable_arm_points_viz)
     ld.add_action(declare_udp_ip)
     ld.add_action(declare_udp_port)
     ld.add_action(declare_udp_mode)
@@ -339,8 +389,10 @@ def generate_launch_description():
     ld.add_action(delayed_bringup)
     ld.add_action(delayed_aft_pose_offset)
     ld.add_action(delayed_base_link_odom)
+    ld.add_action(delayed_arm_root_odom)
     ld.add_action(delayed_stand_up_sender)
     ld.add_action(arm_pose_broadcaster_node)
+    ld.add_action(arm_points_viz_node)
     ld.add_action(delayed_mission_bt)
     ld.add_action(delayed_arm_control)
 

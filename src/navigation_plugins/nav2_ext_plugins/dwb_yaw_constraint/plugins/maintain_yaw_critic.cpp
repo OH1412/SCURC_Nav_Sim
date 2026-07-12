@@ -37,6 +37,25 @@ void MaintainYawCritic::onInit()
   node->get_parameter(
     dwb_plugin_name_ + "." + name_ + ".reference_frame", reference_frame_);
 
+  // Optional: subscribe to nav_segment_yaw for dynamic desired_yaw
+  nav2_util::declare_parameter_if_not_declared(
+    node,
+    prefix + "use_segment_yaw",
+    rclcpp::ParameterValue(false));
+  nav2_util::declare_parameter_if_not_declared(
+    node,
+    prefix + "nav_segment_yaw_topic",
+    rclcpp::ParameterValue("/mission_bt/nav_segment_yaw"));
+  node->get_parameter(prefix + "use_segment_yaw", use_segment_yaw_);
+  node->get_parameter(prefix + "nav_segment_yaw_topic", nav_segment_yaw_topic_);
+
+  if (use_segment_yaw_) {
+    segment_yaw_sub_ = node->create_subscription<std_msgs::msg::Float64>(
+      nav_segment_yaw_topic_,
+      rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable(),
+      std::bind(&MaintainYawCritic::navSegmentYawCallback, this, std::placeholders::_1));
+  }
+
   nav2_util::declare_parameter_if_not_declared(
     node,
     prefix + "yaw_error_threshold",
@@ -83,10 +102,12 @@ void MaintainYawCritic::onInit()
   RCLCPP_INFO(
     node->get_logger(),
     "MaintainYawCritic [%s]: desired_yaw=%.2f rad, ref_frame=%s, "
-    "yaw_err_thresh=%.2f rad (%.0f deg), xy_penalty=%.1f",
+    "yaw_err_thresh=%.2f rad (%.0f deg), xy_penalty=%.1f, "
+    "use_segment_yaw=%s",
     name_.c_str(), desired_yaw_, reference_frame_.c_str(),
     yaw_error_threshold_, yaw_error_threshold_ * 180.0 / M_PI,
-    xy_penalty_factor_);
+    xy_penalty_factor_,
+    use_segment_yaw_ ? "true" : "false");
 }
 
 bool MaintainYawCritic::prepare(
@@ -97,9 +118,15 @@ bool MaintainYawCritic::prepare(
 {
   std::string costmap_frame = costmap_ros_->getGlobalFrameID();
 
+  // If use_segment_yaw_ and we have a valid segment yaw, override desired_yaw_
+  double effective_desired_yaw = desired_yaw_;
+  if (use_segment_yaw_ && segment_yaw_valid_) {
+    effective_desired_yaw = segment_yaw_;
+  }
+
   // If the costmap frame equals the reference frame, no transform is needed
   if (costmap_frame == reference_frame_) {
-    target_yaw_ = desired_yaw_;
+    target_yaw_ = effective_desired_yaw;
     target_valid_ = true;
     current_yaw_error_ = angles::shortest_angular_distance(pose.theta, target_yaw_);
     return true;
@@ -138,7 +165,7 @@ bool MaintainYawCritic::prepare(
     double roll, pitch, yaw_offset;
     tf2::Matrix3x3(q).getRPY(roll, pitch, yaw_offset);
 
-    target_yaw_ = angles::normalize_angle(desired_yaw_ - yaw_offset);
+    target_yaw_ = angles::normalize_angle(effective_desired_yaw - yaw_offset);
     target_valid_ = true;
   }
   catch (const tf2::TransformException & ex) {
@@ -177,6 +204,13 @@ double MaintainYawCritic::scoreTrajectory(const dwb_msgs::msg::Trajectory2D & tr
 
   // Normal phase: maintain yaw while allowing free xy motion.
   return scale_ * std::fabs(yaw_error);
+}
+
+void MaintainYawCritic::navSegmentYawCallback(
+  const std_msgs::msg::Float64::SharedPtr msg)
+{
+  segment_yaw_ = msg->data;
+  segment_yaw_valid_ = true;
 }
 
 }  // namespace dwb_yaw_constraint

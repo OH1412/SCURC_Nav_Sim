@@ -1,0 +1,10 @@
+digraph G {
+"map" -> "odom"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"aft_mapped" -> "base_link"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"camera_init" -> "aft_mapped"[label=" Broadcaster: default_authority\nAverage rate: 9.802\nBuffer length: 4.999\nMost recent transform: 1783753427.004729\nOldest transform: 1783753422.00592\n"];
+"odom" -> "camera_init"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+edge [style=invis];
+ subgraph cluster_legend { style=bold; color=black; label ="view_frames Result";
+"Recorded at time: 1783753427.0106544"[ shape=plaintext ] ;
+}->"map";
+}

@@ -356,9 +356,11 @@ def generate_launch_description():
     # Nav zone parameter switcher: listens to /mission_bt/nav_zone
     # (published by Nav2PoseNode) and dynamically sets DWB critic
     # scales + goal checker tolerance via ros2 param set.
-    # Zone is driven by limit_yaw from mission YAML:
-    #   limit_yaw: true  → "middle" (yaw locked, no rotation)
-    #   limit_yaw: false → "edge"   (rotation allowed)
+    # Zone is driven by motion_planner from mission YAML:
+    #   mp=0 → "middle"   (yaw locked to segment dir, Y tracking)
+    #   mp=1 → "edge"     (front-tangent, rotation allowed)
+    #   mp=2 → "edge"     (rear-tangent, rotation allowed)
+    #   mp=3 → "straight" (x-only, vy=vtheta=0)
     # Delayed 8s to let controller_server finish activation first.
     position_switcher_node = Node(
         package='legged_bringup',

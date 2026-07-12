@@ -36,6 +36,9 @@ def generate_launch_description():
     reloc_delay = LaunchConfiguration('reloc_delay')
     enable_arm_pose_broadcaster = LaunchConfiguration('enable_arm_pose_broadcaster')
     enable_interactive_arm_pick = LaunchConfiguration('enable_interactive_arm_pick')
+    enable_base_link_odom = LaunchConfiguration('enable_base_link_odom')
+    base_link_odom_topic = LaunchConfiguration('base_link_odom_topic')
+    enable_arm_root_odom = LaunchConfiguration('enable_arm_root_odom')
     interactive_pick_delay = LaunchConfiguration('interactive_pick_delay')
     arm_points_file = LaunchConfiguration('arm_points_file')
     arm_timeout = LaunchConfiguration('arm_timeout')
@@ -78,6 +81,14 @@ def generate_launch_description():
         'reloc_delay', default_value='0.0')
     declare_enable_arm_pose_broadcaster = DeclareLaunchArgument(
         'enable_arm_pose_broadcaster', default_value='true')
+    declare_enable_base_link_odom = DeclareLaunchArgument(
+        'enable_base_link_odom', default_value='true',
+        description='Publish base_link→map Odometry via TF')
+    declare_base_link_odom_topic = DeclareLaunchArgument(
+        'base_link_odom_topic', default_value='/base_link_in_map')
+    declare_enable_arm_root_odom = DeclareLaunchArgument(
+        'enable_arm_root_odom', default_value='true',
+        description='Publish arm_root→map Odometry via TF (机械臂工作空间原点)')
     declare_enable_interactive_arm_pick = DeclareLaunchArgument(
         'enable_interactive_arm_pick', default_value='true',
         description='X button alternating nearest pick/place via interactive_arm_pick')
@@ -192,7 +203,7 @@ def generate_launch_description():
         executable='relay',
         name='relay_state_estimation',
         output='screen',
-        arguments=['/aft_mapped_to_init', '/state_estimation'],
+        arguments=['/aft_mapped_in_map', '/state_estimation'],
     )
 
     # ---- 5) aft → pose_offset 转发 ----
@@ -204,6 +215,47 @@ def generate_launch_description():
     )
     delayed_aft_pose_offset = TimerAction(
         period=start_delay, actions=[aft_to_pose_offset_node])
+
+    # ---- 5.5) base_link → map Odometry ----
+    base_link_odom_node = Node(
+        package='legged_bringup',
+        executable='base_link_odom_publisher.py',
+        name='base_link_odom_publisher',
+        output='screen',
+        condition=IfCondition(enable_base_link_odom),
+        parameters=[{
+            'target_topic': base_link_odom_topic,
+            'publish_rate': 50.0,
+            'base_frame': 'base_link',
+            'map_frame': 'map',
+        }],
+    )
+    delayed_base_link_odom = TimerAction(
+        period=start_delay,
+        actions=[base_link_odom_node],
+        condition=IfCondition(enable_base_link_odom),
+    )
+
+    # ---- 5.6) arm_root → map Odometry ----
+    arm_root_odom_node = Node(
+        package='legged_bringup',
+        executable='arm_root_odom_publisher.py',
+        name='arm_root_odom_publisher',
+        output='screen',
+        condition=IfCondition(enable_arm_root_odom),
+        parameters=[{
+            'target_topic': '/arm_root_in_map',
+            'publish_rate': 50.0,
+            'base_frame': 'base_link',
+            'map_frame': 'map',
+            'publish_tf': True,
+        }],
+    )
+    delayed_arm_root_odom = TimerAction(
+        period=start_delay,
+        actions=[arm_root_odom_node],
+        condition=IfCondition(enable_arm_root_odom),
+    )
 
     # ---- 6) Stand-up ----
     stand_up_sender_node = Node(
@@ -308,6 +360,9 @@ def generate_launch_description():
     ld.add_action(declare_stand_up_delay)
     ld.add_action(declare_reloc_delay)
     ld.add_action(declare_enable_arm_pose_broadcaster)
+    ld.add_action(declare_enable_base_link_odom)
+    ld.add_action(declare_base_link_odom_topic)
+    ld.add_action(declare_enable_arm_root_odom)
     ld.add_action(declare_enable_interactive_arm_pick)
     ld.add_action(declare_interactive_pick_delay)
     ld.add_action(declare_arm_points_file)
@@ -334,6 +389,8 @@ def generate_launch_description():
     ld.add_action(relay_odom)
     ld.add_action(delayed_relocalization)
     ld.add_action(delayed_aft_pose_offset)
+    ld.add_action(delayed_base_link_odom)
+    ld.add_action(delayed_arm_root_odom)
     ld.add_action(delayed_stand_up_sender)
     ld.add_action(arm_pose_broadcaster_node)
     ld.add_action(delayed_interactive_arm_pick)

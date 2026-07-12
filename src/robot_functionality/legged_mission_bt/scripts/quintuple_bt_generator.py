@@ -137,7 +137,7 @@ def build_bt_xml(
         '  state=1: Nav2PoseNode',
         '  state=2: Nav2PoseNode + ArmPickNode (target_id 0~7 -> arm_point_id 0~7)',
         '  state=3: Nav2PoseNode + ArmPlaceNode (target_id 0~7 -> arm_point_id 8~15)',
-        '  motion_planner: 0=corridor multi-phase, 1=edge front-tangent, 2=edge rear-tangent',
+        '  motion_planner: 0=edge rear-tangent, 1=edge front-tangent, 2=edge rear-tangent, 3=straight(x-only)',
         '-->',
         '<root BTCPP_format="4">',
         '  <BehaviorTree ID="MissionHardcoded">',
@@ -154,7 +154,7 @@ def build_bt_xml(
         label = state_label(state)
 
         motion_planner = int(step.get('motion_planner', 1))
-        zone = 'middle' if motion_planner == 0 else 'edge'
+        zone = 'straight' if motion_planner == 3 else 'edge'
 
         lines.append(
             f'      <!-- step {index}: path={path} wp={wp} state={state} ({label})'
