@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # ============================================================================
 # 机械臂目标坐标广播 — map 系固定点 → 当前 arm_root
-# 16 标定点：0~7 抓取，8~15 放置
+# 18 标定点：0~7,16 抓取，8~15,17 放置
 #
 # arm_root 与 base_link 无旋转；arm_root 原点在 base_link 下 (-9.73, 0.04, 190.68) mm。
 # 工作空间圆心、下发 arm_waypoint 均在 arm_root 系（mm, rad）。
@@ -31,11 +31,9 @@ from mission_log_client import log_event
 
 MM_PER_M = 1000.0
 MIN_POINT_ID = 0
-MAX_POINT_ID = 15
-PICK_ID_MIN = 0
-PICK_ID_MAX = 7
-PLACE_ID_MIN = 8
-PLACE_ID_MAX = 15
+MAX_POINT_ID = 17
+PICK_IDS = frozenset({0, 1, 2, 3, 4, 5, 6, 7, 16})
+PLACE_IDS = frozenset({8, 9, 10, 11, 12, 13, 14, 15, 17})
 
 
 def yaw_from_quaternion(q: Quaternion) -> float:
@@ -160,9 +158,9 @@ def legacy_to_map_target(
 
 
 def point_role(arm_point_id: int) -> str:
-    if PICK_ID_MIN <= arm_point_id <= PICK_ID_MAX:
+    if arm_point_id in PICK_IDS:
         return 'pick'
-    if PLACE_ID_MIN <= arm_point_id <= PLACE_ID_MAX:
+    if arm_point_id in PLACE_IDS:
         return 'place'
     return ''
 
@@ -324,7 +322,7 @@ class ArmPoseBroadcaster(Node):
         self.create_subscription(NavReached, nav_reached_topic, self._on_nav_reached, qos)
 
         self.get_logger().info(
-            f'Loaded {len(self._arm_points)} arm points (map frame): pick 0~7, place 8~15')
+            f'Loaded {len(self._arm_points)} arm points (map frame): pick 0~7+16, place 8~15+17')
         self.get_logger().info(
             f'aft→base_link static offset: '
             f'({self._aft_to_base["x"]:.5f}, {self._aft_to_base["y"]:.5f}, '
@@ -421,10 +419,9 @@ class ArmPoseBroadcaster(Node):
                 self.get_logger().warn(f'arm_points missing slot "{key}"')
                 continue
             role = points[key].get('role', '')
-            if PICK_ID_MIN <= i <= PICK_ID_MAX and role != 'pick':
-                self.get_logger().warn(f'Point {key}: expected role pick, got {role}')
-            if PLACE_ID_MIN <= i <= PLACE_ID_MAX and role != 'place':
-                self.get_logger().warn(f'Point {key}: expected role place, got {role}')
+            expected_role = point_role(i)
+            if expected_role and role != expected_role:
+                self.get_logger().warn(f'Point {key}: expected role {expected_role}, got {role}')
             if self._resolve_map_target(key, points[key]) is None:
                 if points[key].get('arm_root_target') is None and points[key].get('base_link_target') is None:
                     self.get_logger().error(
@@ -488,10 +485,10 @@ class ArmPoseBroadcaster(Node):
         if not (MIN_POINT_ID <= pid <= MAX_POINT_ID):
             log_event(
                 self, 'arm_pose_broadcaster', 'ARM_WAYPOINT_INVALID_POINT',
-                f'机械臂点位={pid}（有效范围0~15）', level='ERROR',
+                f'机械臂点位={pid}（有效范围0~17）', level='ERROR',
             )
             self.get_logger().error(
-                f'Invalid arm_point_id (need 0~15), got {pid}')
+                f'Invalid arm_point_id (need 0~17), got {pid}')
             return
 
         slot = str(pid)

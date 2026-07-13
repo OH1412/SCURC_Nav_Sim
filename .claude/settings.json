@@ -15,7 +15,18 @@
       "Read(//dev/**)",
       "Bash(fuser /dev/ttyUSB2)",
       "Bash(nm -C /home/dog12/SCURC_Nav_Sim/build/dwb_yaw_constraint/libdwb_yaw_constraint_lib.so)",
-      "Bash(echo \"Exit: $?\")"
+      "Bash(echo \"Exit: $?\")",
+      "Bash(git --version)",
+      "Bash(rm /home/dog12/SCURC_Nav_Sim/.vscode/settings.json /home/dog12/SCURC_Nav_Sim/.vscode/c_cpp_properties.json)",
+      "Bash(python3 -m json.tool /home/dog12/SCURC_Nav_Sim/.vscode/settings.json)",
+      "Bash(python3 -m json.tool /home/dog12/SCURC_Nav_Sim/.vscode/c_cpp_properties.json)",
+      "Bash(git config *)",
+      "Bash(git fsck *)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('git.enabled:', d.get\\('git.enabled', 'not set'\\)\\); print\\('gitlens:', {k:v for k,v in d.items\\(\\) if 'git' in k.lower\\(\\)}\\)\")",
+      "Bash(git submodule *)"
+    ],
+    "additionalDirectories": [
+      "/home/dog12/SCURC_Nav_Sim/.vscode"
     ]
   }
 }

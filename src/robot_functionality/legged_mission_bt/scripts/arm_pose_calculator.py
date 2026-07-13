@@ -13,8 +13,8 @@ from rclpy.qos import QoSProfile, ReliabilityPolicy
 
 from legged_mission_bt.msg import ArmPoseRequest, ArmWaypoint, NavReached
 
-PICK_ID_MAX = 7
-PLACE_ID_MAX = 15
+PICK_IDS = frozenset({0, 1, 2, 3, 4, 5, 6, 7, 16})
+PLACE_IDS = frozenset({8, 9, 10, 11, 12, 13, 14, 15, 17})
 
 
 class ArmPoseCalculator(Node):
@@ -49,9 +49,9 @@ class ArmPoseCalculator(Node):
 
     def _compute_arm_pose(self, arm_point_id: int):
         """占位：按点位编号返回 arm_base 毫米坐标。"""
-        if arm_point_id <= PICK_ID_MAX:
+        if arm_point_id in PICK_IDS:
             return 0.0, -550.0, -100.0, 0.0
-        if arm_point_id <= PLACE_ID_MAX:
+        if arm_point_id in PLACE_IDS:
             return 0.0, -500.0, -50.0, 0.0
         return 0.0, -500.0, -50.0, 0.0
 

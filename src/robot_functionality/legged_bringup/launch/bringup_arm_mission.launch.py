@@ -86,7 +86,7 @@ def generate_launch_description():
         description='Start arm_pose_broadcaster (aft offset → arm_waypoint)')
     declare_arm_points_file = DeclareLaunchArgument(
         'arm_points_file', default_value=default_arm_points,
-        description='Sixteen arm points: pick 0~7, place 8~15 (arm_points.yaml)')
+        description='Eighteen arm points: pick 0~7+16, place 8~15+17 (arm_points.yaml)')
     declare_udp_ip = DeclareLaunchArgument('udp_ip', default_value='127.0.0.1')
     declare_udp_port = DeclareLaunchArgument('udp_port', default_value='9870')
     declare_udp_mode = DeclareLaunchArgument('udp_mode', default_value='2')
