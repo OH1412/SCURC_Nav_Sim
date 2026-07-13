@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from typing import List, Optional, Sequence, Set
+from typing import List, Optional, Sequence
 
-from .field_model import FALLBACK_BOX_ID, FieldModel, MAX_WAYPOINT
+from .field_model import PATH4_FIRST_BOX_ID, PATH4_LAST_BOX_ID, FieldModel
 from .state_definitions import MissionState, MissionStep
 from .validation import validate_box_types, validate_sequence, validate_zone_types
 from .waypoint_config import WaypointConfig
@@ -57,26 +57,15 @@ class MissionPathPlanner:
         start_state = MissionState.QUIZ_RECOGNITION if include_quiz_state else MissionState.TRANSIT
         navigator.append(0, 0, start_state, note='start')
 
-        fallback_zone = self.field.zone_for_type(int(box_types[FALLBACK_BOX_ID]), zone_types)
-        fallback_place_path = self.field.place_path_for_zone(fallback_zone)
-
-        fallback_box_type = int(box_types[FALLBACK_BOX_ID])
-        navigator.build_fallback_pick(fallback_box_type)
-        navigator.build_fallback_place(
-            fallback_place_path,
-            fallback_box_type,
-            fallback_zone,
-            int(zone_types[fallback_zone]),
-        )
+        box2_task = self.field.build_path4_task(PATH4_FIRST_BOX_ID, box_types, zone_types, wp_config)
+        navigator.build_path4_task(box2_task)
 
         tasks = self.field.main_tasks(box_types, zone_types, wp_config)
-        ordered = self._order_main_tasks(
-            tasks,
-            navigator.current_path,
-            quiz_type,
-            placed_types={fallback_box_type},
-        )
+        ordered = self._order_main_tasks(tasks, navigator.current_path, quiz_type)
         navigator.build_main_tasks(ordered)
+
+        box6_task = self.field.build_path4_task(PATH4_LAST_BOX_ID, box_types, zone_types, wp_config)
+        navigator.build_path4_task(box6_task)
 
         validate_sequence(sequence, wp_config)
         return sequence
@@ -86,29 +75,25 @@ class MissionPathPlanner:
         tasks: Sequence[dict],
         start_path: int,
         quiz_type: int | None,
-        *,
-        placed_types: Set[int],
     ) -> List[dict]:
         upper = [t for t in tasks if t['row'] == 'upper']
         lower = [t for t in tasks if t['row'] == 'lower']
         ordered: List[dict] = []
         current_path = start_path
-        placed = set(placed_types)
         for group in (upper, lower):
             remaining = list(group)
             while remaining:
                 best = min(
                     remaining,
-                    key=lambda t: self._task_rank(t, current_path, quiz_type, placed),
+                    key=lambda t: self._task_rank(t, current_path, quiz_type),
                 )
                 ordered.append(best)
                 remaining.remove(best)
                 current_path = best['place_path']
-                placed.add(best['box_type'])
         return ordered
 
     @staticmethod
-    def _task_rank(task: dict, current_path: int, quiz_type: int | None, _placed: Set[int]) -> tuple:
+    def _task_rank(task: dict, current_path: int, quiz_type: int | None) -> tuple:
         quiz_rank = 0 if quiz_type is not None and task['box_type'] == quiz_type else 1
         distance = FieldModel.path_distance(current_path, task['pick_path'])
         return (quiz_rank, distance, task['box_id'])
@@ -237,36 +222,20 @@ class _SequenceBuilder:
         else:
             self.append(path, wp, state, note=note)
 
-    def build_fallback_pick(self, box_type: int) -> None:
-        task = {
-            'box_id': FALLBACK_BOX_ID,
-            'box_type': box_type,
-            'zone_id': None,
-            'zone_type': None,
-        }
-        self.move_to(1, 1, MissionState.PICK, task=task, note=f'fallback pick box {FALLBACK_BOX_ID}')
-        self.move_within_path(1, self._path_max_wp(1), MissionState.TRANSIT, note='fallback transit')
-
-    def build_fallback_place(
-        self,
-        place_path: int,
-        box_type: int,
-        zone_id: int,
-        zone_type: int,
-    ) -> None:
-        task = {
-            'box_id': FALLBACK_BOX_ID,
-            'box_type': box_type,
-            'zone_id': zone_id,
-            'zone_type': zone_type,
-        }
-        place_wp = self.waypoint_config.place_for_zone(zone_id).wp
+    def build_path4_task(self, task: dict) -> None:
         self.move_to(
-            place_path,
-            place_wp,
-            MissionState.PLACE,
+            task['pick_path'],
+            task['pick_wp'],
+            task['pick_state'],
             task=task,
-            note=f'fallback place box {FALLBACK_BOX_ID} to zone {zone_id}',
+            note=f"path4 pick box {task['box_id']}",
+        )
+        self.move_to(
+            task['place_path'],
+            task['place_wp'],
+            task['place_state'],
+            task=task,
+            note=f"path4 place box {task['box_id']} to zone {task['zone_id']}",
         )
 
     def build_main_tasks(self, tasks: Sequence[dict]) -> None:

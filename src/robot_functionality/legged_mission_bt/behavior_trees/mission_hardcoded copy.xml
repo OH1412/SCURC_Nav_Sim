@@ -14,12 +14,12 @@ ArmPlaceNode (target_id 0~7 -> arm_point_id 8~15)
       <!-- <Nav2PoseNode wp_id="nav_p0_wp0" motion_planner="1"/> -->
       <!-- step 1: path=1 wp=1 state=2 (pick) target_id=4 motion_planner=1 zone=edge arm_point_id=4 -->
       <Nav2PoseNode wp_id="nav_p1_wp1" motion_planner="0"/>
-      <ArmPickNode arm_point_id="5" timeout="30.0"/>
+      <ArmPickNode arm_point_id="6" timeout="30.0"/>
       <ArmPlaceNode arm_point_id="17" timeout="30.0"/>
 
       <!-- Fixed intermediate waypoints after first pick (nav_p1_wp2, nav_p1_wp3) -->
       <Nav2PoseNode wp_id="nav_p1_wp2" motion_planner="0"/>
-      <ArmPickNode arm_point_id="1" timeout="30.0"/>
+      <ArmPickNode arm_point_id="2" timeout="30.0"/>
 
       <Nav2PoseNode wp_id="nav_p1_wp3" motion_planner="0"/>
 
@@ -83,7 +83,7 @@ ArmPlaceNode (target_id 0~7 -> arm_point_id 8~15)
       <Nav2PoseNode wp_id="nav_p3_wp3" motion_planner="1"/>
       <ArmPlaceNode arm_point_id="13" timeout="30.0"/>
 
-      <Nav2PoseNode wp_id="nav_p1_wp3" motion_planner="2"/>
+      <Nav2PoseNode wp_id="nav_p1_wp4" motion_planner="2"/>
       <ArmPickNode arm_point_id="16" timeout="30.0"/>
 
       <Nav2PoseNode wp_id="nav_p4_wp3" motion_planner="1"/>

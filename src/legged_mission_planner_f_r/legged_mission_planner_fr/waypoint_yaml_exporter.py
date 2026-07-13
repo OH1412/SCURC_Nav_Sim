@@ -7,7 +7,13 @@ from typing import Mapping, Sequence
 import yaml
 
 from .motion_planner import derive_motion_planner
-from .ui_assets import FIELD_IMAGE
+from .ui_assets import (
+    FIELD_IMAGE,
+    NORMALIZATION_IMAGE_PIXELS,
+    correct_legacy_norm_y,
+    field_image_size,
+    needs_legacy_norm_y_correction,
+)
 
 FORMAT_VERSION = 1
 PLANNER_VARIANT = 'front_back'
@@ -68,6 +74,8 @@ def build_ui_points_yaml(paths: Mapping[int, Sequence[WaypointUI]]) -> dict:
         'planner_variant': PLANNER_VARIANT,
         'field_image': FIELD_IMAGE,
         'coordinate_system': COORDINATE_SYSTEM,
+        'normalization': NORMALIZATION_IMAGE_PIXELS,
+        'field_image_size': list(field_image_size()),
         'paths': paths_out,
     }
 
@@ -131,6 +139,7 @@ def export_waypoint_yamls(
 
 def load_ui_points(path: str | Path) -> dict[int, list[WaypointUI]]:
     data = yaml.safe_load(Path(path).read_text(encoding='utf-8')) or {}
+    apply_legacy_y = needs_legacy_norm_y_correction(data)
     raw_paths = data.get('paths', {})
     result: dict[int, list[WaypointUI]] = {}
     for path_key, entries in raw_paths.items():
@@ -141,12 +150,16 @@ def load_ui_points(path: str | Path) -> dict[int, list[WaypointUI]]:
             _, wp_str = wp_id.split('-', 1)
             wp_index = int(wp_str)
             state = int(entry.get('state', 0))
+            norm_x = float(entry['norm_x'])
+            norm_y = float(entry['norm_y'])
+            if apply_legacy_y:
+                norm_y = correct_legacy_norm_y(norm_y)
             waypoints.append(
                 WaypointUI(
                     path_id=path_id,
                     wp_index=wp_index,
-                    norm_x=float(entry['norm_x']),
-                    norm_y=float(entry['norm_y']),
+                    norm_x=norm_x,
+                    norm_y=norm_y,
                     state=state,
                     target_id=int(entry.get('target_id', -1)),
                     motion_planner=_motion_planner_from_entry(path_id, wp_index, state, entry),

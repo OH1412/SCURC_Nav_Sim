@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import Any, Dict, Mapping, Tuple
+from typing import Any, Dict, Mapping, Tuple, TYPE_CHECKING
 
 from PIL import Image, ImageDraw, ImageTk
 
 from .package_paths import resolve_assets_dir
 from .path_viz import START_ZONE_NORM, resolve_layout, step_to_local_xy, step_to_pixel_ui_points
+
+from .label_hotspots import LabelHotspotConfig, load_default_label_hotspots
 
 try:
     _RESAMPLE = Image.Resampling.LANCZOS
@@ -30,14 +32,13 @@ ZONE_FILES: Dict[int, str] = {
     3: '红放置区-3.png',
 }
 
-# Measured on 场地俯视图.png (460 x 577).
-FIELD_REF_WIDTH = 460
-FIELD_REF_HEIGHT = 577
+# Legacy pixel measurements on the original 460 x 577 diagram (fallback only).
+_LEGACY_REF_WIDTH = 460
+_LEGACY_REF_HEIGHT = 577
 ZONE_SIZE_REF = 27
 BOX_SIZE_REF = 34
 
-# Yellow 6m x 4m competition area on 场地俯视图.png (460 x 577).
-# y0 = top edge (x=6m), y1 = bottom edge (x=0m); start zone is below y1.
+# Yellow 6m x 4m competition area on the legacy diagram.
 FIELD_PLAYABLE_X0 = 115
 FIELD_PLAYABLE_Y0 = 72
 FIELD_PLAYABLE_X1 = 377
@@ -45,23 +46,88 @@ FIELD_PLAYABLE_Y1 = 459
 FIELD_LENGTH_M = 6.0
 FIELD_WIDTH_M = 4.0
 
-# Normalized hotspot centers on the field diagram (right -> left numbering).
+# Fallback normalized hotspot centers when ui_points is unavailable.
 ZONE_HOTSPOTS: Dict[int, Tuple[float, float]] = {
-    0: (326 / FIELD_REF_WIDTH, 136 / FIELD_REF_HEIGHT),
-    1: (274 / FIELD_REF_WIDTH, 136 / FIELD_REF_HEIGHT),
-    2: (222 / FIELD_REF_WIDTH, 136 / FIELD_REF_HEIGHT),
-    3: (170 / FIELD_REF_WIDTH, 136 / FIELD_REF_HEIGHT),
+    0: (326 / _LEGACY_REF_WIDTH, 136 / _LEGACY_REF_HEIGHT),
+    1: (274 / _LEGACY_REF_WIDTH, 136 / _LEGACY_REF_HEIGHT),
+    2: (222 / _LEGACY_REF_WIDTH, 136 / _LEGACY_REF_HEIGHT),
+    3: (170 / _LEGACY_REF_WIDTH, 136 / _LEGACY_REF_HEIGHT),
 }
 BOX_HOTSPOTS: Dict[int, Tuple[float, float]] = {
-    0: (331 / FIELD_REF_WIDTH, 299.5 / FIELD_REF_HEIGHT),
-    1: (275 / FIELD_REF_WIDTH, 299.5 / FIELD_REF_HEIGHT),
-    2: (220 / FIELD_REF_WIDTH, 299.5 / FIELD_REF_HEIGHT),
-    3: (165 / FIELD_REF_WIDTH, 299.5 / FIELD_REF_HEIGHT),
-    4: (331 / FIELD_REF_WIDTH, 355 / FIELD_REF_HEIGHT),
-    5: (275 / FIELD_REF_WIDTH, 355 / FIELD_REF_HEIGHT),
-    6: (220 / FIELD_REF_WIDTH, 355 / FIELD_REF_HEIGHT),
-    7: (165 / FIELD_REF_WIDTH, 355 / FIELD_REF_HEIGHT),
+    0: (331 / _LEGACY_REF_WIDTH, 299.5 / _LEGACY_REF_HEIGHT),
+    1: (275 / _LEGACY_REF_WIDTH, 299.5 / _LEGACY_REF_HEIGHT),
+    2: (220 / _LEGACY_REF_WIDTH, 299.5 / _LEGACY_REF_HEIGHT),
+    3: (165 / _LEGACY_REF_WIDTH, 299.5 / _LEGACY_REF_HEIGHT),
+    4: (331 / _LEGACY_REF_WIDTH, 355 / _LEGACY_REF_HEIGHT),
+    5: (275 / _LEGACY_REF_WIDTH, 355 / _LEGACY_REF_HEIGHT),
+    6: (220 / _LEGACY_REF_WIDTH, 355 / _LEGACY_REF_HEIGHT),
+    7: (165 / _LEGACY_REF_WIDTH, 355 / _LEGACY_REF_HEIGHT),
 }
+
+
+@lru_cache(maxsize=1)
+def field_image_size() -> Tuple[int, int]:
+    img = _load_rgba(FIELD_IMAGE)
+    return img.width, img.height
+
+
+def field_ref_width() -> int:
+    return field_image_size()[0]
+
+
+def field_ref_height() -> int:
+    return field_image_size()[1]
+
+
+# Old waypoint_editor_fr used 460x577 aspect for canvas height while the PNG
+# was already scaled to its true pixel size (e.g. 267x462).
+_LEGACY_EDITOR_HEIGHT_RATIO = _LEGACY_REF_HEIGHT / _LEGACY_REF_WIDTH
+NORMALIZATION_IMAGE_PIXELS = 'image_pixels'
+NORMALIZATION_LEGACY_EDITOR = 'legacy_editor_aspect'
+
+
+def field_image_aspect() -> float:
+    width, height = field_image_size()
+    return height / width
+
+
+def legacy_norm_y_correction_factor() -> float:
+    """Scale inflated legacy norm_y down to match true image aspect."""
+    return _LEGACY_EDITOR_HEIGHT_RATIO / field_image_aspect()
+
+
+def correct_legacy_norm_y(norm_y: float) -> float:
+    return norm_y * legacy_norm_y_correction_factor()
+
+
+def needs_legacy_norm_y_correction(data: Mapping[str, Any]) -> bool:
+    normalization = data.get('normalization')
+    if normalization == NORMALIZATION_IMAGE_PIXELS:
+        return False
+    if normalization == NORMALIZATION_LEGACY_EDITOR:
+        return True
+    # format_version 1 files exported before normalization metadata used the bug.
+    return int(data.get('format_version', 1)) == 1
+
+
+def resolve_box_zone_hotspots(
+    waypoint_config: 'WaypointConfig | None' = None,
+    label_hotspot_config: LabelHotspotConfig | None = None,
+) -> Tuple[Dict[int, Tuple[float, float]], Dict[int, Tuple[float, float]]]:
+    if waypoint_config is not None:
+        box_hotspots = waypoint_config.box_hotspots()
+        zone_hotspots = waypoint_config.zone_hotspots()
+    else:
+        box_hotspots = dict(BOX_HOTSPOTS)
+        zone_hotspots = dict(ZONE_HOTSPOTS)
+
+    label_config = label_hotspot_config
+    if label_config is None:
+        label_config = load_default_label_hotspots()
+    if label_config is not None:
+        box_hotspots.update(label_config.box_centers())
+        zone_hotspots.update(label_config.zone_centers())
+    return box_hotspots, zone_hotspots
 
 
 @dataclass(frozen=True)
@@ -155,7 +221,7 @@ def path_background_image(target_width: int) -> Image.Image:
 
 
 def field_overlay_sizes(display_width: int) -> Tuple[int, int]:
-    scale = display_width / FIELD_REF_WIDTH
+    scale = display_width / field_ref_width()
     zone_px = max(10, int(round(ZONE_SIZE_REF * scale)))
     box_px = max(8, int(round(BOX_SIZE_REF * scale)))
     return zone_px, box_px
@@ -168,8 +234,8 @@ def local_xy_to_pixel(local_x: float, local_y: float, img_width: int, img_height
     1m along x equals exactly 1/6 of the field height on the diagram.
     y=0 is the right edge; y=4 is the left edge.
     """
-    sx = img_width / FIELD_REF_WIDTH
-    sy = img_height / FIELD_REF_HEIGHT
+    sx = img_width / field_ref_width()
+    sy = img_height / field_ref_height()
     x0 = FIELD_PLAYABLE_X0 * sx
     y_top = FIELD_PLAYABLE_Y0 * sy
     x1 = FIELD_PLAYABLE_X1 * sx
@@ -202,27 +268,56 @@ def overlay_boxes_and_zones(
     display_width: int,
     *,
     draw_labels: bool = False,
+    box_hotspots: Mapping[int, Tuple[float, float]] | None = None,
+    zone_hotspots: Mapping[int, Tuple[float, float]] | None = None,
+    waypoint_config: 'WaypointConfig | None' = None,
+    label_hotspot_config: LabelHotspotConfig | None = None,
 ) -> Image.Image:
     """Paste operator-selected box icons and placement-zone swatches onto the field."""
+    if box_hotspots is None or zone_hotspots is None:
+        resolved_box, resolved_zone = resolve_box_zone_hotspots(
+            waypoint_config,
+            label_hotspot_config,
+        )
+        box_hotspots = resolved_box if box_hotspots is None else box_hotspots
+        zone_hotspots = resolved_zone if zone_hotspots is None else zone_hotspots
+
+    label_config = label_hotspot_config
+    if label_config is None:
+        label_config = load_default_label_hotspots()
+
     canvas = canvas.convert('RGBA').copy()
     draw = ImageDraw.Draw(canvas) if draw_labels else None
-    zone_px, box_px = field_overlay_sizes(display_width)
+    default_zone_px, default_box_px = field_overlay_sizes(display_width)
+    img_width, img_height = canvas.size
 
-    for zone_id, (nx, ny) in ZONE_HOTSPOTS.items():
+    for zone_id, (nx, ny) in zone_hotspots.items():
         if zone_id >= len(zone_types):
             continue
-        px = int(nx * canvas.width)
-        py = int(ny * canvas.height)
+        zone_rect = label_config.zones.get(zone_id) if label_config is not None else None
+        if zone_rect is not None:
+            px, py = zone_rect.pixel_center(img_width, img_height)
+            zone_px = zone_rect.fit_square_sprite_size(img_width, img_height)
+        else:
+            px = int(nx * img_width)
+            py = int(ny * img_height)
+            zone_px = default_zone_px
         sprite = zone_image(zone_types[zone_id], zone_px)
         canvas.paste(sprite, (px - zone_px // 2, py - zone_px // 2), sprite)
         if draw is not None:
             draw.text((px - 3, py + zone_px // 2 + 2), str(zone_id), fill='#1d3557')
 
-    for box_id, (nx, ny) in BOX_HOTSPOTS.items():
+    for box_id, (nx, ny) in box_hotspots.items():
         if box_id >= len(box_types):
             continue
-        px = int(nx * canvas.width)
-        py = int(ny * canvas.height)
+        box_rect = label_config.boxes.get(box_id) if label_config is not None else None
+        if box_rect is not None:
+            px, py = box_rect.pixel_center(img_width, img_height)
+            box_px = box_rect.fit_square_sprite_size(img_width, img_height)
+        else:
+            px = int(nx * img_width)
+            py = int(ny * img_height)
+            box_px = default_box_px
         sprite = box_marker_image(box_types[box_id], box_px)
         canvas.paste(sprite, (px - box_px // 2, py - box_px // 2), sprite)
         if draw is not None:
@@ -237,6 +332,7 @@ def render_path_on_field(
     layout: Mapping[str, Any] | str | None = None,
     *,
     waypoint_config=None,
+    label_hotspot_config: LabelHotspotConfig | None = None,
     quiz_status: str | None = None,
     quiz_type: int | None = None,
     countdown_s: float | None = None,
@@ -249,7 +345,14 @@ def render_path_on_field(
     use_ui_points = waypoint_config is not None
 
     canvas = field_background_image(display_width)
-    canvas = overlay_boxes_and_zones(canvas, box_types, zone_types, display_width)
+    canvas = overlay_boxes_and_zones(
+        canvas,
+        box_types,
+        zone_types,
+        display_width,
+        waypoint_config=waypoint_config,
+        label_hotspot_config=label_hotspot_config,
+    )
 
     overlay = Image.new('RGBA', canvas.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)
@@ -311,10 +414,25 @@ def render_field_state(
     zone_types: Tuple[int, ...] | list[int],
     display_width: int,
     selected_brush: int | None = None,
+    *,
+    waypoint_config: 'WaypointConfig | None' = None,
+    label_hotspot_config: LabelHotspotConfig | None = None,
+    box_hotspots: Mapping[int, Tuple[float, float]] | None = None,
+    zone_hotspots: Mapping[int, Tuple[float, float]] | None = None,
 ) -> Image.Image:
     del selected_brush  # brush hint is shown in the tkinter sidebar (PIL default font lacks CJK).
     canvas = field_background_image(display_width)
-    return overlay_boxes_and_zones(canvas, box_types, zone_types, display_width, draw_labels=True)
+    return overlay_boxes_and_zones(
+        canvas,
+        box_types,
+        zone_types,
+        display_width,
+        draw_labels=True,
+        box_hotspots=box_hotspots,
+        zone_hotspots=zone_hotspots,
+        waypoint_config=waypoint_config,
+        label_hotspot_config=label_hotspot_config,
+    )
 
 
 def photo_image(pil_image: Image.Image, master) -> ImageTk.PhotoImage:

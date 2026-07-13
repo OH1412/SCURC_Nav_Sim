@@ -1,7 +1,6 @@
 # UI path-diagram geometry for front/back planner (4 waypoints per path).
 
 paths:
-  1: {y: 0.30, label: fallback_edge, from_left_cm: 370}
   2: {y: 1.15, label: col0, from_left_cm: 285}
   3: {y: 2.00, label: col1, from_left_cm: 200}
   4: {y: 2.85, label: col2, from_left_cm: 115}

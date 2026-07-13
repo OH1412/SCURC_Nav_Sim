@@ -1,14 +1,17 @@
 include_quiz_state: false
 start_state: 1
 
+quiz_result_topic: /mission/quiz_type
+quiz_result_type: std_msgs/msg/Int32
+quiz_wait_timeout_s: 10.0
+
 ui_points:
   file: ui_points_fast_mode.yaml
 
-base_scenario_file: tmp/base_scenario.yaml
+label_hotspots:
+  file: label_hotspots.yaml
 
-quiz_result_topic: /mission/quiz_type
-quiz_result_type: std_msgs/msg/Int32
-quiz_wait_timeout_s: 20.0
+base_scenario_file: tmp/base_scenario.yaml
 
 plan_ready_topic: /mission/plan_ready
 plan_ready_type: std_msgs/msg/Bool

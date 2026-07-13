@@ -1,4 +1,4 @@
-from legged_mission_planner_fr.field_model import FALLBACK_BOX_ID
+from legged_mission_planner_fr.field_model import PATH4_FIRST_BOX_ID, PATH4_LAST_BOX_ID
 from legged_mission_planner_fr.path_planner import MissionPathPlanner
 from legged_mission_planner_fr.quintuple_exporter import build_quintuple_plan
 from legged_mission_planner_fr.state_definitions import MissionState
@@ -39,33 +39,39 @@ def _has_step(sequence, path, wp, state=None):
     return False
 
 
-def test_fallback_pick_no_duplicate_transit_at_wp1():
+def test_path4_box6_pick_at_end():
     planner = _planner()
     seq = planner.plan([0, 1, 2, 3, 0, 1, 2, 3], [0, 1, 2, 3])
-    path1_wp1 = [s for s in seq if s.path == 1 and s.wp == 1]
-    assert len(path1_wp1) == 1
-    assert path1_wp1[0].state == MissionState.PICK
-    assert path1_wp1[0].target_box == FALLBACK_BOX_ID
+    path4_wp1_picks = [
+        s for s in seq
+        if s.path == 4 and s.wp == 1 and s.state == MissionState.PICK
+    ]
+    assert len(path4_wp1_picks) == 1
+    assert path4_wp1_picks[0].target_box == PATH4_LAST_BOX_ID
+    pick_steps = [s for s in seq if s.state == MissionState.PICK]
+    assert pick_steps[-1] == path4_wp1_picks[0]
 
 
-def test_fallback_always_first():
+def test_path4_box2_first():
     planner = _planner()
     seq = planner.plan([0, 1, 2, 3, 0, 1, 2, 3], [0, 1, 2, 3])
-    first_pick = next(s for s in seq if s.state == MissionState.PICK and s.target_box == FALLBACK_BOX_ID)
-    assert first_pick.path == 1 and first_pick.wp == 1
-    assert first_pick.target_box == FALLBACK_BOX_ID
+    first_pick = next(s for s in seq if s.state == MissionState.PICK)
+    assert first_pick.path == 4 and first_pick.wp == 2
+    assert first_pick.target_box == PATH4_FIRST_BOX_ID
 
 
-def test_fallback_place_path():
+def test_path4_box6_place_path():
     planner = _planner()
     box_types = [0, 1, 2, 3, 2, 1, 0, 3]
     seq = planner.plan(box_types, [0, 1, 2, 3])
-    fallback_place = next(
+    box6_place = next(
         s for s in seq
-        if s.target_box == FALLBACK_BOX_ID and s.state == MissionState.PLACE
+        if s.target_box == PATH4_LAST_BOX_ID and s.state == MissionState.PLACE
     )
-    assert fallback_place.path == 4
-    assert fallback_place.wp == 3
+    assert box6_place.path == 2
+    assert box6_place.wp == 3
+    place_steps = [s for s in seq if s.state == MissionState.PLACE]
+    assert place_steps[-1] == box6_place
 
 
 def test_upper_before_lower():
@@ -73,7 +79,7 @@ def test_upper_before_lower():
     seq = planner.plan([0, 1, 2, 3, 0, 1, 2, 3], [0, 1, 2, 3])
     picks = _pick_order(seq)
     upper = [b for b in picks if b in (0, 1, 2, 3)]
-    lower = [b for b in picks if b in (5, 6, 7)]
+    lower = [b for b in picks if b in (4, 5, 7)]
     assert upper and lower
     assert max(picks.index(b) for b in upper) < min(picks.index(b) for b in lower)
 
@@ -95,13 +101,14 @@ def test_quiz_reorder():
             [0, 1, 2, 3, 0, 1, 2, 3],
             [0, 1, 2, 3],
             include_quiz_state=True,
-            quiz_type=2,
+            quiz_type=1,
         )
     )
     assert base != quiz
-    upper_quiz = [b for b in quiz if b in (0, 1, 2, 3)]
-    assert 2 in upper_quiz
-    assert upper_quiz.index(2) == min(upper_quiz.index(b) for b in upper_quiz if b in (2, 6) or b == 2)
+    # box2 固定最先；quiz 排序仅作用于主任务 upper (0, 1, 3)
+    main_upper_quiz = [b for b in quiz if b in (0, 1, 3)]
+    assert 1 in main_upper_quiz
+    assert main_upper_quiz.index(1) < main_upper_quiz.index(3)
 
 
 def test_quiz_still_upper_before_lower():
@@ -113,7 +120,7 @@ def test_quiz_still_upper_before_lower():
     )
     picks = _pick_order(seq)
     upper = [b for b in picks if b in (0, 1, 2, 3)]
-    lower = [b for b in picks if b in (5, 6, 7)]
+    lower = [b for b in picks if b in (4, 5, 7)]
     assert max(picks.index(b) for b in upper) < min(picks.index(b) for b in lower)
 
 
@@ -121,11 +128,11 @@ def test_zone_reverse():
     planner = _planner()
     box_types = [0, 1, 2, 3, 0, 1, 2, 3]
     seq = planner.plan(box_types, [3, 2, 1, 0])
-    fallback_place = next(
+    box6_place = next(
         s for s in seq
-        if s.target_box == FALLBACK_BOX_ID and s.state == MissionState.PLACE
+        if s.target_box == PATH4_LAST_BOX_ID and s.state == MissionState.PLACE
     )
-    assert fallback_place.path == 5
+    assert box6_place.path == 3
 
 
 def test_quiz_start_state():
@@ -148,27 +155,33 @@ def test_base_start_state():
 def test_uses_ui_points_waypoints():
     planner = _planner()
     seq = planner.plan([0, 1, 2, 3, 0, 1, 2, 3], [0, 1, 2, 3])
-    fallback_place = next(
+    box6_place = next(
         s for s in seq
-        if s.target_box == FALLBACK_BOX_ID and s.state == MissionState.PLACE
+        if s.target_box == PATH4_LAST_BOX_ID and s.state == MissionState.PLACE
     )
-    assert fallback_place.path == 2
-    assert fallback_place.wp == 2
+    assert box6_place.path == 4
+    assert box6_place.wp == 3
+    box2_place = next(
+        s for s in seq
+        if s.target_box == PATH4_FIRST_BOX_ID and s.state == MissionState.PLACE
+    )
+    assert box2_place.path == 4
+    assert box2_place.wp == 3
     box0_place = next(
         s for s in seq
         if s.target_box == 0 and s.state == MissionState.PLACE
     )
-    assert box0_place.wp == 2
+    assert box0_place.wp == 3
 
 
-def test_path1_still_transits():
+def test_path4_no_fallback_transit():
     planner = _planner()
     seq = planner.plan([0, 1, 2, 3, 0, 1, 2, 3], [0, 1, 2, 3])
-    fallback_transits = [
+    path4_transits = [
         s for s in seq
-        if s.path == 1 and s.state == MissionState.TRANSIT and s.wp in (2, 3)
+        if s.state == MissionState.TRANSIT and 'path4' in (s.note or '')
     ]
-    assert len(fallback_transits) == 2
+    assert not path4_transits
 
 
 def test_same_path_skips_intermediate():
@@ -186,18 +199,18 @@ def test_same_path_skips_intermediate():
     assert between == []
 
 
-def test_nearest_path_over_unplaced_type():
+def test_nearest_path_after_box2_place():
     planner = _planner()
-    # fallback type 2 -> zone 2 (path 4); placed_types={2} after fallback
-    # box2 on path4 (type2 already placed, dist=0) vs box1 on path3 (type1 unplaced, dist=1)
+    # box2 type 2 -> zone 2 (path 4); main tasks start from path 4
+    # box1 on path3 (dist=1) vs box0 on path2 (dist=2)
     box_types = [0, 1, 2, 3, 2, 1, 0, 3]
     zone_types = [0, 1, 2, 3]
     seq = planner.plan(box_types, zone_types)
-    upper_picks = [
+    main_upper_picks = [
         s.target_box for s in seq
-        if s.state == MissionState.PICK and s.target_box in (0, 1, 2, 3)
+        if s.state == MissionState.PICK and s.target_box in (0, 1, 3)
     ]
-    assert upper_picks[0] == 2
+    assert main_upper_picks[0] == 1
 
 
 def test_quintuple_export():
@@ -206,20 +219,33 @@ def test_quintuple_export():
     seq = planner.plan([0, 1, 2, 3, 0, 1, 2, 3], [0, 1, 2, 3])
     plan = build_quintuple_plan(seq, waypoint_config=wp_config)
     assert plan['switch_mode'] == 'fast_mode'
-    first = plan['sequence'][0]
+    exported = plan['sequence']
+    first = exported[0]
+    last = exported[-1]
     assert set(first.keys()) == {'path', 'wp', 'state', 'target_id', 'motion_planner'}
-    assert all(s['state'] in (int(MissionState.PICK), int(MissionState.PLACE)) for s in plan['sequence'])
-    fallback_pick = next(
-        s for s in plan['sequence']
-        if s['state'] == int(MissionState.PICK) and s['path'] == 1 and s['wp'] == 1
+    assert all(s['state'] in (int(MissionState.PICK), int(MissionState.PLACE)) for s in exported)
+    assert first['state'] == int(MissionState.PLACE)
+    assert first['target_id'] == 2
+    assert first['wp'] == 3
+    assert last['state'] == int(MissionState.PLACE)
+    assert last['target_id'] == 6
+    assert last['wp'] == 3
+    path4_picks = [
+        s for s in exported
+        if s['state'] == int(MissionState.PICK) and s['path'] == 4
+    ]
+    assert not path4_picks
+    box4_pick = next(
+        s for s in exported
+        if s['state'] == int(MissionState.PICK) and s['path'] == 2 and s['wp'] == 1
     )
-    assert fallback_pick['motion_planner'] == 1
+    assert box4_pick['motion_planner'] == 2
     other_pick = next(
-        s for s in plan['sequence']
-        if s['state'] == int(MissionState.PICK) and not (s['path'] == 1 and s['wp'] == 1)
+        s for s in exported
+        if s['state'] == int(MissionState.PICK)
     )
     assert other_pick['motion_planner'] == 2
-    place_step = next(s for s in plan['sequence'] if s['state'] == int(MissionState.PLACE))
+    place_step = next(s for s in exported if s['state'] == int(MissionState.PLACE))
     assert place_step['motion_planner'] == 1
-    pick_step = next(s for s in plan['sequence'] if s['state'] == int(MissionState.PICK))
+    pick_step = next(s for s in exported if s['state'] == int(MissionState.PICK))
     assert pick_step['target_id'] >= 0

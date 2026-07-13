@@ -11,34 +11,29 @@ source install/setup.bash
 
 ## Usage
 
-两阶段规划（须按顺序执行）：
+统一路径规划（标注 + 可选智力题 + 一次导出）：
 
 ```bash
-# 1. 基础规划：标注箱子/归还区，导出规划并保存 base_scenario.yaml
-ros2 launch legged_mission_planner_f_r base_plan.launch.py
-
-# 2. 智力题二次规划：加载基础场景，自动等待 20s 话题，收到则覆盖导出
-ros2 launch legged_mission_planner_f_r quiz_plan.launch.py
-
-# 兼容旧命令（等同 base_plan）
-ros2 launch legged_mission_planner_f_r ui_standalone.launch.py
+ros2 launch legged_mission_planner_f_r mission_plan.launch.py
 ```
+
+侧栏「智力题种类」默认 **未识别 (-1)** → 基础规划；选择 0~3 后点击「规划并导出」→ 智力题规划。均直接输出最终 `mission_plan.yaml` 等到 `tmp/`。
 
 ```bash
 # 航点标定（路径规划 ↔ BT 命名）
 ros2 launch legged_mission_planner_f_r waypoint_editor.launch.py
 
+# 箱子/归还区点击区域标定
+ros2 launch legged_mission_planner_f_r hotspot_editor.launch.py
+
 # 批量导出场景
 ros2 run legged_mission_planner_f_r export_scenarios_fr --limit 10
-
-# 模拟智力题结果（在 quiz_plan 等待期间发布）
-ros2 topic pub --once /mission/quiz_type std_msgs/msg/Int32 "{data: 2}"
 ```
 
 输出目录默认 `src/legged_mission_planner_f_r/tmp/`：
-- `base_scenario.yaml` — 基础规划保存的箱子/归还区配置
-- `mission_plan.yaml` / `.json` / `.csv` / `.png`
+- `mission_plan.yaml` / `.json` / `.csv` / `.png` — 最终路径规划
 - `mission_quintuple.yaml` — 行为树五元组序列
+- `base_scenario.yaml` — 本次标注的箱子/归还区配置
 
 ## Tests
 

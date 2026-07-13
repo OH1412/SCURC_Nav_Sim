@@ -33,6 +33,12 @@ nav:
 
   "nav_p1_wp3":
     frame_id: "map"
+    x: 3.8915
+    y: 0.4250
+    yaw: 0.0000
+
+  "nav_p1_wp4":
+    frame_id: "map"
     x: 1.7015
     y: -0.1750
     yaw: 0.0000

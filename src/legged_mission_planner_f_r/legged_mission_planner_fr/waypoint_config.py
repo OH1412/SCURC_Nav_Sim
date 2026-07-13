@@ -90,3 +90,17 @@ class WaypointConfig:
         if meta is None:
             raise KeyError(f'No ui_points entry for path {path} wp {wp}')
         return meta.norm_x, meta.norm_y
+
+    def box_hotspots(self) -> dict[int, tuple[float, float]]:
+        """Normalized centers for field-diagram box labeling (from pick waypoints)."""
+        return {
+            box_id: (self.pick_for_box(box_id).norm_x, self.pick_for_box(box_id).norm_y)
+            for box_id in range(8)
+        }
+
+    def zone_hotspots(self) -> dict[int, tuple[float, float]]:
+        """Normalized centers for field-diagram zone labeling (from place waypoints)."""
+        return {
+            zone_id: (self.place_for_zone(zone_id).norm_x, self.place_for_zone(zone_id).norm_y)
+            for zone_id in range(4)
+        }

@@ -6,6 +6,7 @@ from typing import Mapping, Sequence
 import yaml
 
 from .motion_planner import derive_motion_planner, is_bt_export_step
+from .field_model import PATH4_BOX_IDS
 from .path_planner import SWITCH_MODE
 from .state_definitions import MissionState, MissionStep
 from .waypoint_config import WaypointConfig
@@ -30,6 +31,14 @@ def build_quintuple_plan(
     zone_visit_count: dict[int, int] = {}
     for step in sequence:
         if not is_bt_export_step(int(step.state)):
+            continue
+
+        # path4 的 box2/box6 吸取步骤由行为树硬编码，不导出
+        if (
+            step.state == MissionState.PICK
+            and step.path == 4
+            and step.target_box in PATH4_BOX_IDS
+        ):
             continue
 
         tid = target_id_for_step(step)

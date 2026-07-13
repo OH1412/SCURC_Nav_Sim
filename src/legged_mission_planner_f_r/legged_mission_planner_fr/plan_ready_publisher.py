@@ -8,8 +8,9 @@ _MISSION_QOS_DEPTH = 10
 class PlanReadyPublisher:
     """Publish a ROS signal when mission plan export completes."""
 
-    def __init__(self, topic: str) -> None:
+    def __init__(self, topic: str, *, node_name: str = 'legged_mission_planner_fr_plan_ready') -> None:
         self.topic = topic
+        self._node_name = node_name
         self._node = None
         self._publisher = None
         self._ros_available: bool | None = None
@@ -68,11 +69,11 @@ class PlanReadyPublisher:
             )
 
             class _PlanReadyNode(Node):
-                def __init__(self) -> None:
-                    super().__init__('legged_mission_planner_fr_plan_ready')
-                    self._pub = self.create_publisher(Bool, topic, qos)
+                def __init__(self, name: str, pub_topic: str) -> None:
+                    super().__init__(name)
+                    self._pub = self.create_publisher(Bool, pub_topic, qos)
 
-            self._node = _PlanReadyNode()
+            self._node = _PlanReadyNode(self._node_name, topic)
             self._publisher = self._node._pub
             self._ros_available = True
             return True

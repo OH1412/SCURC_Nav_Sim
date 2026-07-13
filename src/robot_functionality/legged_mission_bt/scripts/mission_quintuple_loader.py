@@ -206,7 +206,58 @@ class MissionQuintupleLoader(Node):
             '',
         ])
 
+        # Find first and last PLACE step indices (1-based)
+        place_indices = [
+            i for i, step in enumerate(sequence, start=1)
+            if int(step['state']) == STATE_PLACE
+        ]
+        first_place_idx = place_indices[0] if place_indices else None
+        last_place_idx = place_indices[-1] if place_indices else None
+
         for index, step in enumerate(sequence, start=1):
+            # ── Fixed block BEFORE the first navigation+placement step ──
+            if index == first_place_idx:
+                lines.append(
+                    '      <!-- Fixed block before first place: nav_p1_wp1, pick, place -->'
+                )
+                lines.append(
+                    '      <Nav2PoseNode wp_id="nav_p1_wp1" motion_planner="0"/>'
+                )
+                lines.append(
+                    '      <ArmPickNode arm_point_id="6" timeout="30.0"/>'
+                )
+                lines.append(
+                    '      <ArmPlaceNode arm_point_id="17" timeout="30.0"/>'
+                )
+                lines.append('')
+                lines.append(
+                    '      <!-- Fixed intermediate waypoints after first pick (nav_p1_wp2, nav_p1_wp3) -->'
+                )
+                lines.append(
+                    '      <Nav2PoseNode wp_id="nav_p1_wp2" motion_planner="0"/>'
+                )
+                lines.append(
+                    '      <ArmPickNode arm_point_id="2" timeout="30.0"/>'
+                )
+                lines.append('')
+                lines.append(
+                    '      <Nav2PoseNode wp_id="nav_p1_wp3" motion_planner="0"/>'
+                )
+                lines.append('')
+
+            # ── Fixed block BEFORE the last navigation+placement step ──
+            if index == last_place_idx and first_place_idx != last_place_idx:
+                lines.append(
+                    '      <!-- Fixed block before last place: nav_p1_wp4, pick -->'
+                )
+                lines.append(
+                    '      <Nav2PoseNode wp_id="nav_p1_wp4" motion_planner="2"/>'
+                )
+                lines.append(
+                    '      <ArmPickNode arm_point_id="16" timeout="30.0"/>'
+                )
+                lines.append('')
+
             path = int(step['path'])
             wp = int(step['wp'])
             state = int(step['state'])
@@ -247,20 +298,6 @@ class MissionQuintupleLoader(Node):
                     f'Unsupported state {state} at sequence index {index}'
                 )
             lines.append('')
-
-            # ── Fixed: after the first step, always insert two intermediate transit waypoints ──
-            if index == 1:
-                lines.append(
-                    '      <!-- Fixed intermediate waypoints after first pick (nav_p1_wp2, nav_p1_wp3) -->'
-                )
-                lines.append(
-                    '      <Nav2PoseNode wp_id="nav_p1_wp2" motion_planner="1"/>'
-                )
-                lines.append('')
-                lines.append(
-                    '      <Nav2PoseNode wp_id="nav_p1_wp3" motion_planner="1"/>'
-                )
-                lines.append('')
 
         lines.extend([
             '    </Sequence>',

@@ -6,7 +6,7 @@ from pathlib import Path
 from tkinter import messagebox, simpledialog, ttk
 
 from .package_paths import WS_SRC
-from .ui_assets import FIELD_REF_HEIGHT, FIELD_REF_WIDTH, field_background_image, photo_image
+from .ui_assets import field_background_image, photo_image
 from .motion_planner import derive_motion_planner
 from .waypoint_yaml_exporter import (
     WaypointUI,
@@ -30,9 +30,18 @@ LABEL_COLOR = '#1d3557'
 class WaypointEditorCanvas(tk.Canvas):
     """Field map canvas for clicking path waypoints in normalized image coordinates."""
 
+    @property
+    def display_height(self) -> int:
+        return self._display_height
+
+    @display_height.setter
+    def display_height(self, value: int) -> None:
+        self._display_height = max(1, value)
+
     def __init__(self, master, width: int = 560, **kwargs) -> None:
         super().__init__(master, highlightthickness=0, bg='#f4f1de', **kwargs)
         self.display_width = width
+        self._display_height = 1
         self._photo = None
         self._completed_paths: dict[int, list[WaypointUI]] = {}
         self._current_path_id: int | None = None
@@ -52,10 +61,6 @@ class WaypointEditorCanvas(tk.Canvas):
     @property
     def current_points(self) -> list[WaypointUI]:
         return self._current_points
-
-    @property
-    def display_height(self) -> int:
-        return int(self.display_width * FIELD_REF_HEIGHT / FIELD_REF_WIDTH)
 
     def set_completed_paths(self, paths: dict[int, list[WaypointUI]]) -> None:
         self._completed_paths = {k: list(v) for k, v in paths.items()}
@@ -173,6 +178,8 @@ class WaypointEditorCanvas(tk.Canvas):
         frame = field_background_image(self.display_width)
         self._photo = photo_image(frame, self)
         w, h = frame.size
+        self.display_width = w
+        self.display_height = h
         self.config(width=w, height=h, scrollregion=(0, 0, w, h))
 
     def _redraw_all(self) -> None:
@@ -250,7 +257,7 @@ class WaypointEditorUI:
         self.root.title('ROBOCON 2026 前后吸取 · 航点标定')
         self.root.minsize(900, 680)
         self.root.configure(bg='#f8f9fa')
-        self.path_var = tk.StringVar(self.root, value='1')
+        self.path_var = tk.StringVar(self.root, value='2')
         self.status_var = tk.StringVar(self.root, value='请输入路径号并开始标定')
         self._setup_style()
         self._build()
@@ -326,8 +333,8 @@ class WaypointEditorUI:
         except ValueError:
             messagebox.showwarning('输入错误', '路径号必须是整数')
             return None
-        if path_id < 1:
-            messagebox.showwarning('输入错误', '路径号必须 ≥ 1')
+        if path_id < 2 or path_id > 5:
+            messagebox.showwarning('输入错误', '路径号必须是 2~5')
             return None
         return path_id
 

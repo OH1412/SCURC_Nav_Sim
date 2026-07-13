@@ -1,5 +1,0 @@
-strategy: safe_edges
-switch_mode: wp4_only
-box_types: [0, 1, 2, 3, 0, 1, 2, 3]
-zone_types: [0, 1, 2, 3]
-include_quiz_state: false

@@ -7,13 +7,15 @@ from legged_mission_planner_fr.state_definitions import MissionState
 @pytest.mark.parametrize(
     ('path', 'wp', 'state', 'expected'),
     [
-        (1, 1, MissionState.PICK, 1),
-        (2, 1, MissionState.PICK, 2),
+        (4, 1, MissionState.PICK, 0),  # 保底 box6：已倒着靠近
+        (2, 1, MissionState.PICK, 2),  # 其它吸取：倒着走
+        (2, 2, MissionState.PICK, 2),
         (3, 2, MissionState.PICK, 2),
-        (2, 2, MissionState.PLACE, 1),
-        (1, 2, MissionState.TRANSIT, 0),
-        (1, 3, MissionState.TRANSIT, 0),
-        (1, 1, MissionState.QUIZ_RECOGNITION, 0),
+        (5, 1, MissionState.PICK, 2),
+        (2, 3, MissionState.PLACE, 1),  # 归放区：向前策略
+        (4, 3, MissionState.PLACE, 1),
+        (2, 2, MissionState.TRANSIT, 0),
+        (0, 0, MissionState.QUIZ_RECOGNITION, 0),
     ],
 )
 def test_derive_motion_planner(path, wp, state, expected):
