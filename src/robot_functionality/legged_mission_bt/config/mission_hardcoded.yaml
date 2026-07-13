@@ -22,19 +22,19 @@ nav:
   "nav_p1_wp1":
     frame_id: "map"
     x: 1.0515
-    y: -0.4250
+    y: 0.4250
     yaw: 0.0000
 
   "nav_p1_wp2":
     frame_id: "map"
     x: 1.9015
-    y: -0.4250
+    y: 0.4250
     yaw: 0.0000
 
   "nav_p1_wp3":
     frame_id: "map"
-    x: 3.8915
-    y: 0.0000
+    x: 1.7015
+    y: -0.1750
     yaw: 0.0000
 
   # "nav_p2_wp1":
