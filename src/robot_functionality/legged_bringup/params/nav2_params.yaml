@@ -328,8 +328,8 @@ controller_server:
       "dwb_yaw_constraint::MaintainYawCritic.scale": 0.0   # middle=0.0 | edge=0.0
       "dwb_yaw_constraint::MaintainYawCritic.desired_yaw": 0.0
       "dwb_yaw_constraint::MaintainYawCritic.reference_frame": "map"
-      # 使用 /mission_bt/nav_segment_yaw 动态设置 desired_yaw（mp=0 middle zone 时生效）
-      "dwb_yaw_constraint::MaintainYawCritic.use_segment_yaw": true
+      # MIDDLE zone 固定 yaw=0°，不使用动态航段方位追踪
+      "dwb_yaw_constraint::MaintainYawCritic.use_segment_yaw": false
       "dwb_yaw_constraint::MaintainYawCritic.nav_segment_yaw_topic": "/mission_bt/nav_segment_yaw"
       # 两阶段偏航修正：当前偏航误差 > 此阈值时强制纯旋转（禁止 xy），回转到位后再允许 xy
       "dwb_yaw_constraint::MaintainYawCritic.yaw_error_threshold": 0.5236   # ~30 degrees

@@ -4,7 +4,7 @@ Nav2 Parameter Switcher Node — zone-driven by mission BT (motion_planner).
 
 Listens to /mission_bt/nav_zone for zone commands published by Nav2PoseNode.
 Zone selection by motion_planner id:
-  - motion_planner=0 → zone = "middle" (yaw locked to segment dir, vy lateral, Y tracking)
+  - motion_planner=0 → zone = "middle" (yaw lock segment dir front-facing, vy lateral, Y tracking)
   - motion_planner=1 → zone = "edge"   (front-tangent, rotation allowed, vy lateral)
   - motion_planner=2 → zone = "edge"   (rear-tangent, rotation allowed, vy lateral)
   - motion_planner=3 → zone = "straight" (x-only, vy=0, vtheta=0)
@@ -53,8 +53,8 @@ MIDDLE_PARAMS = {
     'FollowPath.GoalAlign.scale': 0.0,
     'FollowPath.PathAlign.scale': 0.0,
     'FollowPath.dwb_yaw_constraint::MaintainYawCritic.scale': 5000.0,
-    # desired_yaw 由 MaintainYawCritic.use_segment_yaw 动态覆盖为航段方位
-    'FollowPath.dwb_yaw_constraint::MaintainYawCritic.desired_yaw': 3.1416,
+    # mp=0 车头追踪：desired_yaw 由 use_segment_yaw 动态覆盖为航段方位（不再 +180°）
+    'FollowPath.dwb_yaw_constraint::MaintainYawCritic.desired_yaw': 0.0,
     # 禁用两阶段逻辑（阈值=360°→永不触发阶段1），退化为老版纯线性 MaintainYawCritic
     'FollowPath.dwb_yaw_constraint::MaintainYawCritic.yaw_error_threshold': 6.28,
     'FollowPath.dwb_yaw_constraint::DecouplingCritic.scale': 0.0,

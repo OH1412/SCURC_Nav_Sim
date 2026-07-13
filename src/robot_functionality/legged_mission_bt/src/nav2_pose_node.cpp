@@ -220,8 +220,8 @@ void Nav2PoseNode::publishNavSegmentYaw(
     }
   }
 
-  // motion_planner=0 or 2: rear of vehicle tracks segment direction (yaw + 180°)
-  if (motion_planner_ == 2 || motion_planner_ == 0) {
+  // motion_planner=2: rear of vehicle tracks segment direction (yaw + 180°)
+  if (motion_planner_ == 2) {
     segment_yaw = normalizeAngle(segment_yaw + M_PI);
   }
 
