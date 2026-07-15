@@ -59,9 +59,9 @@ void RotateToGoalXYCritic::onInit()
     "RotateToGoalXY [%s] x_tol=%.3f m, y_tol=%.3f m, slowing_factor=%.1f",
     name_.c_str(), x_goal_tolerance_, y_goal_tolerance_, slowing_factor_);
 
-  const std::string scale_param = prefix + name_ + ".scale";
+  scale_param_name_ = prefix + name_ + ".scale";
   registerScaleDynamicCallback(
-    node, scale_param, [this](double s) { setScale(s); }, dyn_params_handler_);
+    node, scale_param_name_, [this](double s) { setScale(s); }, dyn_params_handler_);
 
   reset();
 }
@@ -98,6 +98,12 @@ bool RotateToGoalXYCritic::prepare(
   const geometry_msgs::msg::Pose2D & goal,
   const nav_2d_msgs::msg::Path2D & /*global_plan*/)
 {
+  if (auto node = node_.lock()) {
+    syncScaleFromParamStore(
+      node, scale_param_name_, getScale(),
+      [this](double s) { setScale(s); }, "RotateToGoalXY");
+  }
+
   refreshTolerances();
 
   const double dx = pose.x - goal.x;

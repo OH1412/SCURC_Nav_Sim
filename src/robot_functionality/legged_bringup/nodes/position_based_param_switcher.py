@@ -8,7 +8,7 @@ Zone selection by motion_planner id:
   - motion_planner=1 → zone = "edge"   (front-tangent, rotation allowed, vy lateral)
   - motion_planner=2 → zone = "edge"   (rear-tangent, rotation allowed, vy lateral)
   - motion_planner=3 → zone = "straight" (x-only, vy=0, vtheta=0)
-  - edge→middle transition: auto-switch when within middle_zone_distance of goal
+  - edge→middle transition: mp=1(1m), mp=2(2m) auto-switch when within threshold of goal
 
 Switches DWB critic scales + goal checker tolerance via ros2 param set — zero downtime.
 
@@ -45,28 +45,27 @@ LATCHED_QOS = QoSProfile(
 # ---------------------------------------------------------------------------
 
 MIDDLE_PARAMS = {
-    # mp=0 Y-tracking: yaw locked to segment direction (via MaintainYawCritic use_segment_yaw),
-    # lateral vy enabled for Y correction, rotation critics disabled
+    # middle：MaintainYaw×5000 锁 map 0°
+    # 仅第一次进入 |err|≤30° 之前可「纯旋」；进入后永久 phase-2（软打分，不再因偏航卡住 xy）
+    # goal checker 容差仍 6.28，到位不卡 yaw
     'general_goal_checker.yaw_goal_tolerance': 6.28,
     'FollowPath.dwb_yaw_constraint::RotateToGoalXYCritic.scale': 0.0,
     'FollowPath.dwb_yaw_constraint::RotateToPathCritic.scale': 0.0,
     'FollowPath.GoalAlign.scale': 0.0,
     'FollowPath.PathAlign.scale': 0.0,
     'FollowPath.dwb_yaw_constraint::MaintainYawCritic.scale': 5000.0,
-    # mp=0 车头追踪：desired_yaw 由 use_segment_yaw 动态覆盖为航段方位（不再 +180°）
     'FollowPath.dwb_yaw_constraint::MaintainYawCritic.desired_yaw': 0.0,
-    # 禁用两阶段逻辑（阈值=360°→永不触发阶段1），退化为老版纯线性 MaintainYawCritic
-    'FollowPath.dwb_yaw_constraint::MaintainYawCritic.yaw_error_threshold': 6.28,
+    # 一次性 phase-1 带宽（仅首次对准用）；不是持续「超阈值就纯旋」
+    'FollowPath.dwb_yaw_constraint::MaintainYawCritic.yaw_error_threshold': 0.5236,
     'FollowPath.dwb_yaw_constraint::DecouplingCritic.scale': 0.0,
-    'FollowPath.PathDist.scale': 32.0,         # mp=0 Y 追踪，与 edge 一致
+    'FollowPath.PathDist.scale': 32.0,
     'FollowPath.min_vel_y': -1.0,
     'FollowPath.max_vel_y': 1.0,
-    # 短接停车阈值对齐老版：速度<0.25就停车，避免近目标时微调抖动
     'FollowPath.trans_stopped_velocity': 0.25,
 }
 
 EDGE_PARAMS = {
-    'general_goal_checker.yaw_goal_tolerance': 0.17453,
+    'general_goal_checker.yaw_goal_tolerance': 6.28,
     'FollowPath.dwb_yaw_constraint::RotateToGoalXYCritic.scale': 32.0,
     'FollowPath.dwb_yaw_constraint::RotateToPathCritic.scale': 96.0,
     'FollowPath.GoalAlign.scale': 24.0,
@@ -137,8 +136,8 @@ class PositionBasedParamSwitcher(Node):
         self.get_logger().info(
             '============================================================\n'
             '  PositionBasedParamSwitcher — zone-driven by motion_planner\n'
-            '  Zone "middle":   mp=0 (yaw locked to segment dir, Y tracking)\n'
-            '  Zone "edge":     mp=1/2 (rotation allowed, yaw unlocked)\n'
+            '  Zone "middle":   mp=0 / near-goal (MaintainYaw→map 0°, |err|>30° rotate-first)\n'
+            '  Zone "edge":     mp=1/2 (rotation allowed, yaw unlocked; edge→middle at 2.0m)\n'
             '  Zone "straight": mp=3 (x-only, vy=vtheta=0)\n'
             f'  Listening on: {self.nav_zone_topic} (latched)\n'
             f'  Default zone: {self.default_zone}\n'
@@ -211,17 +210,24 @@ class PositionBasedParamSwitcher(Node):
             result = future.result()
         except Exception as e:
             self.get_logger().error(f'set_parameters call failed: {e}')
-            self.pending_zone = self.current_zone
+            # Do NOT overwrite pending_zone here — an edge→middle command may
+            # have arrived while this apply was in flight.
             return
 
         failures = [res.reason for res in result.results if not res.successful]
         if failures:
             self.get_logger().warning(f'Some params failed to set: {failures}')
-            self.pending_zone = self.current_zone
         else:
             self.get_logger().info(
                 f'Switched to "{self.current_zone}" zone params — OK'
             )
+            # Debug probe (disabled — extra get_parameters round-trip):
+            # try:
+            #     from rcl_interfaces.srv import GetParameters
+            #     ...
+            #     self.get_logger().info(f'CRITIC_SCALE_STORE_CHECK zone=...')
+            # except Exception as e:
+            #     self.get_logger().warning(f'CRITIC_SCALE_STORE_CHECK setup failed: {e}')
 
         if self.pending_zone is not None and self.pending_zone != self.current_zone:
             zone = self.pending_zone

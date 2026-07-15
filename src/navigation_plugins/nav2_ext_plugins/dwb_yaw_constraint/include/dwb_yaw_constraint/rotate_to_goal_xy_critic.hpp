@@ -41,6 +41,7 @@ protected:
   double stopped_xy_velocity_sq_{0.0};
   double slowing_factor_{5.0};
   double lookahead_time_{-1.0};
+  std::string scale_param_name_;
 
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr dyn_params_handler_;
 };

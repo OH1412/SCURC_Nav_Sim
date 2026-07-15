@@ -84,7 +84,8 @@ private:
   int motion_planner_{0};               ///< 0=middle(y-track rear), 1=edge front, 2=edge rear, 3=straight
   bool limit_yaw_{false};              ///< Derived: true when motion_planner_==0 (always middle)
   bool middle_zone_applied_{false};    ///< Whether MIDDLE zone has been applied (mp=0 starts middle)
-  double middle_zone_distance_{1.0};   ///< Distance [m] from goal to trigger MIDDLE switch
+  double middle_zone_distance_{1.0};       ///< Distance [m] from goal to trigger MIDDLE switch (mp=1)
+  double middle_zone_distance_mp2_{2.0};  ///< Distance [m] from goal to trigger MIDDLE switch (mp=2)
   rclcpp::Time resolve_start_;
   double waypoint_wait_timeout_{120.0};
 };

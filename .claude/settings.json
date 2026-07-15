@@ -23,7 +23,17 @@
       "Bash(git config *)",
       "Bash(git fsck *)",
       "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('git.enabled:', d.get\\('git.enabled', 'not set'\\)\\); print\\('gitlens:', {k:v for k,v in d.items\\(\\) if 'git' in k.lower\\(\\)}\\)\")",
-      "Bash(git submodule *)"
+      "Bash(git submodule *)",
+      "Bash(kill %2)",
+      "Bash(dpkg -S node_parameters.cpp)",
+      "Bash(echo \"=== 当前 critic scale_ \\(这些是 param store，不是内存值\\) ===\")",
+      "Bash(echo \"\")",
+      "Bash(echo \"=== 手动强制设 middle 参数 ===\")",
+      "Bash(echo \"=== 设完后等 3s 看 cmd_vel 是否出现线速度 ===\")",
+      "Bash(python3 -c \"import py_compile; py_compile.compile\\('/home/dog12/SCURC_Nav_Sim/src/robot_functionality/legged_bringup/launch/bringup_sim_mission.launch.py', doraise=True\\); print\\('launch file: OK'\\)\")",
+      "Bash(python3 -c \"import py_compile; py_compile.compile\\('/home/dog12/SCURC_Nav_Sim/src/robot_functionality/legged_bringup/nodes/simulated_localization_node.py', doraise=True\\); print\\('sim node: OK'\\)\")",
+      "Bash(chmod +x /home/dog12/start_sim_mission.sh)",
+      "Bash(git checkout *)"
     ],
     "additionalDirectories": [
       "/home/dog12/SCURC_Nav_Sim/.vscode"

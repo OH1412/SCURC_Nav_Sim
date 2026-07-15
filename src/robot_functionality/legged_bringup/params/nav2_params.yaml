@@ -644,12 +644,19 @@ cmd_vel_udp_bridge:
     cmd_yaw_min: -1.2
     cmd_yaw_max: 1.2
     # step 死区补偿 (标定: velocity_calibration_20260705_022941.csv)
-    deadzone_vx: 0.45
-    deadzone_vy: 0.43
-    deadzone_wz: 0.85
-    min_effective_vx: 0.5
-    min_effective_vy: 0.5
-    min_effective_wz: 0.9
+    # deadzone_vx: 0.45
+    deadzone_vy: 0.6
+    deadzone_wz: 0.3
+    # min_effective_vx: 0.5
+    min_effective_vy: 0.6
+    min_effective_wz: 0.3
+    # 非对称死区（正负方向独立设置，若不配置则自动沿用上方对称值）
+    deadzone_vx_positive: 1.2   # X正方向（前进）死区阈值
+    deadzone_vx_negative: 0.4   # X负方向（后退）死区阈值
+    # deadzone_vy_positive: 0.43
+    # deadzone_vy_negative: 0.43
+    min_effective_vx_positive: 1.2   # X正方向最小有效速度
+    min_effective_vx_negative: 0.4   # X负方向最小有效速度
 
 # 机械臂控制服务器（可选，enable_arm_control=true 时启用）
 arm_control_server:

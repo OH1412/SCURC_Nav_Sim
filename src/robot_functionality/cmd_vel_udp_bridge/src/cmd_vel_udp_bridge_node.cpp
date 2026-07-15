@@ -49,12 +49,26 @@ public:
     deploy_config_file_ = declare_parameter<std::string>("deploy_config_file", "");
 
     // 死区补偿参数：当速度非零但低于死区阈值时，自动提升到最小有效速度
+    // 对称死区（正负方向使用同一阈值）
     deadzone_vx_ = declare_parameter<double>("deadzone_vx", 0.45);
     deadzone_vy_ = declare_parameter<double>("deadzone_vy", 0.43);
     deadzone_wz_ = declare_parameter<double>("deadzone_wz", 0.85);
     min_effective_vx_ = declare_parameter<double>("min_effective_vx", 0.5);
     min_effective_vy_ = declare_parameter<double>("min_effective_vy", 0.5);
     min_effective_wz_ = declare_parameter<double>("min_effective_wz", 0.9);
+    // 非对称死区（正负方向独立设置，若未配置则沿用对称死区值）
+    deadzone_vx_pos_ = declare_parameter<double>("deadzone_vx_positive", deadzone_vx_);
+    deadzone_vx_neg_ = declare_parameter<double>("deadzone_vx_negative", deadzone_vx_);
+    deadzone_vy_pos_ = declare_parameter<double>("deadzone_vy_positive", deadzone_vy_);
+    deadzone_vy_neg_ = declare_parameter<double>("deadzone_vy_negative", deadzone_vy_);
+    deadzone_wz_pos_ = declare_parameter<double>("deadzone_wz_positive", deadzone_wz_);
+    deadzone_wz_neg_ = declare_parameter<double>("deadzone_wz_negative", deadzone_wz_);
+    min_effective_vx_pos_ = declare_parameter<double>("min_effective_vx_positive", min_effective_vx_);
+    min_effective_vx_neg_ = declare_parameter<double>("min_effective_vx_negative", min_effective_vx_);
+    min_effective_vy_pos_ = declare_parameter<double>("min_effective_vy_positive", min_effective_vy_);
+    min_effective_vy_neg_ = declare_parameter<double>("min_effective_vy_negative", min_effective_vy_);
+    min_effective_wz_pos_ = declare_parameter<double>("min_effective_wz_positive", min_effective_wz_);
+    min_effective_wz_neg_ = declare_parameter<double>("min_effective_wz_negative", min_effective_wz_);
     publish_compensated_ = declare_parameter<bool>("publish_compensated", true);
 
     if (!deploy_config_file_.empty()) {
@@ -76,10 +90,12 @@ public:
                 cmd_vx_min_, cmd_vx_max_, cmd_vy_min_, cmd_vy_max_,
                 cmd_yaw_min_, cmd_yaw_max_);
     RCLCPP_INFO(get_logger(),
-                "deadzone_compensation: vx(dz=%.3f min=%.3f) vy(dz=%.3f min=%.3f) wz(dz=%.3f min=%.3f)",
-                deadzone_vx_, min_effective_vx_,
-                deadzone_vy_, min_effective_vy_,
-                deadzone_wz_, min_effective_wz_);
+                "deadzone_compensation: vx(dz_pos=%.3f dz_neg=%.3f min_pos=%.3f min_neg=%.3f) "
+                "vy(dz_pos=%.3f dz_neg=%.3f min_pos=%.3f min_neg=%.3f) "
+                "wz(dz_pos=%.3f dz_neg=%.3f min_pos=%.3f min_neg=%.3f)",
+                deadzone_vx_pos_, deadzone_vx_neg_, min_effective_vx_pos_, min_effective_vx_neg_,
+                deadzone_vy_pos_, deadzone_vy_neg_, min_effective_vy_pos_, min_effective_vy_neg_,
+                deadzone_wz_pos_, deadzone_wz_neg_, min_effective_wz_pos_, min_effective_wz_neg_);
   }
 
   ~CmdVelUdpBridgeNode() override {
@@ -131,7 +147,7 @@ private:
     }
   }
 
-  // 死区补偿：将低于死区阈值的非零速度提升到最小有效速度
+  // 死区补偿（对称版本）：将低于死区阈值的非零速度提升到最小有效速度
   // 这样可以避免"控制器输出了小速度 → 机器人不动 → 误差不减小 → 控制器继续输出小速度"的死循环
   double apply_deadzone_compensation(double value, double deadzone, double min_effective) {
     if (value == 0.0) {
@@ -149,15 +165,51 @@ private:
     return value;  // 高于死区，保持不变
   }
 
+  // 死区补偿（非对称版本）：正负方向使用独立的死区和最小有效速度
+  double apply_deadzone_compensation_asymmetric(double value,
+                                                double deadzone_pos, double deadzone_neg,
+                                                double min_effective_pos, double min_effective_neg) {
+    if (value == 0.0) {
+      return 0.0;
+    }
+    if (value > 0.0) {
+      if (value < deadzone_pos) {
+        double boosted = min_effective_pos;
+        RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 2000,
+                              "Deadzone compensation (+): %.4f -> %.4f (dz_pos=%.3f, min_eff_pos=%.3f)",
+                              value, boosted, deadzone_pos, min_effective_pos);
+        return boosted;
+      }
+    } else {
+      if (value > -deadzone_neg) {
+        double boosted = -min_effective_neg;
+        RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 2000,
+                              "Deadzone compensation (-): %.4f -> %.4f (dz_neg=%.3f, min_eff_neg=%.3f)",
+                              value, boosted, deadzone_neg, min_effective_neg);
+        return boosted;
+      }
+    }
+    return value;
+  }
+
   void handle_twist(const geometry_msgs::msg::Twist &msg) {
     UdpCommand cmd;
     cmd.mode = mode_;
     cmd.e_stop = estop_latched_ ? 1 : 0;
 
     // 先应用死区补偿，再转换为比例值
-    double vx_compensated = apply_deadzone_compensation(msg.linear.x, deadzone_vx_, min_effective_vx_);
-    double vy_compensated = apply_deadzone_compensation(msg.linear.y, deadzone_vy_, min_effective_vy_);
+    // vx 使用非对称死区（正负方向独立设置）
+    double vx_compensated = apply_deadzone_compensation_asymmetric(
+        msg.linear.x,
+        deadzone_vx_pos_, deadzone_vx_neg_,
+        min_effective_vx_pos_, min_effective_vx_neg_);
+    double vy_compensated = apply_deadzone_compensation_asymmetric(
+        msg.linear.y,
+        deadzone_vy_pos_, deadzone_vy_neg_,
+        min_effective_vy_pos_, min_effective_vy_neg_);
+    // 暂时关闭 wz 死区补偿，原样转发 angular.z
     double wz_compensated = apply_deadzone_compensation(msg.angular.z, deadzone_wz_, min_effective_wz_);
+    // double wz_compensated = msg.angular.z;
 
     // 发布补偿后的速度供观测
     if (publish_compensated_) {
@@ -225,12 +277,25 @@ private:
   std::string estop_topic_;
 
   // 死区补偿参数
-  double deadzone_vx_ = 0.25;
-  double deadzone_vy_ = 0.30;
-  double deadzone_wz_ = 0.60;
-  double min_effective_vx_ = 0.5;
-  double min_effective_vy_ = 0.45;
-  double min_effective_wz_ = 0.9;
+  double deadzone_vx_ = 1.8;
+  double deadzone_vy_ = 0.80;
+  double deadzone_wz_ = 0.09;
+  double min_effective_vx_ = 1.8;
+  double min_effective_vy_ = 0.80;
+  double min_effective_wz_ = 0.09;
+  // 非对称死区（正负方向独立）
+  double deadzone_vx_pos_ = 1.8;
+  double deadzone_vx_neg_ = 1.8;
+  double deadzone_vy_pos_ = 0.80;
+  double deadzone_vy_neg_ = 0.80;
+  double deadzone_wz_pos_ = 0.09;
+  double deadzone_wz_neg_ = 0.09;
+  double min_effective_vx_pos_ = 1.8;
+  double min_effective_vx_neg_ = 1.8;
+  double min_effective_vy_pos_ = 0.80;
+  double min_effective_vy_neg_ = 0.80;
+  double min_effective_wz_pos_ = 0.09;
+  double min_effective_wz_neg_ = 0.09;
   bool publish_compensated_ = true;
 
   // 补偿后速度发布者

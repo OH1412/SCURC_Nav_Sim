@@ -44,7 +44,8 @@ private:
   rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr segment_yaw_sub_;
 
   double lookahead_time_{-1.0};
-  double yaw_error_threshold_{0.087};
+  double yaw_error_threshold_{0.5236};  // ~30 degrees
+  std::string scale_param_name_;
 
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr dyn_params_handler_;
 };

@@ -31,6 +31,7 @@ def generate_launch_description():
     use_sim_time = LaunchConfiguration('use_sim_time')
     use_pointcloud_to_scan = LaunchConfiguration('use_pointcloud_to_scan')
     enable_terrain_analysis = LaunchConfiguration('enable_terrain_analysis')
+    default_zone = LaunchConfiguration('default_zone')
 
     # Accept use_sim_time from parent and pass it through
     declare_use_sim_time = DeclareLaunchArgument(
@@ -46,6 +47,11 @@ def generate_launch_description():
         default_value='false',
         description='Enable terrain analysis (local obstacle detection). Default off.'
     )
+
+    declare_default_zone_cmd = DeclareLaunchArgument(
+        'default_zone', default_value='edge',
+        description='Default nav zone for position_based_param_switcher '
+                    '(forwarded to navigation.launch.py)')
 
     start_relocalization = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(
@@ -65,6 +71,7 @@ def generate_launch_description():
         launch_arguments={
             'use_sim_time': use_sim_time,
             'enable_terrain_analysis': enable_terrain_analysis,
+            'default_zone': default_zone,
         }.items()
     )
 
@@ -113,6 +120,7 @@ def generate_launch_description():
     ld.add_action(declare_use_sim_time)
     ld.add_action(declare_use_pc2scan)
     ld.add_action(declare_enable_terrain_analysis)
+    ld.add_action(declare_default_zone_cmd)
 
     # Start pointcloud->scan first so AMCL can consume /scan
     ld.add_action(start_pointcloud_to_scan)

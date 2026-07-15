@@ -49,17 +49,17 @@
       <Nav2PoseNode wp_id="nav_p5_wp3" motion_planner="1"/>
       <ArmPlaceNode arm_point_id="11" timeout="30.0"/>
 
-      <!-- step 8: path=3 wp=1 state=2 (pick) target_id=5 motion_planner=2 zone=edge arm_point_id=5 -->
-      <Nav2PoseNode wp_id="nav_p3_wp1" motion_planner="2"/>
-      <ArmPickNode arm_point_id="5" timeout="30.0"/>
+      <!-- step 8: path=2 wp=1 state=2 (pick) target_id=4 motion_planner=2 zone=edge arm_point_id=4 -->
+      <Nav2PoseNode wp_id="nav_p2_wp1" motion_planner="2"/>
+      <ArmPickNode arm_point_id="4" timeout="30.0"/>
 
       <!-- step 9: path=2 wp=3 state=3 (place) target_id=4 motion_planner=1 zone=edge arm_point_id=12 -->
       <Nav2PoseNode wp_id="nav_p2_wp3" motion_planner="1"/>
       <ArmPlaceNode arm_point_id="12" timeout="30.0"/>
 
-      <!-- step 10: path=2 wp=1 state=2 (pick) target_id=4 motion_planner=2 zone=edge arm_point_id=4 -->
-      <Nav2PoseNode wp_id="nav_p2_wp1" motion_planner="2"/>
-      <ArmPickNode arm_point_id="4" timeout="30.0"/>
+      <!-- step 10: path=3 wp=1 state=2 (pick) target_id=5 motion_planner=2 zone=edge arm_point_id=5 -->
+      <Nav2PoseNode wp_id="nav_p3_wp1" motion_planner="2"/>
+      <ArmPickNode arm_point_id="5" timeout="30.0"/>
 
       <!-- step 11: path=3 wp=3 state=3 (place) target_id=5 motion_planner=1 zone=edge arm_point_id=13 -->
       <Nav2PoseNode wp_id="nav_p3_wp3" motion_planner="1"/>
@@ -69,17 +69,17 @@
       <Nav2PoseNode wp_id="nav_p5_wp1" motion_planner="2"/>
       <ArmPickNode arm_point_id="7" timeout="30.0"/>
 
-      <!-- step 13: path=4 wp=3 state=3 (place) target_id=6 motion_planner=1 zone=edge arm_point_id=14 -->
-      <Nav2PoseNode wp_id="nav_p4_wp3" motion_planner="1"/>
-      <ArmPlaceNode arm_point_id="14" timeout="30.0"/>
+      <!-- step 13: path=5 wp=3 state=3 (place) target_id=7 motion_planner=1 zone=edge arm_point_id=15 -->
+      <Nav2PoseNode wp_id="nav_p5_wp3" motion_planner="1"/>
+      <ArmPlaceNode arm_point_id="15" timeout="30.0"/>
 
       <!-- Fixed block before last place: nav_p1_wp4, pick -->
       <Nav2PoseNode wp_id="nav_p1_wp4" motion_planner="2"/>
       <ArmPickNode arm_point_id="16" timeout="30.0"/>
 
-      <!-- step 14: path=5 wp=3 state=3 (place) target_id=7 motion_planner=1 zone=edge arm_point_id=15 -->
-      <Nav2PoseNode wp_id="nav_p5_wp3" motion_planner="1"/>
-      <ArmPlaceNode arm_point_id="15" timeout="30.0"/>
+      <!-- step 14: path=4 wp=3 state=3 (place) target_id=6 motion_planner=1 zone=edge arm_point_id=14 -->
+      <Nav2PoseNode wp_id="nav_p4_wp3" motion_planner="1"/>
+      <ArmPlaceNode arm_point_id="14" timeout="30.0"/>
 
     </Sequence>
   </BehaviorTree>

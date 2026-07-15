@@ -5,6 +5,7 @@
  */
 
 #include "dwb_yaw_constraint/maintain_yaw_critic.hpp"
+#include "dwb_yaw_constraint/critic_dynamic_scale.hpp"
 #include <cmath>
 #include "angles/angles.h"
 #include "nav2_util/node_utils.hpp"
@@ -75,25 +76,31 @@ void MaintainYawCritic::onInit()
   scale_param_name_ = prefix + "scale";
   threshold_param_name_ = prefix + "yaw_error_threshold";
   xy_penalty_param_name_ = prefix + "xy_penalty_factor";
+  desired_yaw_param_name_ = prefix + "desired_yaw";
 
-  // Single callback handles all three runtime-updateable parameters
+  // Same suffix-tolerant matching as registerScaleDynamicCallback:
+  // rclcpp may deliver relative or fully-qualified names.
   dyn_params_handler_ = node->add_on_set_parameters_callback(
     [this](const std::vector<rclcpp::Parameter> & parameters) {
       rcl_interfaces::msg::SetParametersResult result;
       result.successful = true;
       for (const auto & param : parameters) {
-        if (param.get_name() == scale_param_name_ &&
-          param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE)
-        {
+        if (param.get_type() != rclcpp::ParameterType::PARAMETER_DOUBLE) {
+          continue;
+        }
+        const auto & pname = param.get_name();
+        if (matchParamName(pname, scale_param_name_)) {
           setScale(param.as_double());
-        } else if (param.get_name() == threshold_param_name_ &&
-          param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE)
-        {
+          // RCLCPP_INFO(..., "CRITIC_SCALE_MEM_UPDATED ...");
+        } else if (matchParamName(pname, threshold_param_name_)) {
           yaw_error_threshold_ = param.as_double();
-        } else if (param.get_name() == xy_penalty_param_name_ &&
-          param.get_type() == rclcpp::ParameterType::PARAMETER_DOUBLE)
-        {
+          // RCLCPP_INFO(..., "CRITIC_PARAM_MEM_UPDATED ... yaw_error_threshold");
+        } else if (matchParamName(pname, xy_penalty_param_name_)) {
           xy_penalty_factor_ = param.as_double();
+          // RCLCPP_INFO(..., "CRITIC_PARAM_MEM_UPDATED ... xy_penalty_factor");
+        } else if (matchParamName(pname, desired_yaw_param_name_)) {
+          desired_yaw_ = param.as_double();
+          // RCLCPP_INFO(..., "CRITIC_PARAM_MEM_UPDATED ... desired_yaw");
         }
       }
       return result;
@@ -116,6 +123,41 @@ bool MaintainYawCritic::prepare(
   const geometry_msgs::msg::Pose2D & /*goal*/,
   const nav_2d_msgs::msg::Path2D & /*global_plan*/)
 {
+  // Zone switcher writes the param store; keep memory in sync every cycle
+  // (on_set_parameters callback often never fires for this plugin).
+  if (auto node = node_.lock()) {
+    const double before_scale = getScale();
+    syncScaleFromParamStore(
+      node, scale_param_name_, before_scale,
+      [this](double s) { setScale(s); }, "MaintainYaw");
+    double thr = yaw_error_threshold_;
+    if (node->get_parameter(threshold_param_name_, thr) &&
+      std::fabs(thr - yaw_error_threshold_) > 1e-9)
+    {
+      // RCLCPP_INFO(..., "CRITIC_PARAM_SYNC MaintainYaw yaw_error_threshold ...");
+      yaw_error_threshold_ = thr;
+    }
+    double dy = desired_yaw_;
+    if (node->get_parameter(desired_yaw_param_name_, dy) &&
+      std::fabs(dy - desired_yaw_) > 1e-9)
+    {
+      // RCLCPP_INFO(..., "CRITIC_PARAM_SYNC MaintainYaw desired_yaw ...");
+      desired_yaw_ = dy;
+    }
+
+    // Middle activation: scale 0→active arms one-shot phase-1 (pure yaw until
+    // first time |err|≤threshold). Leaving middle (scale→0) clears the latch.
+    const double after_scale = getScale();
+    if (prev_scale_valid_ && prev_scale_ < 1.0 && after_scale >= 1.0) {
+      phase1_pending_ = true;
+      // RCLCPP_INFO(..., "MAINTAIN_YAW_PHASE1_ARM ...");
+    } else if (after_scale < 1.0) {
+      phase1_pending_ = false;
+    }
+    prev_scale_ = after_scale;
+    prev_scale_valid_ = true;
+  }
+
   std::string costmap_frame = costmap_ros_->getGlobalFrameID();
 
   // If use_segment_yaw_ and we have a valid segment yaw, override desired_yaw_
@@ -129,6 +171,7 @@ bool MaintainYawCritic::prepare(
     target_yaw_ = effective_desired_yaw;
     target_valid_ = true;
     current_yaw_error_ = angles::shortest_angular_distance(pose.theta, target_yaw_);
+    maybeFinishPhase1();
     return true;
   }
 
@@ -179,7 +222,20 @@ bool MaintainYawCritic::prepare(
   }
 
   current_yaw_error_ = angles::shortest_angular_distance(pose.theta, target_yaw_);
+  maybeFinishPhase1();
   return true;
+}
+
+void MaintainYawCritic::maybeFinishPhase1()
+{
+  if (!phase1_pending_) {
+    return;
+  }
+  if (std::fabs(current_yaw_error_) > yaw_error_threshold_) {
+    return;
+  }
+  phase1_pending_ = false;
+  // RCLCPP_INFO(..., "MAINTAIN_YAW_PHASE1_DONE ...");
 }
 
 double MaintainYawCritic::scoreTrajectory(const dwb_msgs::msg::Trajectory2D & traj)
@@ -191,18 +247,13 @@ double MaintainYawCritic::scoreTrajectory(const dwb_msgs::msg::Trajectory2D & tr
   double final_yaw = traj.poses.back().theta;
   double yaw_error = angles::shortest_angular_distance(final_yaw, target_yaw_);
 
-  // Two-phase behavior for mid-navigation planner switches (e.g. edge→middle):
-  //   Phase 1 (correction): current yaw error > threshold → force pure rotation
-  //   Phase 2 (normal):      current yaw error ≤ threshold → allow xy motion
-  if (std::fabs(current_yaw_error_) > yaw_error_threshold_) {
-    // Correction phase: penalize xy motion heavily to force pure rotation first.
-    // Once yaw is within threshold, the critic automatically transitions to
-    // Phase 2, where xy motion is free and only yaw deviation is penalized.
+  // Phase-1 only while latch armed AND still outside band. Once cleared, never
+  // re-enter xy-block mode even if |err| grows above threshold again.
+  if (phase1_pending_ && std::fabs(current_yaw_error_) > yaw_error_threshold_) {
     double xy_speed = std::hypot(traj.velocity.x, traj.velocity.y);
     return scale_ * (std::fabs(yaw_error) + xy_penalty_factor_ * xy_speed);
   }
 
-  // Normal phase: maintain yaw while allowing free xy motion.
   return scale_ * std::fabs(yaw_error);
 }
 

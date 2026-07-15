@@ -48,6 +48,7 @@ private:
   double max_vx_;
   double max_vy_;
   double max_vtheta_;
+  std::string scale_param_name_;
 
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr dyn_params_handler_;
 };

@@ -37,22 +37,20 @@ namespace dwb_yaw_constraint
  * planning). This ensures yaw correction is properly integrated into DWB's
  * trajectory optimization.
  *
- * Two-phase behavior when current yaw error exceeds yaw_error_threshold:
- *   Phase 1 (correction): Heavily penalizes xy motion to force pure rotation
- *                         toward the target yaw.
- *   Phase 2 (normal):     Only penalizes yaw deviation, allowing free xy
- *                         motion while maintaining the target yaw.
- * This allows mid-navigation planner switches (e.g. edge→middle at 1m from
- * goal) without the robot trying to move sideways while the yaw is still
- * far from the desired orientation.
+ * One-shot phase-1 (irreversible for this middle session):
+ *   - When MaintainYaw scale rises from ~0 (edge→middle / mp0 enable), arm phase-1.
+ *   - While armed and |yaw−desired| > yaw_error_threshold (~30°): score penalizes xy
+ *     speed → DWB prefers pure yaw.
+ *   - Once |err| ≤ threshold the first time: clear the latch permanently. Later
+ *     drift above 30° only soft-penalizes yaw — never returns to xy≈0 / yaw-only.
+ *   - Leaving middle (scale→0) resets the latch so the next entry can arm again.
  *
  * Parameters:
  *   - desired_yaw (double, default 0.0): Desired yaw in reference_frame [rad].
  *   - reference_frame (string, default "map"): Frame in which desired_yaw is defined.
- *   - yaw_error_threshold (double, default 0.5236): Max yaw error [rad] before
- *     entering correction phase. Default ~30 degrees.
+ *   - yaw_error_threshold (double, default 0.5236): Band [rad] for one-shot phase-1 only.
  *   - xy_penalty_factor (double, default 5.0): Multiplier for xy speed penalty
- *     during correction phase. Higher = more aggressive rotation-first behavior.
+ *     during the one-shot correction phase.
  */
 class MaintainYawCritic : public dwb_core::TrajectoryCritic
 {
@@ -84,11 +82,19 @@ private:
   /// Current yaw error (pose.theta vs target_yaw_), computed in prepare()
   double current_yaw_error_{0.0};
 
-  /// Threshold [rad] above which correction phase is active (default ~30°)
+  /// Steady-state soft maintain only after phase-1 latch clears
   double yaw_error_threshold_{0.5236};
 
   /// Multiplier for xy speed penalty during correction phase
   double xy_penalty_factor_{5.0};
+
+  /// One-shot phase-1 latch band uses yaw_error_threshold_ (~30°)
+  /// Armed when scale 0→active; cleared irreversibly once |err| ≤ band.
+  bool phase1_pending_{false};
+  double prev_scale_{0.0};
+  bool prev_scale_valid_{false};
+
+  void maybeFinishPhase1();
 
   /// Whether to use nav_segment_yaw topic for dynamic desired_yaw
   bool use_segment_yaw_{false};
@@ -105,6 +111,7 @@ private:
   std::string scale_param_name_;
   std::string threshold_param_name_;
   std::string xy_penalty_param_name_;
+  std::string desired_yaw_param_name_;
 
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr dyn_params_handler_;
 };

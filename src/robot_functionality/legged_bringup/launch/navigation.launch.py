@@ -45,6 +45,7 @@ def generate_launch_description():
     container_name_full = (namespace, '/', container_name)
     use_respawn = LaunchConfiguration('use_respawn')
     log_level = LaunchConfiguration('log_level')
+    default_zone = LaunchConfiguration('default_zone')
     lifecycle_nodes = [
                        # 'map_server',  # 已在 relocalization.launch.py 中启动
                        'controller_server',
@@ -121,6 +122,12 @@ def generate_launch_description():
     declare_log_level_cmd = DeclareLaunchArgument(
         'log_level', default_value='warn',
         description='log level')
+
+    declare_default_zone_cmd = DeclareLaunchArgument(
+        'default_zone', default_value='edge',
+        description='Default nav zone for position_based_param_switcher '
+                    '(edge=middle/edge/straight). "edge"=rotation allowed; '
+                    '"middle"=yaw locked; "straight"=x-only.')
 
     def _velocity_smoother_node(context):
         return [
@@ -201,17 +208,26 @@ def generate_launch_description():
                 arguments=['--ros-args', '--log-level', log_level],
                 remappings=remappings),
                         OpaqueFunction(function=_velocity_smoother_node),
-            Node(
-                package='nav2_lifecycle_manager',
-                executable='lifecycle_manager',
-                name='lifecycle_manager_navigation',
-                output='screen',
-                arguments=['--ros-args', '--log-level', log_level],
-                parameters=[{'use_sim_time': use_sim_time},
-                            {'autostart': autostart},
-                            {'bond_timeout': 15.0},
-                            {'node_names': lifecycle_nodes}]),
         ]
+    )
+
+    # lifecycle_manager_navigation starts AFTER other nodes (5s delay)
+    # to avoid race condition where it tries to autostart nodes that
+    # haven't finished initializing yet.
+    lifecycle_manager_navigation_node = Node(
+        package='nav2_lifecycle_manager',
+        executable='lifecycle_manager',
+        name='lifecycle_manager_navigation',
+        output='screen',
+        arguments=['--ros-args', '--log-level', 'info'],
+        parameters=[{'use_sim_time': use_sim_time},
+                    {'autostart': autostart},
+                    {'bond_timeout': 15.0},
+                    {'node_names': lifecycle_nodes}],
+    )
+    delayed_lifecycle_manager_navigation = TimerAction(
+        period=2.0,
+        actions=[lifecycle_manager_navigation_node],
     )
 
     def _composable_nodes_action(context):
@@ -343,6 +359,7 @@ def generate_launch_description():
     ld.add_action(declare_container_name_cmd)
     ld.add_action(declare_use_respawn_cmd)
     ld.add_action(declare_log_level_cmd)
+    ld.add_action(declare_default_zone_cmd)
     ld.add_action(declare_enable_terrain_analysis_cmd)
     # add terrain analysis
     ld.add_action(start_terrain_analysis)
@@ -352,6 +369,8 @@ def generate_launch_description():
     # Add the actions to launch all of the navigation nodes
     ld.add_action(load_nodes)
     ld.add_action(load_composable_nodes)
+    # Delayed lifecycle_manager to avoid race with node initialization
+    ld.add_action(delayed_lifecycle_manager_navigation)
 
     # Nav zone parameter switcher: listens to /mission_bt/nav_zone
     # (published by Nav2PoseNode) and dynamically sets DWB critic
@@ -367,7 +386,8 @@ def generate_launch_description():
         executable='position_based_param_switcher.py',
         name='position_based_param_switcher',
         output='screen',
-        parameters=[configured_params],
+        parameters=[configured_params,
+                    {'default_zone': default_zone}],
         arguments=['--ros-args', '--log-level', 'info'],
     )
     ld.add_action(TimerAction(period=8.0, actions=[position_switcher_node]))

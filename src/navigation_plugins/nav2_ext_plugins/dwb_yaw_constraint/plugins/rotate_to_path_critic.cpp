@@ -32,7 +32,7 @@ void RotateToPathCritic::onInit()
   nav2_util::declare_parameter_if_not_declared(
     node, ns + "lookahead_time", rclcpp::ParameterValue(-1.0));
   nav2_util::declare_parameter_if_not_declared(
-    node, ns + "yaw_error_threshold", rclcpp::ParameterValue(0.087));
+    node, ns + "yaw_error_threshold", rclcpp::ParameterValue(0.5236));  // ~30 degrees
 
   node->get_parameter(ns + "use_segment_yaw", use_segment_yaw_);
   node->get_parameter(ns + "nav_segment_yaw_topic", nav_segment_yaw_topic_);
@@ -56,9 +56,9 @@ void RotateToPathCritic::onInit()
   target_yaw_ = 0.0;
   segment_yaw_valid_ = false;
 
-  const std::string scale_param = prefix + name_ + ".scale";
+  scale_param_name_ = prefix + name_ + ".scale";
   registerScaleDynamicCallback(
-    node, scale_param, [this](double s) { setScale(s); }, dyn_params_handler_);
+    node, scale_param_name_, [this](double s) { setScale(s); }, dyn_params_handler_);
 }
 
 void RotateToPathCritic::navSegmentYawCallback(
@@ -86,6 +86,12 @@ bool RotateToPathCritic::prepare(
   const geometry_msgs::msg::Pose2D & goal,
   const nav_2d_msgs::msg::Path2D & /*global_plan*/)
 {
+  if (auto node = node_.lock()) {
+    syncScaleFromParamStore(
+      node, scale_param_name_, getScale(),
+      [this](double s) { setScale(s); }, "RotateToPath");
+  }
+
   tangent_valid_ = false;
 
   if (use_segment_yaw_ && segment_yaw_valid_) {

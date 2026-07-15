@@ -37,6 +37,7 @@ install(PROGRAMS
   nodes/static_tf_broadcaster.py
   nodes/aft_to_pose_offset_node.py
   nodes/position_based_param_switcher.py
+  nodes/nav_zone_monitor.py
   nodes/obstacle_scale_controller.py
   nodes/waypoint_sender.py
   nodes/stand_up_sender.py
@@ -55,6 +56,7 @@ install(PROGRAMS
   nodes/base_link_odom_publisher.py
   nodes/arm_root_odom_publisher.py
   nodes/pointcloud_range_filter.py
+  nodes/velocity_calibration_recorder.py
   test/path1_nav_test.py
   test/record_waypoints.py
   test/record_waypoints_all.py

@@ -43,6 +43,7 @@ void DecouplingCritic::onInit()
     dwb_plugin_name_ + "." + name_ + ".max_vtheta", max_vtheta_);
 
   const std::string scale_param = dwb_plugin_name_ + "." + name_ + ".scale";
+  scale_param_name_ = scale_param;
   registerScaleDynamicCallback(
     node, scale_param, [this](double s) { setScale(s); }, dyn_params_handler_);
 }
@@ -53,7 +54,11 @@ bool DecouplingCritic::prepare(
   const geometry_msgs::msg::Pose2D & /*goal*/,
   const nav_2d_msgs::msg::Path2D & /*global_plan*/)
 {
-  // No per-cycle preparation needed
+  if (auto node = node_.lock()) {
+    syncScaleFromParamStore(
+      node, scale_param_name_, getScale(),
+      [this](double s) { setScale(s); }, "Decoupling");
+  }
   return true;
 }
 

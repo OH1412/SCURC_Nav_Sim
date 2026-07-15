@@ -38,6 +38,7 @@ def generate_launch_description():
     udp_use_twist_stamped = LaunchConfiguration('udp_use_twist_stamped')
     udp_estop_topic = LaunchConfiguration('udp_estop_topic')
     reloc_delay = LaunchConfiguration('reloc_delay')
+    default_zone = LaunchConfiguration('default_zone')
 
     declare_use_sim_time = DeclareLaunchArgument(
         'use_sim_time',
@@ -75,7 +76,7 @@ def generate_launch_description():
 
     declare_enable_waypoint_mission = DeclareLaunchArgument(
         'enable_waypoint_mission',
-        default_value='true',
+        default_value='false',
         description='Auto-start waypoint_sender (NavigateToPose, pure navigation BT)'
     )
 
@@ -108,6 +109,12 @@ def generate_launch_description():
         default_value='0.0',
         description='Seconds to wait AFTER relocalization signal before sending stand_up.'
     )
+
+    declare_default_zone_cmd = DeclareLaunchArgument(
+        'default_zone', default_value='edge',
+        description='Default nav zone: "middle" (yaw locked, Y tracking), '
+                    '"edge" (rotation allowed), "straight" (x-only). '
+                    'Forwards to bringup_all_in_one → navigation → position_based_param_switcher.')
 
     declare_enable_base_link_odom = DeclareLaunchArgument(
         'enable_base_link_odom',
@@ -268,6 +275,7 @@ def generate_launch_description():
         'use_sim_time': use_sim_time,
         'use_pointcloud_to_scan': 'false',
         'enable_terrain_analysis': enable_terrain_analysis,
+        'default_zone': default_zone,
     }.items(),
 )
 
@@ -381,6 +389,7 @@ def generate_launch_description():
     ld.add_action(declare_enable_stand_up)
     ld.add_action(declare_stand_up_delay)
     ld.add_action(declare_reloc_delay)
+    ld.add_action(declare_default_zone_cmd)
     ld.add_action(declare_enable_arm_control)
     ld.add_action(declare_arm_control_delay)
     ld.add_action(declare_enable_base_link_odom)

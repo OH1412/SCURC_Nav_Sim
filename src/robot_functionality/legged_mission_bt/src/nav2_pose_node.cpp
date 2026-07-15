@@ -81,6 +81,11 @@ Nav2PoseNode::Nav2PoseNode(
   nav_progress_log_interval_ = node_->get_parameter("nav_progress_log_interval").as_double();
   middle_zone_distance_ = node_->get_parameter("middle_zone_distance").as_double();
 
+  if (!node_->has_parameter("middle_zone_distance_mp2")) {
+    node_->declare_parameter("middle_zone_distance_mp2", 2.0);
+  }
+  middle_zone_distance_mp2_ = node_->get_parameter("middle_zone_distance_mp2").as_double();
+
   tf_buffer_ = std::make_shared<tf2_ros::Buffer>(node_->get_clock());
   tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_, node_, false);
   odom_sub_ = node_->create_subscription<nav_msgs::msg::Odometry>(
@@ -318,6 +323,10 @@ bool Nav2PoseNode::getCurrentStateInGoalFrame(
     wz = latest_odom_->twist.twist.angular.z;
   }
 
+  // Non-blocking TF only. NEVER wait/timeout here: this runs every BT tick for
+  // mp1/mp2 edge→middle distance checks. TransformListener uses spin_thread=false,
+  // so a blocking lookupTransform(..., 0.2s) cannot receive TF while waiting and
+  // only stalls zone switching.
   if (tf_buffer_ && tf_buffer_->canTransform(
       resolved_frame_id_, base_frame_, tf2::TimePointZero))
   {
@@ -340,6 +349,7 @@ bool Nav2PoseNode::getCurrentStateInGoalFrame(
     }
   }
 
+  // Same-frame odometry fallback only (wrong frame would make dist unreliable).
   if (!latest_odom_) {
     return false;
   }
@@ -419,11 +429,12 @@ BT::NodeStatus Nav2PoseNode::onStart()
 
   // motion_planner: 0=middle(y-track rear), 1=edge front-tangent, 2=edge rear-tangent, 3=straight
   // mp=0 starts in middle zone (yaw locked, vy enabled) for continuous Y tracking
-  // mp=1/2 start in edge zone (rotation allowed), transition to middle near goal
+  // mp=1 starts in edge zone (rotation allowed), transition to middle near goal
+  // mp=2 starts in edge zone (rear-tangent), stays edge — no middle transition
   // mp=3 starts in straight zone (vy=0, vtheta=0, x-only)
   getInput("motion_planner", motion_planner_);
   limit_yaw_ = (motion_planner_ == 0);
-  middle_zone_applied_ = (motion_planner_ == 0 || motion_planner_ == 3);  // mp=0: no edge→middle transition
+  middle_zone_applied_ = (motion_planner_ == 0 || motion_planner_ == 2 || motion_planner_ == 3);  // mp=0/2/3: no edge→middle transition
   const std::string zone = (motion_planner_ == 0) ? "middle"
                          : (motion_planner_ == 3) ? "straight"
                          : "edge";
@@ -466,7 +477,7 @@ BT::NodeStatus Nav2PoseNode::onRunning()
       waiting_for_wp_ = false;
       getInput("motion_planner", motion_planner_);
       limit_yaw_ = (motion_planner_ == 0);
-      middle_zone_applied_ = (motion_planner_ == 0 || motion_planner_ == 3);
+      middle_zone_applied_ = (motion_planner_ == 0 || motion_planner_ == 2 || motion_planner_ == 3);
       const std::string zone = (motion_planner_ == 0) ? "middle"
                              : (motion_planner_ == 3) ? "straight"
                              : "edge";
@@ -503,18 +514,29 @@ BT::NodeStatus Nav2PoseNode::onRunning()
     rclcpp::spin_some(node_);
     maybeLogNavProgress();
 
-    // Distance-based zone switching: when starting from EDGE mode and approaching
-    // within middle_zone_distance_ of the goal, switch to MIDDLE for final approach.
+    // mp1/mp2: real-time distance check every tick — no timeout involved.
+    // Start in EDGE; once within threshold of goal, switch to MIDDLE.
+    // mp=1: middle_zone_distance_ (default 1.0m); mp=2: middle_zone_distance_mp2_ (default 2.0m)
     if (!middle_zone_applied_) {
       double cur_x = 0.0, cur_y = 0.0, cur_yaw = 0.0, vx = 0.0, vy = 0.0, wz = 0.0;
       if (getCurrentStateInGoalFrame(cur_x, cur_y, cur_yaw, vx, vy, wz)) {
         const double dx = resolved_x_ - cur_x;
         const double dy = resolved_y_ - cur_y;
         const double dist = std::hypot(dx, dy);
-        if (dist < middle_zone_distance_) {
+        const double threshold = (motion_planner_ == 2) ? middle_zone_distance_mp2_ : middle_zone_distance_;
+        if (dist < threshold) {
           middle_zone_applied_ = true;
-          publishNavZone("middle", "dist=" + std::to_string(static_cast<int>(dist * 100) / 100.0) + "m < " + std::to_string(middle_zone_distance_) + "m");
+          publishNavZone(
+            "middle",
+            "dist=" + std::to_string(static_cast<int>(dist * 100) / 100.0) +
+            "m < " + std::to_string(threshold) + "m (mp=" + std::to_string(motion_planner_) + ")");
         }
+      } else {
+        RCLCPP_WARN_THROTTLE(
+          node_->get_logger(), *node_->get_clock(), 2000,
+          "Nav2PoseNode: edge→middle check skipped (no TF/odom in frame '%s'); "
+          "zone will stay edge until pose is available",
+          resolved_frame_id_.c_str());
       }
     }
 
