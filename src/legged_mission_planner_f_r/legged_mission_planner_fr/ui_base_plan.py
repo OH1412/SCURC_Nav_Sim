@@ -34,6 +34,17 @@ class MissionPlannerUI(PlanningUICommon):
         self._build()
         self._select_brush(0)
 
+        # 键盘 1-4 设置上面四个箱子颜色（从左到右：box 3,2,1,0）
+        # 1=红色 2=蓝色 3=灰色 4=绿色，支持主键盘 + 小键盘
+        self._key_box_map = {
+            '1': (3, 3),  # box 3 -> type_id 3 (红色/药品)
+            '2': (2, 2),  # box 2 -> type_id 2 (蓝色/仪器)
+            '3': (1, 1),  # box 1 -> type_id 1 (灰色/工具)
+            '4': (0, 0),  # box 0 -> type_id 0 (绿色/食品)
+        }
+        # 用 <Key> 捕获所有按键（优先 event.char，兜底 event.keysym）
+        self.root.bind('<Key>', self._on_key_color)
+
     def _setup_style(self) -> None:
         style = ttk.Style(self.root)
         if 'clam' in style.theme_names():
@@ -151,6 +162,8 @@ class MissionPlannerUI(PlanningUICommon):
             label_hotspot_config=self._label_hotspot_config,
         )
         self.field_canvas.grid(row=0, column=0, sticky='nsew')
+        # Canvas 也绑定键盘，确保画布有焦点时也能响应
+        self.field_canvas.bind('<Key>', self._on_key_color)
 
         preview_card = ttk.LabelFrame(field_card, text='路径预览（规划后显示）', padding=8)
         preview_card.grid(row=1, column=0, sticky='ew', pady=(10, 0))
@@ -186,6 +199,20 @@ class MissionPlannerUI(PlanningUICommon):
                 btn.configure(bg=color, fg='white', activebackground=color)
             else:
                 btn.configure(bg='#ffffff', fg='black', activebackground='#e9ecef')
+
+    def _on_key_color(self, event) -> None:
+        """键盘 1-4 设置上面四个箱子颜色（从左到右），支持主键盘 + 小键盘"""
+        key = event.char if event.char else event.keysym
+        # 小键盘 KP_1 → 1
+        if key.startswith('KP_'):
+            key = key[3:]
+        mapping = self._key_box_map.get(key)
+        if mapping is None:
+            return
+        box_id, type_id = mapping
+        self.box_types[box_id] = type_id
+        self.field_canvas.box_types = self.box_types
+        self.field_canvas._redraw()
 
     def _on_box_change(self, box_id: int, type_id: int) -> None:
         self.box_types[box_id] = type_id

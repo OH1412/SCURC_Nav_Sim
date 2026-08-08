@@ -226,7 +226,7 @@ def generate_launch_description():
                     {'node_names': lifecycle_nodes}],
     )
     delayed_lifecycle_manager_navigation = TimerAction(
-        period=2.0,
+        period=0.0,
         actions=[lifecycle_manager_navigation_node],
     )
 
